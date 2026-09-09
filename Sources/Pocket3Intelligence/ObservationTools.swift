@@ -26,10 +26,10 @@ public struct ObservationResult: Sendable {
     public let profile: String
     public let engine: String
     public let elapsedSeconds: Double
-    public var planning: JSONValue? = nil
+    public let executionRoles: ObservationExecutionRoles?
     public func metadata() throws -> JSONValue {
         var fields: [String: JSONValue] = ["answer": .string(answer.answer), "evidence": .array(answer.evidence.map(JSONValue.string)), "uncertainties": .array(answer.uncertainties.map(JSONValue.string)), "frame": try .encode(frame), "actions": try .encode(actions), "profile": .string(profile), "engine": .string(engine), "elapsedSeconds": .number(elapsedSeconds)]
-        if let planning { fields["planning"] = planning }
+        if let executionRoles { fields["executionRoles"] = try .encode(executionRoles) }
         return .object(fields)
     }
 }
@@ -55,6 +55,8 @@ actor ObservationContext {
     private var calls = 0
     private var moves = 0
     private var actions: [ObservationAction] = []
+    private var modelToolsRetired = false
+    private var answerFrameRefreshAttempted = false
     init(service: any ObservationCamera, origin: RequestOrigin, stamp: InteractionStamp, frame: FramePacket,
          canMove: Bool, canZoom: Bool = false, zoomCapabilities: USBZoomCapabilities? = nil, deadline: Double) {
         self.service = service; self.origin = origin; self.stamp = stamp
@@ -76,11 +78,13 @@ actor ObservationContext {
     }
     private func admit() async throws {
         try checkLocal()
+        guard !modelToolsRetired else { throw BridgeFailure("model_tools_retired", "控制階段已結束，不再接受工具呼叫") }
         // Actor isolation ends at await. Reserve the complete tool operation,
         // including its waits, before admitting a second model tool call.
         if toolActive { await withCheckedContinuation { toolWaiters.append($0) } }
         else { toolActive = true }
         do {
+            guard !modelToolsRetired else { throw BridgeFailure("model_tools_retired", "控制階段已結束，不再接受工具呼叫") }
             guard calls < 6 else { throw BridgeFailure("tool_budget", "本次觀察已達六次工具呼叫上限") }
             calls += 1
             try await check()
@@ -206,42 +210,32 @@ actor ObservationContext {
     func actionEvidence() -> [ObservationAction] { actions }
     func currentFrame() async throws -> FramePacket { try await check(); return latest }
 
-    /// Apple separates the operator's text-only action plan from visual
-    /// answering. These are App-executed plan steps, not model ToolCall events.
-    /// Validate the complete plan before the first read or write; later failure
-    /// never advances to another requested action or retries a submitted one.
-    func executeApplePlan(_ plan: AppleObservationPlan, zoomCapabilities: USBZoomCapabilities?) async throws {
-        try plan.validate(canMove: canMove, canZoom: canZoom, zoomCapabilities: zoomCapabilities)
-        try await check()
-        _ = try await capture(after: latest.info.receivedUptime)
-        guard !plan.steps.isEmpty else { return }
-        for step in plan.steps {
-            try await check()
-            switch step.kind {
-            case .zoom, .zoomIn, .zoomOut:
-                _ = try await readZoomStatus()
-                let rawValue: Int
-                if step.kind == .zoom {
-                    guard let requested = step.rawValue else { throw BridgeFailure("request_not_fulfilled", "縮放計畫缺少原始目標值") }
-                    rawValue = requested
-                } else {
-                    guard let capabilities = zoomSnapshot else { throw BridgeFailure("zoom_unavailable", "尚未取得有效縮放狀態") }
-                    rawValue = try AppleObservationPlan.relativeZoomTarget(increase: step.kind == .zoomIn, capabilities: capabilities)
-                }
-                _ = try await zoom(rawValue)
-            case .move:
-                guard let direction = step.direction else { throw BridgeFailure("request_not_fulfilled", "移動計畫缺少方向") }
-                _ = try await move(direction)
-                guard let motion = actions.last?.motion, motion.accepted, motion.completed, motion.verified else {
-                    _ = try? await service.stopIfInteractionCurrent(stamp)
-                    throw BridgeFailure("movement_unconfirmed", "計畫中的移動未確認，已停止後續操作")
-                }
-            }
+    /// One app-owned read at the model handoff, outside the unchanged six model
+    /// tool-call budget. Never append a fake SDK tool event for this host read.
+    /// Retire all controller tool references before the first suspension.
+    func refreshFrameForAnswer() async throws -> FramePacket {
+        try checkLocal()
+        guard !answerFrameRefreshAttempted else { throw BridgeFailure("answer_frame_budget", "回答階段只允許一次額外取像") }
+        guard !toolActive, toolWaiters.isEmpty, !moving, !zooming else {
+            throw BridgeFailure("observation_busy", "控制工具尚未結束，不能切換回答階段")
         }
-        _ = try await capture(after: latest.info.receivedUptime)
+        answerFrameRefreshAttempted = true; modelToolsRetired = true
+        let previous = latest.info
+        let after = max(ProcessInfo.processInfo.systemUptime, previous.receivedUptime)
+        try await check()
+        let frame = try await service.frame(origin: origin, after: after)
+        try await check()
+        guard frame.info.sessionID == stamp.sessionID, frame.info.deviceID == previous.deviceID,
+              frame.info.id != previous.id, frame.info.receivedUptime.isFinite,
+              frame.info.receivedUptime > after else {
+            throw BridgeFailure("stale_answer_frame", "未取得同一連線在控制完成後的新回答影格")
+        }
+        latest = frame
+        return frame
     }
 
-    func result(answer: ObservationAnswer, engine: String, elapsed: Double, planning: JSONValue? = nil) async throws -> ObservationResult {
+    func result(answer: ObservationAnswer, engine: String, elapsed: Double,
+                executionRoles: ObservationExecutionRoles? = nil) async throws -> ObservationResult {
         try await check()
         try AnswerQuality.validateExecution(answer: ([answer.answer] + answer.evidence + answer.uncertainties).joined(separator: "\n"),
             hasVerifiedMovement: actions.contains { $0.motion?.verified == true && $0.motion?.completed == true },
@@ -250,7 +244,8 @@ actor ObservationContext {
         let (metadata, jpeg) = try await Task.detached(priority: .userInitiated) { try frame.jpegWithInfo(maxDimension: 1280) }.value
         try await check()
         return ObservationResult(answer: answer, frame: metadata, imageJPEG: jpeg, actions: actions,
-            profile: canMove || canZoom ? "observe-and-adjust" : "observe", engine: engine, elapsedSeconds: elapsed, planning: planning)
+            profile: canMove || canZoom ? "observe-and-adjust" : "observe", engine: engine, elapsedSeconds: elapsed,
+            executionRoles: executionRoles)
     }
 }
 

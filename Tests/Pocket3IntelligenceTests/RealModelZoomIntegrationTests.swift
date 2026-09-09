@@ -9,7 +9,7 @@ import Testing
 @Suite(.serialized)
 struct RealModelZoomIntegrationTests {
     @Test(.enabled(if: ModelZoomCheck.requested("apple")), .timeLimit(.minutes(3)))
-    func appleModelUsesZoomToolsWithSimulationOnly() async throws {
+    func appleAnswerWithMLXControlUsesSimulationOnly() async throws {
         try await ModelZoomCheck.run(engine: "apple")
     }
 
@@ -59,7 +59,8 @@ private enum ModelZoomCheck {
         print("MODEL_ZOOM_CHECK_START \(engine) \(directory.path)")
 
         #if DEBUG
-        if engine == "mlx" {
+        do {
+            // Both cases use MLX for this control-enabled simulation.
             // This must precede IntelligenceEngine, fixture CIContext creation,
             // model status/loading and every GPU/MLX call. Missing resources
             // become a durable unavailable report instead of a native abort.
@@ -94,9 +95,10 @@ private enum ModelZoomCheck {
                 guard availability.available else {
                     throw BridgeFailure("model_check_unavailable", "Apple on-device model is unavailable: \(availability.detail)")
                 }
-            } else {
+            }
+            do {
                 let availability = await intelligence.localModel.status()
-                report["modelAvailability"] = try .encode(availability)
+                report["controllerModelAvailability"] = try .encode(availability)
                 guard availability.available else {
                     throw BridgeFailure("model_check_unavailable", "Pinned MLX weights are not already cached; this test will not download them")
                 }
@@ -155,6 +157,7 @@ private enum ModelZoomCheck {
             let captureIndex = actions.lastIndex { $0.tool == "capture_frame" }
             let checks: [String: Bool] = [
                 "independentZoomGate": !gate.canMove && gate.canZoom,
+                "truthfulExecutionRoles": result.executionRoles == .init(controllerEngine: "mlx", answerEngine: engine, finalFrameRefresh: engine == "apple" ? "app" : nil),
                 "singleZoomRaw200": sets.count == 1 && set?.element.zoom?.target == 200 && set?.element.zoom?.observed == 200,
                 "statusBeforeSet": statusIndex != nil && set != nil && statusIndex! < set!.offset,
                 "explicitFreshCaptureAfterSet": captureIndex != nil && set != nil && captureIndex! > set!.offset,

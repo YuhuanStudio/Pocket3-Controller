@@ -5,7 +5,10 @@ import Testing
 @testable import Pocket3Intelligence
 
 private actor ZoomObservationFixture: ObservationCamera {
-    enum Behavior: Sendable { case verified, unconfirmed, throwing, staleFrame, wrongFrameSession, delayed, delayedBegin, delayedInitialFrame }
+    enum Behavior: Sendable {
+        case verified, unconfirmed, throwing, staleFrame, wrongFrameSession, delayed, delayedBegin, delayedInitialFrame
+        case delayedAnswerFrame, repeatedFrameID, thresholdFrame, wrongFrameDevice
+    }
     private let pixels: CVPixelBuffer
     private let behavior: Behavior
     private var access: AccessMode
@@ -37,12 +40,20 @@ private actor ZoomObservationFixture: ObservationCamera {
             canZoom: access == .control, zoomCapabilities: capabilities)
     }
     func frame(origin: RequestOrigin, after: Double) async throws -> FramePacket {
-        if behavior == .delayedInitialFrame && frameCount == 0 { await withCheckedContinuation { pending = $0 } }
+        if (behavior == .delayedInitialFrame && frameCount == 0) || (behavior == .delayedAnswerFrame && after > 0 && frameCount == 1) {
+            guard pending == nil else { throw BridgeFailure("fixture_concurrent_frame", "A second frame read reached the pending fixture") }
+            await withCheckedContinuation { pending = $0 }
+        }
         frameCount += 1; frameAfter.append(after)
-        let time = behavior == .staleFrame && after > 0 ? after - 0.1 : ProcessInfo.processInfo.systemUptime
+        let time: Double
+        if behavior == .staleFrame && after > 0 { time = after - 0.1 }
+        else if behavior == .thresholdFrame && after > 0 { time = after }
+        else { time = ProcessInfo.processInfo.systemUptime }
         let frameSession = behavior == .wrongFrameSession && after > 0 ? "different-session" : sessionID
-        return FramePacket(pixelBuffer: pixels, info: FrameInfo(id: "synthetic:\(frameSession):\(frameCount)", sessionID: frameSession,
-            deviceID: "simulated-zoom", receivedAt: Date(), receivedUptime: time, presentationTime: time, width: 64, height: 32,
+        let frameDevice = behavior == .wrongFrameDevice && after > 0 ? "different-device" : "simulated-zoom"
+        let identifierNumber = behavior == .repeatedFrameID && after > 0 ? 1 : frameCount
+        return FramePacket(pixelBuffer: pixels, info: FrameInfo(id: "synthetic:\(frameSession):\(identifierNumber)", sessionID: frameSession,
+            deviceID: frameDevice, receivedAt: Date(), receivedUptime: time, presentationTime: time, width: 64, height: 32,
             timestampSource: "simulation_only"))
     }
     func validateInteraction(_ stamp: InteractionStamp, origin: RequestOrigin) throws {
@@ -79,7 +90,6 @@ private actor ZoomObservationFixture: ObservationCamera {
     func release() { let continuation = pending; pending = nil; continuation?.resume() }
     func revoke() { epoch += 1; access = .observe }
     func reconnect() { epoch += 1; sessionID = "zoom-session-B"; stopped = false }
-    func changeExternalZoom(to rawValue: Int) { capabilities?.current = rawValue }
 }
 private func zoomContext(_ camera: ZoomObservationFixture) async throws -> (ObservationContext, ObservationStart) {
     let start = try await camera.beginObservation(origin: .manual)
@@ -222,61 +232,7 @@ private func waitForZoom(_ camera: ZoomObservationFixture) async throws {
     #expect(action.zoom == nil && action.postActionFrame == nil && action.failureCode == nil)
 }
 
-@Test func applePlanExecutesValidatedZoomAndReturnsOnlyRealActionEvidence() async throws {
-    let camera = try ZoomObservationFixture()
-    let (context, start) = try await zoomContext(camera)
-    let plan = AppleObservationPlan(adjustmentRequested: true,
-        steps: [.init(kind: .zoom, direction: nil, rawValue: 200)], clarification: nil)
-    try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
-    let actions = await context.actionEvidence()
-    #expect(actions.map(\.tool) == ["capture_frame", "camera_zoom_status", "camera_set_zoom", "capture_frame"])
-    #expect(await camera.writes == [200])
-    let postZoom = try #require(actions[2].postActionFrame)
-    let finalFrame = try await context.currentFrame()
-    #expect(finalFrame.info.sessionID == start.stamp.sessionID)
-    #expect(finalFrame.info.receivedUptime > postZoom.receivedUptime && finalFrame.info.id != postZoom.id)
-    let readOnlyTools = ObservationToolSet.make(context: context, canMove: false, canZoom: false)
-    #expect(!readOnlyTools.contains { $0.name == "camera_set_zoom" || $0.name == "move_gimbal" })
-}
-
-@Test func applePlanValidatesAllStepsBeforeSendingAndStopsAtFirstUnconfirmedWrite() async throws {
-    let camera = try ZoomObservationFixture()
-    let (context, start) = try await zoomContext(camera)
-    let invalid = AppleObservationPlan(adjustmentRequested: true, steps: [
-        .init(kind: .zoom, direction: nil, rawValue: 200),
-        .init(kind: .zoom, direction: nil, rawValue: 401)], clarification: nil)
-    do { try await context.executeApplePlan(invalid, zoomCapabilities: start.zoomCapabilities); Issue.record("Invalid complete plan ran") } catch {}
-    #expect(await camera.zoomAttempts == 0)
-    #expect(await context.actionEvidence().isEmpty)
-
-    let uncertain = try ZoomObservationFixture(behavior: .unconfirmed)
-    let (other, otherStart) = try await zoomContext(uncertain)
-    let valid = AppleObservationPlan(adjustmentRequested: true, steps: [
-        .init(kind: .zoom, direction: nil, rawValue: 200),
-        .init(kind: .zoom, direction: nil, rawValue: 150)], clarification: nil)
-    do { try await other.executeApplePlan(valid, zoomCapabilities: otherStart.zoomCapabilities); Issue.record("Unconfirmed first step completed a plan") } catch {}
-    #expect(await uncertain.writes == [200])
-    #expect(await uncertain.zoomAttempts == 1)
-    #expect(await uncertain.stopCount == 1)
-    #expect(await other.actionEvidence().last?.failureCode == "zoom_unconfirmed")
-}
-
-@Test func applePlanCancellationWhileAwaitingZoomNeverAdvancesToNextStep() async throws {
-    let camera = try ZoomObservationFixture(behavior: .delayed)
-    let (context, start) = try await zoomContext(camera)
-    let plan = AppleObservationPlan(adjustmentRequested: true, steps: [
-        .init(kind: .zoom, direction: nil, rawValue: 200),
-        .init(kind: .zoom, direction: nil, rawValue: 150)], clarification: nil)
-    let task = Task { try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities) }
-    try await waitForZoom(camera)
-    await context.cancel(); await camera.release()
-    do { try await task.value; Issue.record("Cancelled plan completed") } catch {}
-    #expect(await camera.zoomAttempts == 1)
-    #expect(await camera.writes.isEmpty)
-    #expect(await camera.stopCount == 1)
-}
-
-@Test func cancellingObservationDuringPreparationPreventsPlanningAndCameraWrites() async throws {
+@Test func cancellingObservationDuringPreparationPreventsModelCallsAndCameraWrites() async throws {
     for behavior in [ZoomObservationFixture.Behavior.delayedBegin, .delayedInitialFrame] {
         let camera = try ZoomObservationFixture(behavior: behavior)
         let engine = IntelligenceEngine()
@@ -284,7 +240,7 @@ private func waitForZoom(_ camera: ZoomObservationFixture) async throws {
         try await waitForZoom(camera)
         await engine.cancelObservation()
         await camera.release()
-        do { _ = try await work.value; Issue.record("Cancelled preparation proceeded to planning") }
+        do { _ = try await work.value; Issue.record("Cancelled preparation proceeded to a model call") }
         catch is CancellationError {} catch { Issue.record("Expected cancellation before any model call, received \(error)") }
         #expect(await camera.zoomAttempts == 0)
         #expect(await camera.writes.isEmpty)
@@ -292,25 +248,107 @@ private func waitForZoom(_ camera: ZoomObservationFixture) async throws {
     }
 }
 
-@Test func observationOnlyApplePlanRefreshesTheFrameAfterPlanningWithoutWriting() async throws {
+@Test func hostAnswerRefreshStillGetsOneFreshFrameAfterAllSixModelCalls() async throws {
     let camera = try ZoomObservationFixture()
     let (context, start) = try await zoomContext(camera)
     let initial = try await context.currentFrame()
-    let plan = AppleObservationPlan(adjustmentRequested: false, steps: [], clarification: nil)
-    try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
-    let refreshed = try await context.currentFrame()
-    #expect(refreshed.info.id != initial.info.id && refreshed.info.receivedUptime > initial.info.receivedUptime)
-    #expect(await context.actionEvidence().map(\.tool) == ["capture_frame"])
+    for _ in 0..<6 { _ = try await context.readZoomStatus() }
+    let beforeActions = await context.actionEvidence()
+    #expect(beforeActions.count == 6 && beforeActions.allSatisfy { $0.tool == "camera_zoom_status" })
+    let handoffStarted = ProcessInfo.processInfo.systemUptime
+    let frame = try await context.refreshFrameForAnswer()
+    let cutoff = try #require(await camera.frameAfter.last)
+    #expect(cutoff >= handoffStarted && frame.info.receivedUptime > cutoff)
+    #expect(frame.info.id != initial.info.id && frame.info.sessionID == start.stamp.sessionID)
+    #expect(frame.info.deviceID == initial.info.deviceID)
+    let afterActions = await context.actionEvidence()
+    #expect(afterActions.map(\.tool) == beforeActions.map(\.tool))
+    #expect(!afterActions.contains { $0.tool == "capture_frame" })
+    do { _ = try await context.refreshFrameForAnswer(); Issue.record("A second host refresh bypassed its one-frame limit") }
+    catch let error as BridgeFailure { #expect(error.code == "answer_frame_budget") }
+    #expect(await camera.frameAfter.count == 2)
+    #expect(await camera.zoomAttempts == 0)
+    #expect(await camera.writes.isEmpty)
+    #expect(await camera.stopCount == 0)
+}
+
+@Test func answerHandoffRetiresReadAndWriteToolsEvenWithUnusedModelBudget() async throws {
+    let camera = try ZoomObservationFixture()
+    let (context, _) = try await zoomContext(camera)
+    _ = try await context.readZoomStatus() // Valid zoom snapshot; five model calls remain.
+    _ = try await context.refreshFrameForAnswer()
+    do { _ = try await context.capture(); Issue.record("A model captured after handoff") }
+    catch let error as BridgeFailure { #expect(error.code == "model_tools_retired") }
+    do { _ = try await context.readZoomStatus(); Issue.record("A model read zoom after handoff") }
+    catch let error as BridgeFailure { #expect(error.code == "model_tools_retired") }
+    do { _ = try await context.zoom(150); Issue.record("A model wrote zoom after handoff") }
+    catch let error as BridgeFailure { #expect(error.code == "model_tools_retired") }
+    #expect(await context.actionEvidence().map(\.tool) == ["camera_zoom_status"])
+    #expect(await camera.frameAfter.count == 2)
+    #expect(await camera.zoomAttempts == 0)
     #expect(await camera.writes.isEmpty)
 }
 
-@Test func relativeAppleZoomUsesFreshDeviceStateRatherThanThePlanningSnapshot() async throws {
-    let camera = try ZoomObservationFixture()
-    let (context, start) = try await zoomContext(camera)
-    let plan = AppleObservationPlan(adjustmentRequested: true,
-        steps: [.init(kind: .zoomIn, direction: nil, rawValue: nil)], clarification: nil)
-    await camera.changeExternalZoom(to: 200)
-    try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
-    #expect(await camera.writes == [275])
-    #expect(await context.actionEvidence().map(\.tool) == ["capture_frame", "camera_zoom_status", "camera_set_zoom", "capture_frame"])
+@Test func answerRefreshRejectsStaleForeignOrReusedFramesWithoutPublishingEvidence() async throws {
+    for behavior in [ZoomObservationFixture.Behavior.staleFrame, .thresholdFrame, .wrongFrameSession, .wrongFrameDevice, .repeatedFrameID] {
+        let camera = try ZoomObservationFixture(behavior: behavior)
+        let (context, _) = try await zoomContext(camera)
+        let initial = try await context.currentFrame()
+        do { _ = try await context.refreshFrameForAnswer(); Issue.record("Invalid answer frame was returned") }
+        catch let error as BridgeFailure { #expect(error.code == "stale_answer_frame") }
+        if let retained = try? await context.currentFrame() { #expect(retained.info.id == initial.info.id) }
+        #expect(await context.actionEvidence().isEmpty)
+        do { _ = try await context.refreshFrameForAnswer(); Issue.record("A failed handoff was silently retried") }
+        catch let error as BridgeFailure { #expect(error.code == "answer_frame_budget") }
+        #expect(await camera.frameAfter.count == 2)
+        #expect(await camera.zoomAttempts == 0)
+        #expect(await camera.writes.isEmpty)
+    }
+}
+
+@Test func onlyOneConcurrentHostRefreshCanReadWhileTheFrameIsPending() async throws {
+    let camera = try ZoomObservationFixture(behavior: .delayedAnswerFrame)
+    let (context, _) = try await zoomContext(camera)
+    let first = Task { try await context.refreshFrameForAnswer() }
+    try await waitForZoom(camera)
+    do { _ = try await context.refreshFrameForAnswer(); Issue.record("Two host refreshes reached camera I/O") }
+    catch let error as BridgeFailure { #expect(error.code == "answer_frame_budget") }
+    let lateTool = Task { try await context.readZoomStatus() }
+    await camera.release()
+    let frame = try await first.value
+    do { _ = try await lateTool.value; Issue.record("A model tool ran after handoff began") }
+    catch let error as BridgeFailure { #expect(error.code == "model_tools_retired") }
+    let cutoff = try #require(await camera.frameAfter.last)
+    #expect(frame.info.receivedUptime > cutoff)
+    #expect(await camera.frameAfter.count == 2)
+    #expect(await context.actionEvidence().isEmpty)
+    #expect(await camera.zoomAttempts == 0)
+    #expect(await camera.writes.isEmpty)
+}
+
+@Test func cancellationOrOwnerChangeDuringAnswerRefreshCannotReturnAFinalFrame() async throws {
+    enum Ending { case contextCancellation, taskCancellation, takeover, reconnect }
+    for ending in [Ending.contextCancellation, .taskCancellation, .takeover, .reconnect] {
+        let camera = try ZoomObservationFixture(behavior: .delayedAnswerFrame)
+        let (context, _) = try await zoomContext(camera)
+        _ = try await context.readZoomStatus()
+        let task = Task { try await context.refreshFrameForAnswer() }
+        try await waitForZoom(camera)
+        switch ending {
+        case .contextCancellation: await context.cancel()
+        case .taskCancellation: task.cancel()
+        case .takeover: await camera.revoke()
+        case .reconnect: await camera.reconnect()
+        }
+        await camera.release()
+        do { _ = try await task.value; Issue.record("A cancelled/stale handoff published a frame") }
+        catch let error as BridgeFailure {
+            #expect(error.code == "observation_cancelled" || error.code == "interaction_changed")
+        } catch is CancellationError {} // Task cancellation is distinct from context cancellation.
+        #expect(await context.actionEvidence().map(\.tool) == ["camera_zoom_status"])
+        #expect(await camera.frameAfter.count == 2)
+        #expect(await camera.zoomAttempts == 0)
+        #expect(await camera.writes.isEmpty)
+        #expect(await camera.stopCount == 0) // A host-only read must not stop a new owner.
+    }
 }

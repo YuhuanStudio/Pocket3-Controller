@@ -1373,3 +1373,19 @@
 "Updates are paused for this validation session." = "Updates are paused for this validation session.";
 
 "The requested camera adjustment was not completed. Rephrase the request or check camera control access." = "The requested camera adjustment was not completed. Rephrase the request or check camera control access.";
+
+"Apple answers from images. AI control also uses the downloaded MLX model." = "Apple answers from images. AI control also uses the downloaded MLX model.";
+
+"MLX handles camera control and visual answers locally." = "MLX handles camera control and visual answers locally.";
+
+"Download the MLX model to use AI camera control with Apple visual answers." = "Download the MLX model to use AI camera control with Apple visual answers.";
+
+"MLX control · Apple visual answer" = "MLX control · Apple visual answer";
+
+"Read camera zoom range" = "Read camera zoom range";
+
+"Zoom confirmed · raw %d" = "Zoom confirmed · raw %d";
+
+"Camera movement was not confirmed." = "Camera movement was not confirmed.";
+
+"Camera operation" = "Camera operation";

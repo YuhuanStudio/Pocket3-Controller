@@ -1373,3 +1373,19 @@
 "Updates are paused for this validation session." = "此验证会话已暂停更新检查。";
 
 "The requested camera adjustment was not completed. Rephrase the request or check camera control access." = "未能完成要求的相机调整，请重新说明要求或检查控制权限。";
+
+"Apple answers from images. AI control also uses the downloaded MLX model." = "Apple 负责画面回答；AI 控制另使用已下载的 MLX 模型。";
+
+"MLX handles camera control and visual answers locally." = "MLX 在本机处理相机控制与画面回答。";
+
+"Download the MLX model to use AI camera control with Apple visual answers." = "先下载 MLX 模型，即可搭配 Apple 画面回答使用 AI 控制。";
+
+"MLX control · Apple visual answer" = "MLX 控制流程 · Apple 画面回答";
+
+"Read camera zoom range" = "已读取相机缩放范围";
+
+"Zoom confirmed · raw %d" = "缩放已确认 · 原始刻度 %d";
+
+"Camera movement was not confirmed." = "未能确认相机移动。";
+
+"Camera operation" = "相机操作";

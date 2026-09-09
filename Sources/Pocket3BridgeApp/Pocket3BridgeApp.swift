@@ -113,6 +113,7 @@ final class AppModel {
     var question = ""
     var answer = ""
     var observationActions: [ObservationAction] = []
+    var observationRoles: ObservationExecutionRoles?
     var evidence: [String] = []
     var uncertainties: [String] = []
     var evidenceImage: NSImage?
@@ -412,13 +413,14 @@ final class AppModel {
     func ask() {
         guard !busy else { return }
         busy = true; answer = ""; evidence = []; uncertainties = []; message = nil
-        observationActions = []; evidenceImage = nil; evidenceFrameID = ""
+        observationActions = []; observationRoles = nil; evidenceImage = nil; evidenceFrameID = ""
         let q = question
         aiTask = Task { [self] in
             do {
                 let result = try await intelligence.observe(service: service, question: q, engine: selectedEngine)
                 try Task.checkCancellation()
                 observationActions = result.actions
+                observationRoles = result.executionRoles
                 evidenceImage = NSImage(data: result.imageJPEG); evidenceFrameID = result.frame.id
                 answer = result.answer.answer; evidence = result.answer.evidence; uncertainties = result.answer.uncertainties
 
@@ -430,7 +432,7 @@ final class AppModel {
     func ocr() async {
         guard !aiWorking else { return }
         busy = true; defer { busy = false }
-        answer = ""; evidence = []; uncertainties = []; observationActions = []; evidenceImage = nil; evidenceFrameID = ""; message = nil
+        answer = ""; evidence = []; uncertainties = []; observationActions = []; observationRoles = nil; evidenceImage = nil; evidenceFrameID = ""; message = nil
         do {
             let stamp = try await service.interactionStamp(origin: .manual)
             let frame = try await service.frame()
@@ -456,9 +458,22 @@ final class AppModel {
         default: loc("About 3.1 GB · public Hugging Face weights")
         }
     }
-    var canAsk: Bool { selectedEngine == "mlx" ? localStatus?.available == true : modelStatus?.available == true }
+    var appleUsesMLXControl: Bool {
+        selectedEngine == "apple" && status?.access == .control &&
+            (status?.stopValidated == true || zoomStorage?.capabilities.map(ObservationZoomPolicy.isAvailable) == true)
+    }
+    var canAsk: Bool {
+        selectedEngine == "mlx" ? localStatus?.available == true :
+            modelStatus?.available == true && (!appleUsesMLXControl || localStatus?.available == true)
+    }
+    var engineRoleMessage: String {
+        selectedEngine == "apple"
+            ? loc("Apple answers from images. AI control also uses the downloaded MLX model.")
+            : loc("MLX handles camera control and visual answers locally.")
+    }
     var engineMessage: String {
         if selectedEngine == "mlx" { return loc("Download a local model on the AI engines page.") }
+        if appleUsesMLXControl, localStatus?.available != true { return loc("Download the MLX model to use AI camera control with Apple visual answers.") }
         if modelStatus?.available == true { return loc("Ready") }
         return AppErrorPresentation.message(code: "model_unavailable", details: modelStatus?.detail)
     }
@@ -728,6 +743,8 @@ struct RootView: View {
         YunCard {
             VStack(alignment: .leading, spacing: Yun.Space.md) {
                 YunSelect(selection: $model.selectedEngine, options: [.init(value: "apple", title: loc("Apple on-device AI"), detail: loc("System")), .init(value: "mlx", title: "Qwen 3.5 · 4B", detail: "MLX")])
+                Text(model.engineRoleMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
                 TextEditor(text: $model.question)
                     .font(Yun.Text.body)
                     .scrollContentBackground(.hidden)
@@ -757,8 +774,11 @@ struct RootView: View {
                         if model.busy { HStack { ProgressView().controlSize(.mini); Text(loc("Understanding this frame")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary) } }
                         if model.answer.isEmpty && !model.busy { YunEmptyState(symbol: "sparkles", message: loc("Start with a question about the scene.\nFor example: what does the label say?")).frame(maxWidth: .infinity) }
                         ForEach(Array(model.observationActions.enumerated()), id: \.offset) { _, action in
-                            Label(actionTitle(action), systemImage: "checkmark.circle")
-                                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
+                            Label(actionTitle(action), systemImage: actionSucceeded(action) ? "checkmark.circle" : "exclamationmark.circle")
+                                .font(Yun.Text.caption).foregroundStyle(actionSucceeded(action) ? Yun.Palette.textSecondary : Yun.Palette.warning)
+                        }
+                        if model.observationRoles?.controllerEngine == "mlx", model.observationRoles?.answerEngine == "apple" {
+                            Text(loc("MLX control · Apple visual answer")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                         }
                         if !model.answer.isEmpty { Text(model.answer).font(Yun.Text.body).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                         ForEach(model.evidence, id: \.self) { Text("· " + $0).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary) }
@@ -774,10 +794,25 @@ struct RootView: View {
     }
     private func actionTitle(_ action: ObservationAction) -> String {
         switch action.tool {
-        case "move_gimbal": String(format: loc("%@ one step · USB readback confirmed"), loc(["left":"Left", "right":"Right", "up":"Up", "down":"Down"][action.detail] ?? "Camera"))
+        case "move_gimbal": actionSucceeded(action)
+            ? String(format: loc("%@ one step · USB readback confirmed"), loc(["left":"Left", "right":"Right", "up":"Up", "down":"Down"][action.detail] ?? "Camera"))
+            : loc("Camera movement was not confirmed.")
+        case "camera_zoom_status": loc("Read camera zoom range")
+        case "camera_set_zoom": actionSucceeded(action)
+            ? String(format: loc("Zoom confirmed · raw %d"), action.zoom?.observed ?? 0)
+            : loc("Zoom could not be confirmed.")
         case "read_visible_text": loc("Read visible text")
         case "read_barcodes": loc("Read barcodes")
-        default: loc("Captured a fresh image")
+        case "capture_frame": loc("Captured a fresh image")
+        default: loc("Camera operation")
+        }
+    }
+    private func actionSucceeded(_ action: ObservationAction) -> Bool {
+        guard action.failureCode == nil else { return false }
+        switch action.tool {
+        case "camera_set_zoom": return action.zoom?.accepted == true && action.zoom?.verified == true && action.zoom?.completed == true && action.postActionFrame != nil
+        case "move_gimbal": return action.motion?.accepted == true && action.motion?.verified == true && action.motion?.completed == true
+        default: return true
         }
     }
     private var activity: some View {
@@ -802,7 +837,11 @@ struct RootView: View {
                 heading(loc("On-device AI engines"), loc("Choose a model for camera images. Unload it when it is no longer needed."))
                 HStack(alignment: .top, spacing: Yun.Space.lg) {
                     engineCard(id: "appleEngine", name: loc("Apple on-device AI"), icon: "apple.logo", subtitle: "Foundation Models 27", status: model.modelStatus?.available == true ? loc("Available") : loc("Not ready")) {
-                        Text(loc(model.modelStatus?.detail ?? "Checking the model")).font(Yun.Text.body).foregroundStyle(Yun.Palette.textSecondary)
+                        VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                            Text(loc(model.modelStatus?.detail ?? "Checking the model")).font(Yun.Text.body).foregroundStyle(Yun.Palette.textSecondary)
+                            Text(loc("Apple answers from images. AI control also uses the downloaded MLX model."))
+                                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                        }
                     } capabilities: {
                         YunWrap(spacing: 6) { YunBadge(loc("Image understanding")); YunBadge(loc("Structured answers")); YunBadge(loc("On-device")) }
                     } actions: {
@@ -811,6 +850,8 @@ struct RootView: View {
                     engineCard(id: "mlxEngine", name: "Qwen 3.5 · 4B", icon: "square.stack.3d.up", subtitle: "MLX Swift · 4-bit", status: model.localPhaseTitle) {
                         VStack(alignment: .leading, spacing: Yun.Space.sm) {
                             Text(model.localModelDescription).font(Yun.Text.body).foregroundStyle(Yun.Palette.textSecondary)
+                            Text(loc("MLX handles camera control and visual answers locally."))
+                                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                             if model.localStatus?.phase == "downloading" { ProgressView(value: model.localStatus?.progress ?? 0) }
                         }
                     } capabilities: {
