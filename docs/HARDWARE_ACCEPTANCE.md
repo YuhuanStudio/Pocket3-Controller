@@ -279,3 +279,23 @@ build17將**命令前取得基線的等待上限**設為3秒；半秒穩定、�
 實機透過`pmset -g assertions`確認：取像時App PID持有一份名為`Pocket 3 active camera capture`的`PreventUserIdleSystemSleep`；`validation-pause`後App活動為空，重新連接同相機後恰有一份新活動。各窗口均沒有App的`PreventUserIdleDisplaySleep`。capture session確實更新，最終4K30 NV12約29.999fps、新影格age約0.00143秒、manual且motion inactive，縮放讀回100。[實機生命週期](../artifacts/capture-activity-build18/live-activity-lifecycle.json)、[最終取像](../artifacts/capture-activity-build18/final-status.json)
 
 本輪沒有拍照、修改系統睡眠偏好、要求螢幕亮起或切換Mac網路。這是活動建立／釋放及新連線的實測；**未實際讓顯示器關閉或整機睡眠，也未進行Mac Studio遠端桌面手勢／斷線驗收**。App仍是登入後的使用者服務，不是登入前daemon。
+
+## 2026-09-09 build18：完整配對後真正提交 FE08
+
+以現有USB偏移pan−14040／tilt6120開始，沒有先模擬手勢或另發offset命令。重新建立BLE完整配對至`credentialsReady`，註冊確認已提交，Mac未加入相機網路。新3秒取得窗口收到6筆、0.572594秒穩定基線後，真正單次提交`02→04 / 04/4C / FE08`。後續完整3秒收到27筆姿態，yaw−3.9°／pitch178.3°／roll0°均未改變，沒有匹配ACK；`localSubmitted=true/responseReceived=false/movementObserved=false`。[配對](../artifacts/native-fullpair-build18/paired.json)、[命令與回報](../artifacts/native-fullpair-build18/native-recenter.json)
+
+USB前後位置亦相同，cleanup target／observed保持−14040／6120且verified，最終ready／manual。這一輪補足了先前「基線不足所以未提交」的缺失；結果仍不支持BLE FE08已可用。沒有推定FE09相同行為、恢復到猜測原點或將慢速USB預設當原生成功。這些BLE角度只是相機遙測座標，不宣稱已和USB或物理鏡頭角度完成校準。
+
+## 2026-09-09：完整 Webcam USB 介面查核
+
+既有`usb-video-descriptors.json`只列class14（Video）的介面，所以單靠該filtered輸出不能排除其他控制介面。本次另讀一次完整configuration descriptor：741 bytes完整解析、5個介面、無解析錯誤，VID`2ca3`／PID`0023`及USB attachment與本次相機一致。[完整原始資料](../artifacts/usb-all-descriptors-2026-09-09.json)
+
+| Interface | 類型 | Endpoint |
+|---|---|---|
+| 0 | VideoControl | 81 interrupt IN |
+| 1 | VideoStreaming | 82 bulk IN |
+| 2 | AudioControl | 無 |
+| 3 | AudioStreaming，alt1 | 01 isochronous OUT |
+| 4 | AudioStreaming，alt1 | 83 isochronous IN |
+
+這份目前Webcam配置沒有vendor-specific、CDC或額外bulk OUT介面。唯一UVC Extension Unit仍為unit6、兩個未知controls；既有GET_LEN為16 bytes，不足以把它識別為DUML、對焦或原生雲台命令。未對它猜測SET，也未使用seize、切換USB configuration／alternate setting或卸載驅動。未公開EP0／其他機身模式的可能性不由此排除。

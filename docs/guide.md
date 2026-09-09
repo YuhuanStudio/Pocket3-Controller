@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 18. The build 16 model routing below is a development addition, not a published beta 1 feature.
+This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 19. The build 16 model routing below is a development addition, not a published beta 1 feature.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch

@@ -1,4 +1,6 @@
 import Foundation
+import AVFoundation
+import CoreMedia
 import CoreVideo
 import Testing
 @testable import Pocket3Core
@@ -96,5 +98,34 @@ import Testing
             #expect(packet.info.outputPixelFormat == name)
             #expect(packet.info.width == 32 && packet.info.height == 16)
         }
+    }
+
+    @Test func explicitH264OutputRequiresDevelopmentOptInAndAdvertisedCodec() throws {
+        let environment = ["POCKET3_CAPTURE_OUTPUT": "h264"]
+        #expect(CaptureOutputPolicy.selected(environment: environment, arguments: []) == .bgra)
+        #expect(CaptureOutputPolicy.selected(environment: environment, arguments: ["--hardware-validation"]) == .h264)
+        #expect(CaptureOutputPolicy.h264.settings() == nil) // Not configured before an input format is attached.
+        try CaptureOutputPolicy.h264.validateAvailableCodecs(["avc1", "jpeg"])
+        #expect(throws: BridgeFailure.self) { try CaptureOutputPolicy.h264.validateAvailableCodecs(["jpeg"]) }
+        try CaptureOutputPolicy.bgra.validateAvailableCodecs([])
+        let settings = try #require(CaptureOutputPolicy.h264.settings(width: 1080, height: 1920))
+        #expect(settings[AVVideoCodecKey] as? String == AVVideoCodecType.h264.rawValue)
+        #expect(settings[AVVideoWidthKey] as? Int == 1080 && settings[AVVideoHeightKey] as? Int == 1920)
+        #expect(settings[kCVPixelBufferPixelFormatTypeKey as String] == nil)
+        #expect(settings[kCVPixelBufferWidthKey as String] == nil && settings[kCVPixelBufferHeightKey as String] == nil)
+    }
+
+    @Test func h264OutputDiagnosticsKeepInputAndCompressedSamplesDistinct() throws {
+        let store = FrameStore()
+        store.reset(deviceID: "synthetic-codec-output")
+        store.recordOutputConfiguration(policy: CaptureOutputPolicy.h264.rawValue, pixelFormats: [], codecs: ["avc1"])
+        store.recordVideoSample(hasImageBuffer: false, hasBlockBuffer: true,
+            mediaSubType: kCMVideoCodecType_H264, inputMediaSubType: kCVPixelFormatType_422YpCbCr8)
+        let diagnostics = store.sampleDiagnostics()
+        #expect(diagnostics.requestedOutputPolicy == "h264")
+        #expect(diagnostics.videoSampleCount == 1 && diagnostics.nonImageVideoBlockBufferCount == 1)
+        #expect(diagnostics.nonImageVideoSampleCount == 1 && diagnostics.pixelBufferCount == 0)
+        #expect(diagnostics.lastVideoSampleFourCC == "avc1" && diagnostics.lastVideoInputFourCC == "2vuy")
+        #expect(store.stats().frames == 0) // Encoded samples are not yet decoded preview frames.
     }
 }

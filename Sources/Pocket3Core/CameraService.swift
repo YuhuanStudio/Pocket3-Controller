@@ -1,6 +1,24 @@
 import Foundation
 import ImageIO
 
+/// Internal transport seam. Production uses the retained UVC actor unchanged;
+/// tests can exercise the real service/IPC cancellation and independent Stop
+/// without constructing a USB connection or issuing hardware requests.
+protocol CameraControlConnection: AnyObject, Sendable {
+    func invalidate()
+    func status() async throws -> UVCCapabilities
+    func set(_ position: GimbalPosition, permit: OperationPermit?) async throws
+    func zoomStatus() async throws -> USBZoomCapabilities
+    func setZoom(rawValue: Int, validUntil: TimeInterval, permit: OperationPermit,
+                 connectionPermit: OperationPermit?) async throws
+    func rollStatus() async throws -> USBRollCapabilities
+    func setRoll(rawValue: Int, validUntil: TimeInterval, permit: OperationPermit,
+                 connectionPermit: OperationPermit?) async throws
+    func setFast(_ position: GimbalPosition, validUntil: TimeInterval, permit: OperationPermit,
+                 connectionPermit: OperationPermit?) async throws
+}
+extension UVCConnection: CameraControlConnection {}
+
 public struct ServiceStatus: Codable, Sendable {
     public var appVersion: String = Pocket3Product.semanticVersion
     public var buildVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
@@ -95,7 +113,7 @@ public actor CameraService {
     private var requestedMode: CaptureMode?
     private var requestedPixelFormat: CapturePixelFormat?
     private var lastCaptureAttempt: CaptureSampleDiagnostics?
-    private var uvc: UVCConnection?
+    private var uvc: (any CameraControlConnection)?
     private var uvcControlDisabledForCapture = false
     private var capabilities: UVCCapabilities?
     private var phase = "idle"
@@ -108,10 +126,10 @@ public actor CameraService {
     // Cancelling the submitting Task does not stop device-side zoom slew.
     private var zoomNeedsHold = false
     private var zoomHoldRevision: UInt64 = 0
-    private var zoomStopWork: (id: UUID, revision: UInt64, connection: UVCConnection, task: Task<USBZoomStopResult, Never>)?
+    private var zoomStopWork: (id: UUID, revision: UInt64, connection: any CameraControlConnection, task: Task<USBZoomStopResult, Never>)?
     private var rollNeedsHold = false
     private var rollHoldRevision: UInt64 = 0
-    private var rollStopWork: (id: UUID, revision: UInt64, connection: UVCConnection, task: Task<USBRollStopResult, Never>)?
+    private var rollStopWork: (id: UUID, revision: UInt64, connection: any CameraControlConnection, task: Task<USBRollStopResult, Never>)?
     private var rollStopValidated = false
     private var motionID: UUID?
     private var motionGeneration = 0
@@ -132,7 +150,31 @@ public actor CameraService {
     private var usbAuthorization: (id: UUID, epoch: Int, interaction: Int)?
     private var usbActiveLease: ContinuousGimbalLease?
     private var usbLastStop: (lease: ContinuousGimbalLease, result: MotionResult)?
-    public init(stopValidated: Bool = false, validationEnabled: Bool = false) { self.stopValidated = stopValidated; self.validationEnabled = validationEnabled }
+    private let usesTestConnection: Bool
+    public init(stopValidated: Bool = false, validationEnabled: Bool = false) {
+        self.stopValidated = stopValidated; self.validationEnabled = validationEnabled; usesTestConnection = false
+    }
+    /// Internal-only fixture admission. No App/CLI/RPC route can enable it.
+    /// Frames are supplied explicitly by tests; no AVF capture is started.
+    init(testConnection: any CameraControlConnection, testFrame: FramePacket) {
+        validationEnabled = false; usesTestConnection = true
+        stopValidated = true; uvc = testConnection; phase = "ready"; access = .control
+        capture.store.reset(deviceID: testFrame.info.deviceID)
+        capture.store.receive(testFrame.pixelBuffer, pts: testFrame.info.presentationTime)
+    }
+    /// Replaces only an injected fixture, exercising obsolete-operation fences
+    /// on the same service actor without opening or reconnecting a real camera.
+    func replaceTestConnection(_ connection: any CameraControlConnection, frame: FramePacket) throws {
+        guard usesTestConnection else { throw BridgeFailure("fixture_disabled", "This service is not a test fixture") }
+        activeMotionPermit?.invalidate(); activeMotionPermit = nil; uvc?.invalidate()
+        lifecycleGeneration += 1; motionGeneration += 1; interactionEpoch += 1
+        motionID = nil; stopTask = nil
+        resetZoomHoldForConnectionChange(); resetRollHoldForConnectionChange()
+        usbEndpoint?.connectionPermit.invalidate(); usbEndpoint = nil; usbAuthorization = nil; usbActiveLease = nil
+        uvc = connection; phase = "ready"; access = .control; stopValidated = true
+        capture.store.reset(deviceID: frame.info.deviceID)
+        capture.store.receive(frame.pixelBuffer, pts: frame.info.presentationTime)
+    }
     private func log(_ op: String, _ message: String, error: Bool = false, presentationKey: String? = nil) {
         activities.insert(Activity(op, message, isError: error, presentationKey: presentationKey), at: 0)
         if activities.count > 80 { activities.removeLast(activities.count - 80) }
@@ -502,6 +544,7 @@ public actor CameraService {
     }
 
     public func zoom(rawValue: Int, expectedSessionID: String, origin: RequestOrigin = .manual) async throws -> USBZoomResult {
+        guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認先前縮放已停止，再調整縮放") }
         try requireObservation(origin)
         guard !rollNeedsHold else { throw BridgeFailure("roll_stop_required", "請先確認 Roll 已停止，再調整縮放") }
         guard origin == .manual || access == .control else { throw BridgeFailure("zoom_denied", "請在 App 開放 AI 控制權限") }
@@ -516,6 +559,7 @@ public actor CameraService {
         let before = try await uvc.zoomStatus()
         try USBZoomPolicy.validate(rawValue, capabilities: before)
         try Task.checkCancellation()
+        guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認先前縮放已停止，再調整縮放") }
         guard lifecycle == lifecycleGeneration, epoch == interactionEpoch, motionID == nil, phase == "ready",
               !connectionInProgress, nativeControl == nil, !nativeControlPending,
               try capture.store.latest(maxAge: 1).info.sessionID == expectedSessionID,
@@ -568,9 +612,23 @@ public actor CameraService {
                 toleranceRaw: verifier.toleranceRaw, sampleCount: verifier.sampleCount,
                 stableDurationSeconds: verifier.stableDurationSeconds)
         } catch {
-            if generation == motionGeneration, lifecycle == lifecycleGeneration, motionID == id {
-                lastError = (error as? BridgeFailure)?.message ?? "USB 縮放操作未完成"
-                log("zoom", lastError!, error: true, presentationKey: "zoom.failed")
+            // Cancellation of the request only fences future SETs; a submitted
+            // zoom can keep slewing in the device. While this exact operation
+            // still owns the connection, join the independent global Stop.
+            // stop() invalidates/revokes before its first await, and its hold
+            // task survives this submitting task's cancellation. A replacement
+            // session or newer operation must never receive this cleanup.
+            if generation == motionGeneration, lifecycle == lifecycleGeneration,
+               motionID == id, self.uvc === uvc,
+               capture.store.stats().sessionID == expectedSessionID {
+                permit.invalidate()
+                let failure = (error as? BridgeFailure)?.message ?? "USB 縮放操作未完成"
+                _ = try? await stop()
+                if lifecycle == lifecycleGeneration, self.uvc === uvc,
+                   motionGeneration == generation + 1 {
+                    lastError = failure
+                    log("zoom", failure, error: true, presentationKey: "zoom.failed")
+                }
             }
             throw error
         }
@@ -689,6 +747,7 @@ public actor CameraService {
             tiltDegrees: Double(target.tilt) / 3600, origin: .manual)
     }
     private func performMotion(direction: String, panDegrees: Double? = nil, tiltDegrees: Double? = nil, origin: RequestOrigin, interaction: InteractionStamp? = nil, isHardwareProbe: Bool = false, positionProbe: ValidationPositionProbe? = nil) async throws -> MotionResult {
+        guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認先前縮放已停止，再調整視角") }
         guard !rollNeedsHold else { throw BridgeFailure("roll_stop_required", "請先確認 Roll 已停止，再調整視角") }
         guard nativeControl == nil, !nativeControlPending else { throw BridgeFailure("native_control_active", "雲台由原生連續控制連線使用，USB 位置指令已暫停") }
         try requireObservation(origin)
@@ -715,6 +774,7 @@ public actor CameraService {
         else if ["home", "front", "back"].contains(direction) { target = try GimbalNavigationPolicy.preset(named: direction, capabilities: before) }
         else { target = try MotionPolicy.target(direction: direction, origin: before.position, capabilities: before) }
         // Reserve the action before awaiting any write. Stop increments the generation.
+        guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認先前縮放已停止，再調整視角") }
         guard nativeControl == nil, !nativeControlPending, motionID == nil, phase == "ready" else { throw BridgeFailure("motion_busy", "另一個動作已先開始") }
         try requireObservation(origin)
         guard lifecycle == lifecycleGeneration, epoch == interactionEpoch, origin == .manual || access == .control else { throw BridgeFailure("access_changed", "連接或使用權已改變，動作沒有送出") }
@@ -761,7 +821,7 @@ public actor CameraService {
             throw error
         }
     }
-    private func approachUSBTarget(_ target: GimbalPosition, before: UVCCapabilities, uvc: UVCConnection,
+    private func approachUSBTarget(_ target: GimbalPosition, before: UVCCapabilities, uvc: any CameraControlConnection,
         id: UUID, generation: Int, lifecycle: Int, permit: OperationPermit) async throws -> GimbalPosition {
         let started = ProcessInfo.processInfo.systemUptime
         let distance = hypot(Double(Int64(target.pan) - Int64(before.position.pan)),
@@ -802,7 +862,7 @@ public actor CameraService {
                 }
             } else { samples.removeAll() }
             let next = try approach.advance(observed: fresh.position, observedAt: readStarted, now: now)
-            try await uvc.setFast(next, validUntil: min(readStarted + 0.25, now + 0.10), permit: permit)
+            try await uvc.setFast(next, validUntil: min(readStarted + 0.25, now + 0.10), permit: permit, connectionPermit: nil)
             if next == target { submittedFinalTarget = true }
             // One target per slot; a slow operation never creates a catch-up burst.
             try await Task.sleep(for: .seconds(max(0, now + 0.05 - ProcessInfo.processInfo.systemUptime)), tolerance: .zero)
@@ -872,7 +932,7 @@ public actor CameraService {
                 let target = try trajectory.advance(x: x, y: y, speed: 0.5, now: now,
                     observed: fresh.position, observedAt: now)
                 let writeStarted = ProcessInfo.processInfo.systemUptime
-                try await uvc.setFast(target, validUntil: deadline + 0.025, permit: permit)
+                try await uvc.setFast(target, validUntil: deadline + 0.025, permit: permit, connectionPermit: nil)
                 samples.append(USBTrajectoryProbeSample(elapsed: now - started, target: target, observed: fresh.position,
                     writeSeconds: ProcessInfo.processInfo.systemUptime - writeStarted, reversed: reversed))
             }
@@ -950,7 +1010,7 @@ public actor CameraService {
                 do {
                     let fresh = try await uvc.status().position
                     held = fresh; last = fresh
-                    try await uvc.set(fresh)
+                    try await uvc.set(fresh, permit: nil)
                     panSubmitted = true
                 } catch {
                     // Attempt pan first even when zoom feedback is unavailable.
@@ -1007,7 +1067,7 @@ public actor CameraService {
         }
     }
 
-    private func stopPendingScalars(_ primary: MotionResult, connection: UVCConnection?,
+    private func stopPendingScalars(_ primary: MotionResult, connection: (any CameraControlConnection)?,
                                     zoomRevision: UInt64?, rollRevision: UInt64?) async -> MotionResult {
         guard let connection else {
             let zoom = zoomRevision.map { _ in USBZoomStopResult(submitted: false, target: nil, observed: nil,
@@ -1026,7 +1086,7 @@ public actor CameraService {
         rollNeedsHold = false; rollHoldRevision &+= 1; rollStopWork = nil; rollStopValidated = false
     }
 
-    private func stopPendingRoll(connection: UVCConnection, revision: UInt64?) async -> USBRollStopResult? {
+    private func stopPendingRoll(connection: any CameraControlConnection, revision: UInt64?) async -> USBRollStopResult? {
         guard let revision else { return nil }
         guard uvc === connection, rollHoldRevision == revision else {
             return USBRollStopResult(submitted: false, target: nil, observed: nil,
@@ -1040,7 +1100,7 @@ public actor CameraService {
             task = Task.detached(priority: .userInitiated) {
                 await USBRollStopOperation.perform(read: { try await connection.rollStatus() },
                     write: { value, deadline, permit in
-                        try await connection.setRoll(rawValue: value, validUntil: deadline, permit: permit)
+                        try await connection.setRoll(rawValue: value, validUntil: deadline, permit: permit, connectionPermit: nil)
                     })
             }
             rollStopWork = (workID, revision, connection, task)
@@ -1059,7 +1119,7 @@ public actor CameraService {
 
     /// Deduplicate independent cleanup for one pending zoom submission. The
     /// retained actor's lifetime fence prevents writes after an App reconnect.
-    private func stopPendingZoom(connection: UVCConnection, revision: UInt64?) async -> USBZoomStopResult? {
+    private func stopPendingZoom(connection: any CameraControlConnection, revision: UInt64?) async -> USBZoomStopResult? {
         guard let revision else { return nil }
         guard uvc === connection, zoomHoldRevision == revision else {
             return USBZoomStopResult(submitted: false, target: nil, observed: nil, verified: false, failure: "zoom_connection_changed")
@@ -1073,7 +1133,7 @@ public actor CameraService {
             task = Task.detached(priority: .userInitiated) {
                 await USBZoomStopOperation.perform(read: { try await connection.zoomStatus() },
                     write: { value, deadline, permit in
-                        try await connection.setZoom(rawValue: value, validUntil: deadline, permit: permit)
+                        try await connection.setZoom(rawValue: value, validUntil: deadline, permit: permit, connectionPermit: nil)
                     })
             }
             zoomStopWork = (workID, revision, connection, task)
@@ -1294,7 +1354,8 @@ public actor CameraService {
     public func startUserValidation() throws { try beginValidation() }
     private func beginValidation() throws {
         guard nativeControl == nil, !nativeControlPending else { throw BridgeFailure("native_control_active", "請先中斷原生控制，再執行 USB 診斷") }
-        guard validationTask == nil, motionID == nil, phase == "ready", let selected, let uvc else { throw BridgeFailure("validation_busy", "請先連接相機並結束其他操作") }
+        guard validationTask == nil, motionID == nil, phase == "ready", let selected,
+              let uvc = uvc as? UVCConnection else { throw BridgeFailure("validation_busy", "請先連接相機並結束其他操作") }
         interactionEpoch += 1; access = .manual; stopValidated = false; phase = "validating"; motionGeneration += 1
         let generation = motionGeneration; motionID = UUID(); validationReport = nil; validationError = nil
         log("validation", "正在驗證小幅往返與中途保持；可隨時停止")

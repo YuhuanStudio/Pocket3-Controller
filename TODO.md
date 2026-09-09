@@ -21,7 +21,7 @@
 - [x] **build16混合流程真機通過**：MLX執行4個模型工具／單次raw200，App另取一次較新的影格，Apple回答；38.039秒、11項檢查通過，`executionRoles`明示`mlx / apple / app`，之後恢復100及manual。這不代表Apple模型獨立完成控制。[結果](artifacts/live-ai-2026-09-09/hybrid-build16-c7cf0025-cc5e-4b3a-b4fa-c0b684493ecd/result.json)
 - [x] 移除未可靠運作的Apple文字計畫實驗，保留取消／新影格／單一控制者檢查；UI顯示角色分工，縮放紀錄不再誤標成擷取圖片。build16共454項、build17共459項Release測試通過。[build16](artifacts/hybrid-ai-build16/release-tests.log)、[build17](artifacts/native-baseline-build17/release-tests.log)
 - [x] build16的12張介面圖已逐張檢視，包含三語相機大／小視窗、引擎與外觀；九張公開圖更新，無感測器畫面或私人路徑。[視覺紀錄](artifacts/hybrid-ui-build16/visual-review.json)、[公開圖片manifest](docs/images/manifest.json)
-- [ ] build17原生preset基線等待由1.5秒改為3秒，仍需0.5秒／3樣本／0.35秒間隔／0.25°穩定，Stop本身保持1.5秒上限。新實機輪次因螢幕不可用而未能建立手動偏移，沒有送FE08，不能當新基線或原生預設已通過。[本輪結果](artifacts/native-baseline-build17/result.json)
+- [x] build18完整配對下，新3秒基線取得窗口已實測：6筆／0.573秒穩定，FE08單次真正提交。Stop原1.5秒限制與基線品質門檻保持；原生功能是否生效另列下方。[本輪結果](artifacts/native-fullpair-build18/native-recenter.json)
 
 - [x] **MLX真機觀察／縮放任務通過**：34.111秒，實際工具順序`capture_frame → camera_zoom_status → camera_set_zoom(raw200) → capture_frame`；只有一次縮放，回讀verified、動作後及最終影格來自真實裝置／同session。之後恢復raw100及manual，cleanup確認。[結果](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/result.json)、[工具與影格](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/observation.stdout.json)
 - [x] 該次MLX卸載後cache為0、active為4036 bytes；只描述MLX配置器，不寫成記憶體完全歸零或App RSS歸零。[卸載後](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/after-model-unload.json)
@@ -30,7 +30,7 @@
 - [x] 完整配對已到`credentialsReady`，且`samePrimaryRoute=true`、沒有呼叫Mac Wi-Fi join；只記錄狀態，不輸出密碼。[配對](artifacts/full-pair-control-2026-09-09/paired.json)、[網路核對](artifacts/full-pair-control-2026-09-09/network-check.json)
 - [ ] **WB writer仍未生效**：pairOnly/build14與完整配對/build15各只送一次5600K，分別7／6筆回報仍Auto、都無ACK及matching readback，`applied=false`。原Auto未變，沒有restore寫入，也沒有盲重試。[pairOnly](artifacts/camera-settings-live-2026-09-09/white-balance-129a5c24-0e92-4fd2-acce-9596ce96fb68/result.json)、[full pair](artifacts/full-pair-control-2026-09-09/white-balance-43db759b-752c-4983-be27-ebbd04da92ae/result.json)
 - [x] 使用者開啟視窗後，UI檢查`animationVerified=true`，可見manual button放開流程通過，pan由0到11880；不把先前screenUnavailable下的offset timeout當控制功能成功。[解鎖UI](artifacts/full-pair-control-2026-09-09/ui-check-after-user-open.json)、[手動操作](artifacts/full-pair-control-2026-09-09/manual-button-release-unlocked.json)
-- [ ] 完整配對下的原生回中仍待真正提交與觀察：前次USB offset timeout時未發FE08；解鎖後另次只有2筆基線、間隔1.417秒，`baselineStable=false/localSubmitted=false`，所以不是FE08再次發送後失敗。USB cleanup在12240保持確認；稍後status回0原因未知，不歸因FE08。native preset保留heartbeat／drain後的收樣結果另記於build16–17段落；仍未取得這個完整配對條件下已提交FE08的有效結果。[offset前置失敗](artifacts/full-pair-control-2026-09-09/native-recenter-faa6cbbb-c2d1-42a5-a7d5-284bc00329fe/result.json)、[未提交的回中](artifacts/full-pair-control-2026-09-09/native-recenter-unlocked-5427968d-0030-4be5-bfaf-544fe80c2071/native-recenter.stdout.json)
+- [ ] 完整配對下FE08仍未確認可用：build18單次提交後3秒、27筆姿態均未變，無ACK；USB pan−14040／tilt6120前後相同，cleanup verified。這次已排除「未取得基線所以沒送出」，不再以相同條件重播。FE09仍沒有獨立成功證據。[本輪結果](artifacts/native-fullpair-build18/native-recenter.json)
 
 ## 相機重新開啟後的新證據
 

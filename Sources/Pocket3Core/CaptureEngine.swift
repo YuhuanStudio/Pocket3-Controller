@@ -64,7 +64,7 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
 /// One explicitly opted-in diagnostic policy. Normal application launches keep
 /// their BGRA conversion, even if the environment variable happens to be set.
 enum CaptureOutputPolicy: String, Sendable {
-    case bgra, native, systemDefault = "system_default"
+    case bgra, native, systemDefault = "system_default", h264
     static func selected(environment: [String: String], arguments: [String]) -> Self {
         guard arguments.contains("--hardware-validation") else { return .bgra }
         return Self(rawValue: environment["POCKET3_CAPTURE_OUTPUT"] ?? "") ?? .bgra
@@ -74,12 +74,25 @@ enum CaptureOutputPolicy: String, Sendable {
         // samples; nil would instead request a default uncompressed format.
         if self == .native { return [:] }
         if self == .systemDefault { return nil }
+        if self == .h264 {
+            // Before attaching/configuring the input, retain system defaults.
+            // The explicit codec is applied only after activeFormat is selected
+            // and its availableVideoCodecTypes has been checked below.
+            guard let width, let height else { return nil }
+            return [AVVideoCodecKey: AVVideoCodecType.h264.rawValue,
+                    AVVideoWidthKey: width, AVVideoHeightKey: height]
+        }
         var result: [String: Any] = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         if let width, let height {
             result[kCVPixelBufferWidthKey as String] = width
             result[kCVPixelBufferHeightKey as String] = height
         }
         return result
+    }
+    func validateAvailableCodecs(_ codecs: [String]) throws {
+        guard self != .h264 || codecs.contains(AVVideoCodecType.h264.rawValue) else {
+            throw BridgeFailure("output_codec_unavailable", "目前擷取格式未提供 H.264 診斷輸出")
+        }
     }
 }
 public struct CaptureStats: Codable, Sendable {
@@ -486,6 +499,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                         guard callbackFence.whileCurrent(generation, perform: {
                             store.recordOutputConfiguration(policy: outputPolicy.rawValue, pixelFormats: outputTypes, codecs: outputCodecs)
                         }) else { throw CancellationError() }
+                        try outputPolicy.validateAvailableCodecs(outputCodecs)
                         output.videoSettings = outputPolicy.settings(width: Int(width), height: Int(height))
                         guard callbackFence.activate(output: ObjectIdentifier(output), kind: .video, generation: generation) != nil else { throw CancellationError() }
                         output.setSampleBufferDelegate(self, queue: frameQueue)

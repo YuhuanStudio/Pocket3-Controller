@@ -9,7 +9,7 @@ import Testing
         ("device_missing", .cameraConnection), ("capture_unavailable", .cameraInUse),
         ("cancelled", .cancelled), ("motion_busy", .busy), ("session_changed", .connectionChanged),
         ("stale_frame", .freshImage), ("movement_denied", .controlPermission),
-        ("usb_stop_unverified", .stopUnconfirmed), ("uvc_zoom_out_of_range", .zoomRange),
+        ("usb_stop_unverified", .stopUnconfirmed), ("zoom_stop_required", .stopUnconfirmed), ("uvc_zoom_out_of_range", .zoomRange),
         ("zoom_unconfirmed", .zoomUnconfirmed), ("focus_point_unsupported", .focusUnavailable),
         ("bluetooth_permission_denied", .bluetoothPermission), ("bluetooth_powered_off", .bluetoothOff),
         ("model_not_downloaded", .modelDownload), ("model_checksum", .modelFiles),
