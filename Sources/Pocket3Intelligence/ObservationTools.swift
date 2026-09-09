@@ -218,9 +218,16 @@ actor ObservationContext {
         for step in plan.steps {
             try await check()
             switch step.kind {
-            case .zoom:
-                guard let rawValue = step.rawValue else { throw BridgeFailure("request_not_fulfilled", "縮放計畫缺少原始目標值") }
+            case .zoom, .zoomIn, .zoomOut:
                 _ = try await readZoomStatus()
+                let rawValue: Int
+                if step.kind == .zoom {
+                    guard let requested = step.rawValue else { throw BridgeFailure("request_not_fulfilled", "縮放計畫缺少原始目標值") }
+                    rawValue = requested
+                } else {
+                    guard let capabilities = zoomSnapshot else { throw BridgeFailure("zoom_unavailable", "尚未取得有效縮放狀態") }
+                    rawValue = try AppleObservationPlan.relativeZoomTarget(increase: step.kind == .zoomIn, capabilities: capabilities)
+                }
                 _ = try await zoom(rawValue)
             case .move:
                 guard let direction = step.direction else { throw BridgeFailure("request_not_fulfilled", "移動計畫缺少方向") }

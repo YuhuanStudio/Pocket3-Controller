@@ -66,22 +66,21 @@ public actor IntelligenceEngine {
         } onCancel: { task.cancel(); Task { await context?.cancel() } }
     }
 
-    private func planAppleObservation(question: String, start: ObservationStart, seconds: Double) async throws -> AppleObservationPlan {
+    private func planAppleObservation(question: String, seconds: Double) async throws -> AppleObservationPlan {
         let instructions = """
-            將使用者文字中的明確相機調整要求轉成有界計畫。此階段沒有圖片，也不能執行工具。
-            僅詢問畫面、文字、條碼或狀態，或要求不要調整：adjustmentRequested=false，steps=[]，clarification=nil。不要把讀取或描述要求當成移動。
-            明確要求移動或縮放：adjustmentRequested=true。依要求順序列出steps，每項只能是move或zoom，最多三項；zoom成本2，move成本1，總成本最多4。
-            move只填direction，rawValue=nil；方向left/right/up/down代表既有一小步，home/front/back僅在使用者明確要求時使用。不要增加未要求的動作。
-            zoom只填rawValue整數，direction=nil。先使用提供的minimum/maximum/step驗證值；使用者指定rawValue時保留原值，不偷偷改成另一個數。
-            raw不是倍率，100/200不代表1x/2x。一般「放大一點／縮小一點」可在目前值上選一個不超過行程四分之一的有效步進；精確倍率、物理角度、連續追蹤或無法確定的相對目標不可假裝已校準。
-            若明確調整要求無法轉成受支援且不含猜測的步驟，保留adjustmentRequested=true、steps=[]，clarification簡潔寫出原因。其他情況clarification=nil。
-            未獲控制能力時不可把要求改寫為「只觀察」；仍保留使用者的調整意圖，讓App檢查權限並回報未完成。
+            你只負責摘錄使用者文字中正面要求的相機動作。不要判斷權限、硬體支援、範圍、是否可寫或是否能執行，這些由App程式檢查。
+            純讀取／capture_frame／描述／OCR／查camera_zoom_status不是調整，不能放進steps。
+            只有「不要移動」不代表不能縮放；分別辨別每個正面要求和否定句。若有正面移動或縮放要求，adjustmentRequested=true。
+            move只填使用者要求的direction，rawValue=nil。zoom只抄錄使用者指定的整數rawValue，direction=nil。一般「放大／縮小一些」選zoomIn／zoomOut，rawValue與direction都nil，由App計算一個有效小幅步進。不要增加動作、不要自行恢復、不要改數字。
+            有明確方向、放大／縮小要求或原始數值時，clarification必須nil，不得猜測硬體限制作為拒絕原因。只有缺少目標或要求精確倍率但未提供原始值，才在clarification說明缺少的資訊。
+            沒有正面調整要求時：adjustmentRequested=false，steps=[]，clarification=nil。至多列三項動作。
+            例：「把縮放設為raw 175，不要移動雲台，然後描述畫面」→ adjustmentRequested=true；steps只含kind=zoom、rawValue=175、direction=nil；clarification=nil。
+            例：「向右看一點，不要縮放」→ steps只含kind=move、direction=right、rawValue=nil。
+            例：「不要改任何設定，只描述畫面」→ adjustmentRequested=false，steps=[]，clarification=nil。
             """
         let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: instructions)
-        let capabilities = try JSONValue.encode(start.zoomCapabilities).pretty
         let task = Task {
             try await session.respond(to: Prompt {
-                "可移動：\(start.canMove)。可縮放：\(start.canZoom)。裝置原始縮放範圍：\(capabilities)"
                 "使用者要求：\(question)"
             }, generating: AppleObservationPlan.self,
                 options: .init(temperature: 0, maximumResponseTokens: 400, toolCallingMode: .disallowed)).content
@@ -132,14 +131,14 @@ public actor IntelligenceEngine {
         if engine == "apple" {
             do {
                 let remaining = max(0.01, min(20, 90 - (ProcessInfo.processInfo.systemUptime - started)))
-                let plan = try await planAppleObservation(question: question, start: start, seconds: remaining)
+                let plan = try await planAppleObservation(question: question, seconds: remaining)
                 try await context.check()
                 guard epoch == jobEpoch else { throw CancellationError() }
                 try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
                 answerFrame = try await context.currentFrame()
                 planning = .object(["plan": try .encode(plan), "completed": .bool(!plan.steps.isEmpty),
                     "status": .string(plan.steps.isEmpty ? "no_adjustment_executed" : "planned_adjustments_executed"),
-                    "plannerInput": .string("operator_text_and_capabilities_no_image"),
+                    "plannerInput": .string("operator_text_only_no_image_or_capability_judgment"),
                     "executor": .string("app_validated_model_plan"), "modelToolCalls": .bool(false),
                     "executedActions": try .encode(await context.actionEvidence())])
             } catch {

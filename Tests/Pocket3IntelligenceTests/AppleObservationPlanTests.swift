@@ -14,6 +14,9 @@ import Pocket3Core
     private func set(_ raw: Int = 200) -> AppleObservationStep {
         .init(kind: .zoom, direction: nil, rawValue: raw)
     }
+    private func relative(_ increase: Bool) -> AppleObservationStep {
+        .init(kind: increase ? .zoomIn : .zoomOut, direction: nil, rawValue: nil)
+    }
     private func failure(_ plan: AppleObservationPlan, canMove: Bool = true, canZoom: Bool = true,
                          capabilities: USBZoomCapabilities? = nil) -> String? {
         do {
@@ -40,7 +43,11 @@ import Pocket3Core
             .init(kind: .move, direction: nil, rawValue: nil),
             .init(kind: .move, direction: .left, rawValue: 200),
             .init(kind: .zoom, direction: .right, rawValue: 200),
-            .init(kind: .zoom, direction: nil, rawValue: nil)
+            .init(kind: .zoom, direction: nil, rawValue: nil),
+            .init(kind: .zoomIn, direction: .up, rawValue: nil),
+            .init(kind: .zoomIn, direction: nil, rawValue: 200),
+            .init(kind: .zoomOut, direction: .down, rawValue: nil),
+            .init(kind: .zoomOut, direction: nil, rawValue: 100)
         ]
         for step in malformed { #expect(failure(plan([step])) == "invalid_observation_plan") }
     }
@@ -74,6 +81,61 @@ import Pocket3Core
         #expect(failure(plan([move(),move(),move(),move()])) == "invalid_observation_plan")
         // A valid earlier step does not let an invalid later target pass preflight.
         #expect(failure(plan([move(),set(401)])) == "uvc_zoom_out_of_range")
+    }
+
+    @Test func relativeZoomUsesQuarterRawTravelWithoutClaimingOpticalMagnification() throws {
+        let low = USBZoomCapabilities(current: 100, minimum: 100, maximum: 400, step: 1, writable: true)
+        let high = USBZoomCapabilities(current: 400, minimum: 100, maximum: 400, step: 1, writable: true)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: true, capabilities: low) == 175)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: false, capabilities: high) == 325)
+        let small = USBZoomCapabilities(current: 10, minimum: 10, maximum: 14, step: 2, writable: true)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: true, capabilities: small) == 12)
+    }
+
+    @Test func relativeTargetsUseMinimumAnchoredGridAndStopAtLastLegalPoint() throws {
+        let minimum = USBZoomCapabilities(current: 10, minimum: 10, maximum: 110, step: 7, writable: true)
+        let maximumGrid = USBZoomCapabilities(current: 108, minimum: 10, maximum: 110, step: 7, writable: true)
+        let offGrid = USBZoomCapabilities(current: 40, minimum: 10, maximum: 110, step: 7, writable: true)
+        let nearEnd = USBZoomCapabilities(current: 101, minimum: 10, maximum: 110, step: 7, writable: true)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: true, capabilities: minimum) == 38)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: false, capabilities: maximumGrid) == 80)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: true, capabilities: offGrid) == 66)
+        #expect(try AppleObservationPlan.relativeZoomTarget(increase: true, capabilities: nearEnd) == 108)
+        for (caps, increase) in [(minimum, false), (maximumGrid, true)] {
+            do {
+                _ = try AppleObservationPlan.relativeZoomTarget(increase: increase, capabilities: caps)
+                Issue.record("Relative zoom moved beyond its available grid")
+            } catch { #expect((error as? BridgeFailure)?.code == "uvc_zoom_out_of_range") }
+        }
+    }
+
+    @Test func relativePreflightKeepsIndependentPermissionAndDoesNotRejectInitialEndStop() throws {
+        let end = USBZoomCapabilities(current: 400, minimum: 100, maximum: 400, step: 1, writable: true)
+        // The explicit first step can make room for the following zoom-in.
+        try plan([set(150),relative(true)]).validate(canMove: false, canZoom: true, zoomCapabilities: end)
+        try plan([relative(true),relative(false)]).validate(canMove: false, canZoom: true, zoomCapabilities: zoom)
+        #expect(failure(plan([relative(true)]), canZoom: false) == "zoom_denied")
+        #expect(failure(plan([relative(false)]), canZoom: false) == "zoom_denied")
+        #expect(failure(plan([relative(true),move(),relative(false)])) == "tool_budget")
+    }
+
+    @Test func relativeZoomRejectsUnavailableStepAndInvalidBoundsWithoutFallback() {
+        for step: Int? in [nil,0,-1,65536] {
+            let caps = USBZoomCapabilities(current: 100, minimum: 100, maximum: 400, step: step, writable: true)
+            #expect(failure(plan([relative(true)]), capabilities: caps) == "uvc_zoom_step_unavailable")
+            do {
+                _ = try AppleObservationPlan.relativeZoomTarget(increase: true, capabilities: caps)
+                Issue.record("Missing or invalid step was silently substituted")
+            } catch { #expect((error as? BridgeFailure)?.code == "uvc_zoom_step_unavailable") }
+        }
+        let invalid = [
+            USBZoomCapabilities(current: 100, minimum: nil, maximum: 400, step: 1, writable: true),
+            USBZoomCapabilities(current: 100, minimum: 400, maximum: 100, step: 1, writable: true),
+            USBZoomCapabilities(current: 99, minimum: 100, maximum: 400, step: 1, writable: true),
+            USBZoomCapabilities(current: 100, minimum: 100, maximum: Int.max, step: 1, writable: true),
+            USBZoomCapabilities(current: 100, minimum: 100, maximum: 400, step: 1, writable: false)
+        ]
+        for caps in invalid { #expect(failure(plan([relative(false)]), capabilities: caps) == "zoom_unavailable") }
     }
 
     @Test func codableRequiresRealBooleansKnownKindsDirectionsAndIntegerTargets() throws {

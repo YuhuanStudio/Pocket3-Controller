@@ -103,7 +103,7 @@ enum AppErrorPresentation {
         case "motion_timeout", "motion_not_progressing", "control_unconfirmed", "movement_unconfirmed", "uvc_write_failed", "uvc_request_timeout": return .controlUnconfirmed
         case "request_not_fulfilled", "invalid_observation_plan": return .requestedAdjustment
         case "stop_unverified", "usb_stop_failed", "usb_stop_unverified", "usb_stop_feedback_stale", "native_neutral_failed", "zoom_stop_failed", "zoom_stop_unverified", "zoom_stop_feedback_stale": return .stopUnconfirmed
-        case "zoom_unavailable", "uvc_zoom_unavailable", "uvc_zoom_not_readable", "uvc_zoom_read_only", "uvc_zoom_limits_unavailable": return .zoomUnavailable
+        case "zoom_unavailable", "uvc_zoom_unavailable", "uvc_zoom_not_readable", "uvc_zoom_read_only", "uvc_zoom_limits_unavailable", "uvc_zoom_step_unavailable": return .zoomUnavailable
         case "zoom_unconfirmed", "zoom_timing", "zoom_feedback_stale", "zoom_capabilities_changed", "uvc_zoom_read_failed", "uvc_zoom_write_failed": return .zoomUnconfirmed
         case "invalid_zoom_value", "invalid_zoom_arguments", "uvc_zoom_out_of_range", "uvc_zoom_step_mismatch": return .zoomRange
         case "roll_unavailable", "uvc_roll_unavailable", "uvc_roll_not_readable", "uvc_roll_read_only", "uvc_roll_limits_unavailable", "uvc_roll_step_unavailable": return .rollUnavailable

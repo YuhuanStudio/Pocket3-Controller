@@ -79,6 +79,7 @@ private actor ZoomObservationFixture: ObservationCamera {
     func release() { let continuation = pending; pending = nil; continuation?.resume() }
     func revoke() { epoch += 1; access = .observe }
     func reconnect() { epoch += 1; sessionID = "zoom-session-B"; stopped = false }
+    func changeExternalZoom(to rawValue: Int) { capabilities?.current = rawValue }
 }
 private func zoomContext(_ camera: ZoomObservationFixture) async throws -> (ObservationContext, ObservationStart) {
     let start = try await camera.beginObservation(origin: .manual)
@@ -301,4 +302,15 @@ private func waitForZoom(_ camera: ZoomObservationFixture) async throws {
     #expect(refreshed.info.id != initial.info.id && refreshed.info.receivedUptime > initial.info.receivedUptime)
     #expect(await context.actionEvidence().map(\.tool) == ["capture_frame"])
     #expect(await camera.writes.isEmpty)
+}
+
+@Test func relativeAppleZoomUsesFreshDeviceStateRatherThanThePlanningSnapshot() async throws {
+    let camera = try ZoomObservationFixture()
+    let (context, start) = try await zoomContext(camera)
+    let plan = AppleObservationPlan(adjustmentRequested: true,
+        steps: [.init(kind: .zoomIn, direction: nil, rawValue: nil)], clarification: nil)
+    await camera.changeExternalZoom(to: 200)
+    try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
+    #expect(await camera.writes == [275])
+    #expect(await context.actionEvidence().map(\.tool) == ["capture_frame", "camera_zoom_status", "camera_set_zoom", "capture_frame"])
 }
