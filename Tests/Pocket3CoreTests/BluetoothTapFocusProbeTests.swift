@@ -166,6 +166,80 @@ import Testing
         var p = try probe(); p.tick(at: .nan)
         #expect(p.result.end == .invalidClock && p.result.finishedUptime?.isFinite == true)
     }
+    @Test func platformCreditRestorationSendsOnlyTheNextUnsentStepOnce() throws {
+        var p = try probe(), writes: [DUMLFrame] = []
+        let prepare = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100) { frame, _ in writes.append(frame) }
+        let blocked1 = try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: 100.01) { frame, _ in writes.append(frame) }
+        let blocked2 = try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: 100.10) { frame, _ in writes.append(frame) }
+        #expect(prepare && !blocked1 && !blocked2 && writes.map(\.sequence) == [10])
+        #expect(p.result.steps[1].submittedUptime == nil && !p.result.steps[1].ackTimedOut)
+        let point = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100.25) { frame, data in
+            #expect(data.count == 34); writes.append(frame)
+        }
+        let waitingForACK = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100.26) { frame, _ in writes.append(frame) }
+        #expect(point && !waitingForACK && writes.map(\.sequence) == [10,11])
+        #expect(abs(p.result.steps[1].creditWaitDurationSeconds - 0.24) < 0.00001)
+        #expect(p.result.steps[1].creditWaitOutcome == "credit_restored")
+        // This ACK is later than prepare+800ms but within point submission+800ms.
+        receive(&p, packet: try ack(.point), at: 100.95)
+        #expect(p.nextStep == .hintAE && p.result.end == nil && p.result.steps[1].acknowledged)
+        #expect(p.result.steps[0].ackTimedOut && !p.result.steps[1].ackTimedOut)
+        let hint = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100.96) { frame, _ in writes.append(frame) }
+        #expect(hint && writes.map(\.sequence) == [10,11,12] && !p.result.retryPerformed)
+    }
+    @Test func cancelOrConnectionChangeWhileWaitingNeverSubmitsPoint() throws {
+        for end in [BluetoothTapFocusEnd.cancelled, .connectionChanged] {
+            var p = try probe(), writes: [UInt16] = []
+            _ = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100) { frame, _ in writes.append(frame.sequence) }
+            _ = try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: 100.01) { frame, _ in writes.append(frame.sequence) }
+            p.finish(at: 100.1, reason: end)
+            let sent = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100.2) { frame, _ in writes.append(frame.sequence) }
+            #expect(!sent && writes == [10] && p.result.partialSequence && p.result.possibleAEsideEffects)
+            #expect(p.result.steps[1].creditWaitOutcome == end.rawValue)
+            #expect(abs(p.result.steps[1].creditWaitDurationSeconds - 0.09) < 0.00001)
+        }
+    }
+    @Test func invalidatedFinalPermitBlocksCreditRestorationWrite() throws {
+        var p = try probe(), writes: [UInt16] = []
+        let permit = OperationPermit()
+        _ = try permit.perform { try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100) { frame, _ in writes.append(frame.sequence) } }
+        _ = try permit.perform { try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: 100.01) { frame, _ in writes.append(frame.sequence) } }
+        permit.invalidate()
+        do {
+            _ = try permit.perform { try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100.02) { frame, _ in writes.append(frame.sequence) } }
+            Issue.record("A revoked final permit sent a pending focus step")
+        } catch let error as BridgeFailure { #expect(error.code == "cancelled") }
+        #expect(writes == [10] && p.result.steps[1].submittedUptime == nil)
+    }
+    @Test func unavailableCreditHasIndependentDeadlineAndIsNotCameraACKTimeout() throws {
+        var p = try probe(), writes: [UInt16] = []
+        _ = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100) { frame, _ in writes.append(frame.sequence) }
+        for time in [100.01,100.2,100.5,100.811] {
+            _ = try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: time) { frame, _ in writes.append(frame.sequence) }
+        }
+        #expect(p.result.end == .creditTimeout && p.result.failure == "bluetooth_focus_credit_timeout")
+        #expect(p.result.steps[1].submittedUptime == nil && !p.result.steps[1].ackTimedOut && writes == [10])
+        #expect(p.result.steps[1].creditWaitReason == "corebluetooth_without_response_credit")
+        #expect(p.result.steps[1].creditWaitOutcome == "creditTimeout" && p.result.steps[1].creditWaitDurationSeconds >= 0.8)
+        let late = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100.82) { frame, _ in writes.append(frame.sequence) }
+        #expect(!late && writes == [10])
+    }
+    @Test func waitingForCreditDoesNotExtendOverallFiveSecondLimitOrBypassMTU() throws {
+        var p = try probe(), writes: [UInt16] = []
+        _ = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 104.4) { frame, _ in writes.append(frame.sequence) }
+        _ = try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: 104.41) { frame, _ in writes.append(frame.sequence) }
+        let sent = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 105) { frame, _ in writes.append(frame.sequence) }
+        #expect(!sent && p.result.end == .overallTimeout && writes == [10])
+        #expect(p.result.steps[1].creditWaitOutcome == "overallTimeout")
+        p = try probe(); writes = []
+        _ = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 34, at: 100) { frame, _ in writes.append(frame.sequence) }
+        _ = try p.submitNextIfReady(hasCredit: false, maximumWriteBytes: 34, at: 100.01) { frame, _ in writes.append(frame.sequence) }
+        do {
+            _ = try p.submitNextIfReady(hasCredit: true, maximumWriteBytes: 33, at: 100.02) { frame, _ in writes.append(frame.sequence) }
+            Issue.record("Restored credits bypassed the whole-frame MTU limit")
+        } catch let error as BridgeFailure { #expect(error.code == "bluetooth_focus_mtu") }
+        #expect(writes == [10] && p.result.steps[1].submittedUptime == nil)
+    }
     @MainActor @Test func developmentGateDoesNotInitializeBluetooth() async throws {
         let discovery = Pocket3BluetoothDiscovery()
         do {

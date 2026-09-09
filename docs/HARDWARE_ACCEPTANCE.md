@@ -183,3 +183,13 @@ far的此次位移約為near的3.83倍，支持拖曳距離已影響實際USB回
 前一輪100→200過快完成，沒有捕捉到moving Stop，保留`status=not_confirmed/passed=false`；雖然當時目標回讀及後續靜止保持成功，也不能當途中Stop驗收。[前輪未確認](../artifacts/zoom-moving-stop-2026-09-09/36fbbb32-110d-4f0d-88bc-2d6fd01a15f1/result.json)。更早hold147後晚一筆146的`zoom-final`失敗紀錄同樣保留。
 
 本次通過只確認該session的原始縮放途中保持及後續穩定讀回。報告明列內部Stop逐筆樣本未匯出、全域Stop端點沒有原子expected-session參數（客戶端在請求前後檢查身分），不能擴張成所有競爭／重連情況已驗收。沒有拍照；不宣稱校準倍率、物理煞停延遲、完整UI拖曳、Roll停止或全部視角完成。
+
+## 2026-09-09 build12 BLE 點選對焦：傳送端中止
+
+開發入口與424項Release回歸通過後，使用同一台Pocket3重新建立USB 4K NV12及BLE配對，讀取新鮮AF-C、Auto／EV0基準，請求候選點`(0.3, 0.3)`。這是四步序列的第一輪本機提交，最多各送一次，沒有自動重試或拍照。
+
+實際只提交第一步`02→01 / 02/22 / payload02`（prepareAE）；緊接的Point在傳送端被`bluetooth_focus_write_blocked`擋下，`submittedCount=1`、`partialSequence=true`。Point／Hint／Commit均未送出，因此結果不能判定Pocket3的BLE對焦命令支援與否，也沒有相機NACK或光學合焦證據。[完整結果](../artifacts/focus-live-2026-09-09/tap-write-a4667799-97d3-475b-828b-708fc569592f/probe.stdout.json)
+
+當時程式要求Prepare和Point連續同步寫入，缺少暫時無CoreBluetooth傳送額度時等待下一個**未送步驟**的排程。後續修正須保留每步僅提交一次、獨立有時限的額度等待、ACK時限與最終連線／取消檢查，不能重播已送出的Prepare來掩蓋問題。
+
+中止後重新只讀，AF-C與Auto／EV0維持，lens候選座標前後均約`(0.499992, 0.499992)`；沒有已解碼的完整spot-AE狀態，故不宣稱所有測光副作用均已排除，也未猜測恢復命令。[前後對照](../artifacts/focus-live-2026-09-09/tap-write-a4667799-97d3-475b-828b-708fc569592f/summary.json)

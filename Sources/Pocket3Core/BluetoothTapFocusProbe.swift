@@ -79,9 +79,15 @@ public struct BluetoothTapFocusStepResult: Codable, Sendable {
     public var ackPayloadPrefixHex: String?
     public var ackLate = false
     public var ackTimedOut = false
+    public var creditWaitStartedUptime: TimeInterval?
+    public var creditWaitDeadlineUptime: TimeInterval?
+    public var creditWaitEndedUptime: TimeInterval?
+    public var creditWaitDurationSeconds: TimeInterval = 0
+    public var creditWaitReason: String?
+    public var creditWaitOutcome: String?
 }
 public enum BluetoothTapFocusEnd: String, Codable, Sendable {
-    case observationComplete, cancelled, connectionChanged, ackTimeout, nack, invalidACK, invalidClock, failed, overallTimeout
+    case observationComplete, cancelled, connectionChanged, ackTimeout, creditTimeout, nack, invalidACK, invalidClock, failed, overallTimeout
 }
 public struct BluetoothTapFocusResult: Codable, Sendable {
     public let request: BluetoothTapFocusRequest
@@ -93,7 +99,7 @@ public struct BluetoothTapFocusResult: Codable, Sendable {
     public var steps: [BluetoothTapFocusStepResult]
     public var lensPoints: [BluetoothFocusPointObservation] = []
     public var invalidLensCandidates = 0
-    public private(set) var sequencePolicy = "prepare_untracked_then_point_ack_800ms_hint_ack_required_before_commit_commit_ack_800ms_no_retry"
+    public private(set) var sequencePolicy = "prepare_untracked_then_point_ack_800ms_hint_ack_required_before_commit_commit_ack_800ms_unsent_credit_wait_800ms_no_retry"
     public private(set) var hintPolicyDiffersFromUpstream = true
     public private(set) var coordinateMapping = "explicit_dji_normalized_candidate_not_calibrated_avfoundation_mapping"
     public private(set) var opticalFocusVerification = "not_available"
@@ -111,6 +117,7 @@ public struct BluetoothTapFocusResult: Codable, Sendable {
 /// support. CameraReply success is exactly payload.first == 0 (empty is failure).
 struct BluetoothTapFocusProbe {
     static let acknowledgmentTimeout: TimeInterval = 0.8
+    static let creditWaitTimeout: TimeInterval = 0.8
     static let readbackDuration: TimeInterval = 2
     static let maximumDuration: TimeInterval = 5
     static let maximumLensPoints = 32
@@ -158,6 +165,37 @@ struct BluetoothTapFocusProbe {
         case .commitMetering: return Data([0,2,1,0] + bytes(x) + bytes(y) + [UInt8](repeating: 0, count: 8))
         }
     }
+
+    /// One production submission pass, also usable with fake writes. Lack of
+    /// CoreBluetooth credit leaves this step unsent and opens one fixed wait
+    /// window; it never puts the frame in a queue or repeats an earlier step.
+    /// The caller holds the final session/capture permit around this method.
+    mutating func submitNextIfReady(hasCredit: Bool, maximumWriteBytes: Int, at now: TimeInterval,
+                                   write: (DUMLFrame, Data) -> Void) throws -> Bool {
+        tick(at: now)
+        guard result.end == nil, let step = nextStep,
+              let index = result.steps.firstIndex(where: { $0.step == step }) else { return false }
+        guard hasCredit else {
+            if result.steps[index].creditWaitStartedUptime == nil {
+                result.steps[index].creditWaitStartedUptime = now
+                result.steps[index].creditWaitDeadlineUptime = now + Self.creditWaitTimeout
+                result.steps[index].creditWaitReason = "corebluetooth_without_response_credit"
+            }
+            return false
+        }
+        let frame = frame(for: step), data = try DUMLCodec.encode(frame)
+        guard maximumWriteBytes >= data.count else {
+            throw BridgeFailure("bluetooth_focus_mtu", "The focus step must fit one whole BLE write")
+        }
+        try submitted(step, at: now)
+        if result.steps[index].creditWaitStartedUptime != nil {
+            result.steps[index].creditWaitEndedUptime = now
+            result.steps[index].creditWaitOutcome = "credit_restored"
+        }
+        write(frame, data)
+        return true
+    }
+
     mutating func submitted(_ step: BluetoothTapFocusStep, at now: TimeInterval) throws {
         tick(at: now)
         guard result.end == nil, nextStep == step, result.baseline.isFresh(now: now),
@@ -220,6 +258,14 @@ struct BluetoothTapFocusProbe {
         guard result.end == nil else { return }
         guard validTime(now), now >= lastEvent else { finish(at: lastEvent, reason: .invalidClock); return }
         for index in result.steps.indices {
+            if let waitStarted = result.steps[index].creditWaitStartedUptime,
+               result.steps[index].creditWaitEndedUptime == nil {
+                result.steps[index].creditWaitDurationSeconds = now - waitStarted
+                if let deadline = result.steps[index].creditWaitDeadlineUptime, now >= deadline {
+                    finish(at: now, reason: .creditTimeout, failure: "bluetooth_focus_credit_timeout")
+                    return
+                }
+            }
             if let sent = result.steps[index].submittedUptime, result.steps[index].ackUptime == nil,
                now - sent > Self.acknowledgmentTimeout {
                 result.steps[index].ackTimedOut = true
@@ -234,6 +280,14 @@ struct BluetoothTapFocusProbe {
     mutating func finish(at now: TimeInterval, reason: BluetoothTapFocusEnd, failure: String? = nil) -> BluetoothTapFocusResult {
         guard result.end == nil else { return result }
         result.finishedUptime = validTime(now) && now >= lastEvent ? now : lastEvent
+        for index in result.steps.indices {
+            if let started = result.steps[index].creditWaitStartedUptime,
+               result.steps[index].creditWaitEndedUptime == nil {
+                result.steps[index].creditWaitEndedUptime = result.finishedUptime
+                result.steps[index].creditWaitDurationSeconds = max(0, result.finishedUptime! - started)
+                result.steps[index].creditWaitOutcome = reason.rawValue
+            }
+        }
         result.end = reason; result.failure = failure.map { String($0.prefix(128)) }
         return result
     }

@@ -672,7 +672,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
               let peripheral = selectedPeripheral, peripheral.identifier == request.peripheralID,
               peripheral.state == .connected, fff4Notifying, fff5Notifying,
               let fff5, fff5.isNotifying, fff5.properties.contains(.writeWithoutResponse),
-              peripheral.canSendWriteWithoutResponse, writeQueue.isEmpty,
+              writeQueue.isEmpty,
               peripheral.maximumWriteValueLength(for: .withoutResponse) >= 34 else {
             throw BridgeFailure("bluetooth_focus_not_ready", "The exact paired/registered BLE peer must be ready for a whole 34-byte write")
         }
@@ -695,21 +695,24 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
                     operation.probe.tick(at: ProcessInfo.processInfo.systemUptime)
                     if operation.probe.nextStep != nil {
                         try await validateCapture()
-                        // prepareAE and point are consecutive synchronous writes,
-                        // as upstream; the following hint/commit require ACKs.
-                        while let step = operation.probe.nextStep {
-                            try permit.perform {
+                        // Prepare does not wait for an ACK. CoreBluetooth may
+                        // temporarily exhaust credits after it, so yield while
+                        // the next unsent step waits for its bounded credit window.
+                        while operation.probe.nextStep != nil {
+                            let submitted = try permit.perform {
                                 try validateCaptureSynchronously()
-                                guard tapFocusIsCurrent(operation), operation.peripheral.canSendWriteWithoutResponse,
-                                      writeQueue.isEmpty else { throw BridgeFailure("bluetooth_focus_write_blocked", "Focus write was not queued or retried") }
-                                let frame = operation.probe.frame(for: step), data = try DUMLCodec.encode(frame)
-                                guard operation.peripheral.maximumWriteValueLength(for: .withoutResponse) >= data.count else {
-                                    throw BridgeFailure("bluetooth_focus_mtu", "The focus step must fit one whole BLE write")
+                                guard tapFocusIsCurrent(operation), writeQueue.isEmpty else {
+                                    throw BridgeFailure("bluetooth_focus_write_blocked", "Focus write was not queued or retried")
                                 }
-                                try operation.probe.submitted(step, at: ProcessInfo.processInfo.systemUptime)
-                                operation.peripheral.writeValue(data, for: operation.characteristic, type: .withoutResponse)
-                                recordHeader(frame, direction: "submitted_tx", characteristic: "FFF5")
+                                return try operation.probe.submitNextIfReady(
+                                    hasCredit: operation.peripheral.canSendWriteWithoutResponse,
+                                    maximumWriteBytes: operation.peripheral.maximumWriteValueLength(for: .withoutResponse),
+                                    at: ProcessInfo.processInfo.systemUptime) { frame, data in
+                                        operation.peripheral.writeValue(data, for: operation.characteristic, type: .withoutResponse)
+                                        recordHeader(frame, direction: "submitted_tx", characteristic: "FFF5")
+                                    }
                             }
+                            if !submitted { break }
                         }
                     }
                     if operation.probe.result.end == nil { try await Task.sleep(for: .milliseconds(10), tolerance: .zero) }
