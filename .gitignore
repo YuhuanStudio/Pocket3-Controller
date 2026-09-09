@@ -17,6 +17,9 @@ artifacts-*.log
 /research/
 /artifacts-*
 
+# Public evaluation metadata is versioned; downloaded photos stay local.
+/Evaluation/Grounding/images/
+
 # Per-machine release configuration and signing material. The checked-in
 # ReleaseSettings.example.json contains public placeholders only.
 /release-settings.json

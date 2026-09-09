@@ -40,6 +40,11 @@ python3 Scripts/test-release-settings.py > artifacts/test-release-settings.log 2
 python3 -B Scripts/test-product-metadata.py > artifacts/test-product-metadata.log 2>&1
 python3 -B Scripts/test-prepare-github-release.py > artifacts/test-prepare-github-release.log 2>&1
 python3 -B Scripts/test-validate-zoom-stop.py > artifacts/test-validate-zoom-stop.log 2>&1
+python3 -B Scripts/test-mcp-zoom-hardware.py > artifacts/test-mcp-zoom-hardware.log 2>&1
+python3 -B Scripts/test-mcp-zoom-cancel-hardware.py > artifacts/test-mcp-zoom-cancel-hardware.log 2>&1
+python3 -B Scripts/test-install-built-app.py > artifacts/test-install-built-app.log 2>&1
+python3 -B Scripts/test-clean-test-media.py > artifacts/test-clean-test-media.log 2>&1
+python3 -B Scripts/evaluate-ai-grounding.py --self-test > artifacts/test-ai-grounding-scorers.log 2>&1
 python3 Scripts/test-update-feed.py > artifacts/update-feed-gate.log 2>&1
 python3 Scripts/verify-bundle.py > artifacts/bundle-verification-run.log
 if [[ "$check_ui" == 1 || "$check_models" == 1 ]]; then
@@ -83,6 +88,8 @@ from product_metadata import metadata,staged_source_metadata,source_metadata
 configuration,ui,models,package=sys.argv[1:]
 checks=['build','unit tests','UVC ownership with AddressSanitizer','retained UVC session with AddressSanitizer','USB interface ownership with AddressSanitizer','shared design','translations','public release-settings validation','source provenance and release preflight','isolated Sparkle signed-feed verification','portable resources']
 checks+=['offline zoom-stop diagnostic success and failure cases']
+checks+=['offline MCP zoom and cancellation evidence/cleanup regressions','atomic local installation and media-cleanup regressions']
+checks+=['offline image-grounding scorer contracts']
 if ui=='1':checks+=['live layout','window and popover lifetime']
 if models=='1':checks+=['copied-app MLX and Core AI inference','model memory release']
 if ui=='1' or models=='1':checks+=['offline MCP','MCP cancellation']

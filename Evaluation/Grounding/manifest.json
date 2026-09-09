@@ -1,0 +1,1252 @@
+{
+  "schemaVersion": 1,
+  "dataset": "COCO val2017 six-image annotated grounding smoke set",
+  "createdAt": "2026-09-09T13:36:27.430074+00:00",
+  "cameraUsed": false,
+  "source": {
+    "officialSourceURL": "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
+    "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/annotations/annotations_trainval2017.zip",
+    "archiveSHA256": "113a836d90195ee1f884e704da6304dfaaecff1f023f49b6ca93c4aaae470268",
+    "archiveBytes": 252907541,
+    "member": "annotations/instances_val2017.json",
+    "memberSHA256": "e8c7f7908f1d7278341fae127d0da654f102f11bd7b21d8aeefa635b8c810b6f",
+    "memberBytes": 19987840,
+    "retrievedAt": "2026-09-09T13:31:54Z",
+    "transportNote": "Official HTTPS hostname certificate mismatch; verified S3 HTTPS alias had same Content-Length and ETag as official HTTP URL. No TLS verification disabled."
+  },
+  "officialDatasetURL": "https://cocodataset.org/#download",
+  "termsURL": "https://cocodataset.org/dataset/termsofuse.htm",
+  "annotationLicense": {
+    "name": "Creative Commons Attribution 4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/",
+    "sourceURL": "https://cocodataset.org/dataset/termsofuse.htm",
+    "scope": "COCO annotations; each photograph has its own recorded Flickr license",
+    "retrievedSourceSHA256": "bd019f88ee44c29b2f19c5b99888cf5bc2e7c16f57b6e52af8ed3a60462e8bdd"
+  },
+  "selectionPolicy": "Fixed IDs selected from sorted val2017 images with COCO license IDs4/5, target count1–4, no target crowd, each target bbox >=2% of image, <=18 annotations, leftmost-center separation >=10% for multiple instances; selected to cover six indoor-relevant categories, landscape/square/portrait and counts1/2/4; images visually reviewed before any model run.",
+  "limitations": [
+    "COCO is widely used in model pretraining; this is a reproducible regression/smoke set, not an unseen or contamination-free benchmark.",
+    "Six photographs and 18 tasks are too small for general reliability or model-ranking claims.",
+    "COCO annotations can omit visible objects and category definitions may differ from ordinary language; count means comparison with non-crowd COCO instance annotations, not guaranteed complete scene truth.",
+    "Absent targets are absent from annotations and were visually checked by the coding assistant; this is not independently human-adjudicated exhaustive negative ground truth.",
+    "A point inside an annotated axis-aligned bbox is a coarse grounding check; it can lie on background within a box and does not establish segmentation, focus coordinates or physical camera calibration.",
+    "Photos are retained only in an ignored local image cache; not included in App, README, releases or model training. COCO license records are historical and author names are not supplied by instances_val2017.json; original Flickr source URLs are preserved.",
+    "No Pocket3 hardware, photos, camera permissions or camera control are used by this benchmark."
+  ],
+  "images": [
+    {
+      "id": "coco-000000029596",
+      "cocoImageID": 29596,
+      "localPath": "images/000000029596.jpg",
+      "fileName": "000000029596.jpg",
+      "width": 640,
+      "height": 428,
+      "bytes": 177945,
+      "sha256": "b8e8d8f5fb32fb90cc1c064bbc0fad3846b3a6c1fc6773fe74700a86b184c315",
+      "officialSourceURL": "http://images.cocodataset.org/val2017/000000029596.jpg",
+      "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/val2017/000000029596.jpg",
+      "flickrSourceURL": "http://farm2.staticflickr.com/1174/4724268948_f93c2cb404_z.jpg",
+      "flickrPhotoPageURL": "https://www.flickr.com/photo.gne?id=4724268948",
+      "license": {
+        "url": "http://creativecommons.org/licenses/by/2.0/",
+        "id": 4,
+        "name": "Attribution License"
+      },
+      "attributionAuthor": null,
+      "attributionNote": "Original author name not present in COCO metadata; resolve Flickr photo page before any redistribution.",
+      "assistantVisualReview": {
+        "date": "2026-09-09",
+        "targetCountMatchesVisibleScene": true,
+        "absentTargetNotVisible": "elephant",
+        "reviewer": "coding assistant visual inspection, not independent human labeling"
+      },
+      "annotations": [
+        {
+          "id": 33683,
+          "categoryID": 72,
+          "categoryName": "tv",
+          "bboxXYWH": [
+            566.55,
+            63.54,
+            73.45,
+            204.73
+          ],
+          "area": 11777.109849999997,
+          "iscrowd": 0
+        },
+        {
+          "id": 100285,
+          "categoryID": 62,
+          "categoryName": "chair",
+          "bboxXYWH": [
+            264.16,
+            227.41,
+            48.79,
+            119.65
+          ],
+          "area": 3995.091750000001,
+          "iscrowd": 0
+        },
+        {
+          "id": 108105,
+          "categoryID": 62,
+          "categoryName": "chair",
+          "bboxXYWH": [
+            436.28,
+            235.73,
+            72.72,
+            113.22
+          ],
+          "area": 3328.8046499999973,
+          "iscrowd": 0
+        },
+        {
+          "id": 111314,
+          "categoryID": 63,
+          "categoryName": "couch",
+          "bboxXYWH": [
+            0.92,
+            260.48,
+            254.04,
+            162.92
+          ],
+          "area": 33858.850150000006,
+          "iscrowd": 0
+        },
+        {
+          "id": 122075,
+          "categoryID": 67,
+          "categoryName": "dining table",
+          "bboxXYWH": [
+            312.79,
+            253.84,
+            124.99,
+            23.29
+          ],
+          "area": 2221.246649999999,
+          "iscrowd": 0
+        },
+        {
+          "id": 1155081,
+          "categoryID": 86,
+          "categoryName": "vase",
+          "bboxXYWH": [
+            188.78,
+            241.39,
+            10.83,
+            16.92
+          ],
+          "area": 155.56495000000007,
+          "iscrowd": 0
+        },
+        {
+          "id": 1652419,
+          "categoryID": 84,
+          "categoryName": "book",
+          "bboxXYWH": [
+            506.77,
+            264.39,
+            69.22,
+            15.82
+          ],
+          "area": 967.3577500000009,
+          "iscrowd": 0
+        },
+        {
+          "id": 1879177,
+          "categoryID": 47,
+          "categoryName": "cup",
+          "bboxXYWH": [
+            408.51,
+            257.06,
+            12.57,
+            8.44
+          ],
+          "area": 104.34365000000001,
+          "iscrowd": 0
+        },
+        {
+          "id": 1886781,
+          "categoryID": 47,
+          "categoryName": "cup",
+          "bboxXYWH": [
+            326.67,
+            253.45,
+            10.87,
+            7.29
+          ],
+          "area": 74.20835,
+          "iscrowd": 0
+        },
+        {
+          "id": 1954558,
+          "categoryID": 64,
+          "categoryName": "potted plant",
+          "bboxXYWH": [
+            31.87,
+            84.16,
+            52.99,
+            80.14
+          ],
+          "area": 2551.3162499999994,
+          "iscrowd": 0
+        },
+        {
+          "id": 1993856,
+          "categoryID": 86,
+          "categoryName": "vase",
+          "bboxXYWH": [
+            46.8,
+            147.8,
+            23.81,
+            16.71
+          ],
+          "area": 243.27325000000002,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "id": "coco-000000054605",
+      "cocoImageID": 54605,
+      "localPath": "images/000000054605.jpg",
+      "fileName": "000000054605.jpg",
+      "width": 612,
+      "height": 612,
+      "bytes": 153288,
+      "sha256": "7faf996ad9ff347643c1e94acadf2ff62c16d042344ef04567cdd3382bcccc75",
+      "officialSourceURL": "http://images.cocodataset.org/val2017/000000054605.jpg",
+      "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/val2017/000000054605.jpg",
+      "flickrSourceURL": "http://farm9.staticflickr.com/8396/8645114496_3c5bd1615f_z.jpg",
+      "flickrPhotoPageURL": "https://www.flickr.com/photo.gne?id=8645114496",
+      "license": {
+        "url": "http://creativecommons.org/licenses/by/2.0/",
+        "id": 4,
+        "name": "Attribution License"
+      },
+      "attributionAuthor": null,
+      "attributionNote": "Original author name not present in COCO metadata; resolve Flickr photo page before any redistribution.",
+      "assistantVisualReview": {
+        "date": "2026-09-09",
+        "targetCountMatchesVisibleScene": true,
+        "absentTargetNotVisible": "bicycle",
+        "reviewer": "coding assistant visual inspection, not independent human labeling"
+      },
+      "annotations": [
+        {
+          "id": 390579,
+          "categoryID": 67,
+          "categoryName": "dining table",
+          "bboxXYWH": [
+            4.12,
+            22.12,
+            607.88,
+            583.18
+          ],
+          "area": 265265.59825,
+          "iscrowd": 0
+        },
+        {
+          "id": 687492,
+          "categoryID": 48,
+          "categoryName": "fork",
+          "bboxXYWH": [
+            319.79,
+            311.55,
+            201.77,
+            106.08
+          ],
+          "area": 2541.8517,
+          "iscrowd": 0
+        },
+        {
+          "id": 689387,
+          "categoryID": 48,
+          "categoryName": "fork",
+          "bboxXYWH": [
+            359.56,
+            300.77,
+            171.86,
+            109.07
+          ],
+          "area": 2324.4974500000008,
+          "iscrowd": 0
+        },
+        {
+          "id": 1085199,
+          "categoryID": 61,
+          "categoryName": "cake",
+          "bboxXYWH": [
+            261.3,
+            350.7,
+            257.18,
+            250.3
+          ],
+          "area": 43013.360250000005,
+          "iscrowd": 0
+        },
+        {
+          "id": 1502310,
+          "categoryID": 47,
+          "categoryName": "cup",
+          "bboxXYWH": [
+            0.0,
+            207.97,
+            78.9,
+            198.99
+          ],
+          "area": 13786.40325,
+          "iscrowd": 0
+        },
+        {
+          "id": 1506712,
+          "categoryID": 47,
+          "categoryName": "cup",
+          "bboxXYWH": [
+            85.27,
+            72.89,
+            174.44,
+            378.55
+          ],
+          "area": 44838.22310000001,
+          "iscrowd": 0
+        },
+        {
+          "id": 1581052,
+          "categoryID": 62,
+          "categoryName": "chair",
+          "bboxXYWH": [
+            480.63,
+            13.39,
+            95.63,
+            200.37
+          ],
+          "area": 7376.1662,
+          "iscrowd": 0
+        },
+        {
+          "id": 1581171,
+          "categoryID": 62,
+          "categoryName": "chair",
+          "bboxXYWH": [
+            286.87,
+            99.18,
+            99.71,
+            113.65
+          ],
+          "area": 7706.5738,
+          "iscrowd": 0
+        },
+        {
+          "id": 1617927,
+          "categoryID": 67,
+          "categoryName": "dining table",
+          "bboxXYWH": [
+            543.87,
+            40.06,
+            68.13,
+            31.79
+          ],
+          "area": 1201.4611999999997,
+          "iscrowd": 0
+        },
+        {
+          "id": 1676630,
+          "categoryID": 1,
+          "categoryName": "person",
+          "bboxXYWH": [
+            488.05,
+            0.0,
+            50.48,
+            102.81
+          ],
+          "area": 1572.7448999999992,
+          "iscrowd": 0
+        },
+        {
+          "id": 1708708,
+          "categoryID": 1,
+          "categoryName": "person",
+          "bboxXYWH": [
+            526.73,
+            0.0,
+            83.89,
+            255.8
+          ],
+          "area": 10993.70965,
+          "iscrowd": 0
+        },
+        {
+          "id": 1733827,
+          "categoryID": 1,
+          "categoryName": "person",
+          "bboxXYWH": [
+            0.0,
+            0.0,
+            301.0,
+            211.5
+          ],
+          "area": 25972.125,
+          "iscrowd": 0
+        },
+        {
+          "id": 1958939,
+          "categoryID": 67,
+          "categoryName": "dining table",
+          "bboxXYWH": [
+            306.56,
+            42.91,
+            42.21,
+            21.75
+          ],
+          "area": 501.67754999999966,
+          "iscrowd": 0
+        },
+        {
+          "id": 2121813,
+          "categoryID": 62,
+          "categoryName": "chair",
+          "bboxXYWH": [
+            419.06,
+            1.27,
+            49.15,
+            88.63
+          ],
+          "area": 2071.5535,
+          "iscrowd": 0
+        },
+        {
+          "id": 2165741,
+          "categoryID": 1,
+          "categoryName": "person",
+          "bboxXYWH": [
+            247.98,
+            3.18,
+            71.53,
+            71.53
+          ],
+          "area": 3416.282149999999,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "id": "coco-000000132329",
+      "cocoImageID": 132329,
+      "localPath": "images/000000132329.jpg",
+      "fileName": "000000132329.jpg",
+      "width": 426,
+      "height": 640,
+      "bytes": 70867,
+      "sha256": "78a2bdb448e5729fe89f9a4c768bdf6164ccb992e52aa7469d3c4c82a8707e49",
+      "officialSourceURL": "http://images.cocodataset.org/val2017/000000132329.jpg",
+      "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/val2017/000000132329.jpg",
+      "flickrSourceURL": "http://farm3.staticflickr.com/2507/4142321546_09ffc1dab0_z.jpg",
+      "flickrPhotoPageURL": "https://www.flickr.com/photo.gne?id=4142321546",
+      "license": {
+        "url": "http://creativecommons.org/licenses/by/2.0/",
+        "id": 4,
+        "name": "Attribution License"
+      },
+      "attributionAuthor": null,
+      "attributionNote": "Original author name not present in COCO metadata; resolve Flickr photo page before any redistribution.",
+      "assistantVisualReview": {
+        "date": "2026-09-09",
+        "targetCountMatchesVisibleScene": true,
+        "absentTargetNotVisible": "giraffe",
+        "reviewer": "coding assistant visual inspection, not independent human labeling"
+      },
+      "annotations": [
+        {
+          "id": 78703,
+          "categoryID": 44,
+          "categoryName": "bottle",
+          "bboxXYWH": [
+            163.59,
+            31.0,
+            51.66,
+            182.24
+          ],
+          "area": 7503.5146,
+          "iscrowd": 0
+        },
+        {
+          "id": 87987,
+          "categoryID": 44,
+          "categoryName": "bottle",
+          "bboxXYWH": [
+            217.19,
+            32.52,
+            50.75,
+            181.46
+          ],
+          "area": 7553.003599999997,
+          "iscrowd": 0
+        },
+        {
+          "id": 95919,
+          "categoryID": 44,
+          "categoryName": "bottle",
+          "bboxXYWH": [
+            265.64,
+            32.3,
+            56.0,
+            182.29
+          ],
+          "area": 8021.089900000004,
+          "iscrowd": 0
+        },
+        {
+          "id": 96066,
+          "categoryID": 44,
+          "categoryName": "bottle",
+          "bboxXYWH": [
+            107.35,
+            85.43,
+            53.68,
+            129.37
+          ],
+          "area": 5236.964149999999,
+          "iscrowd": 0
+        },
+        {
+          "id": 331773,
+          "categoryID": 82,
+          "categoryName": "refrigerator",
+          "bboxXYWH": [
+            2.88,
+            3.24,
+            423.12,
+            631.37
+          ],
+          "area": 249675.1834,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "id": "coco-000000127182",
+      "cocoImageID": 127182,
+      "localPath": "images/000000127182.jpg",
+      "fileName": "000000127182.jpg",
+      "width": 427,
+      "height": 640,
+      "bytes": 114695,
+      "sha256": "dc53ed113bdc89db5801f47c5834d824d6182bcbef16724189feb1b9223b45fd",
+      "officialSourceURL": "http://images.cocodataset.org/val2017/000000127182.jpg",
+      "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/val2017/000000127182.jpg",
+      "flickrSourceURL": "http://farm9.staticflickr.com/8453/7883863194_0e5f44d8f9_z.jpg",
+      "flickrPhotoPageURL": "https://www.flickr.com/photo.gne?id=7883863194",
+      "license": {
+        "url": "http://creativecommons.org/licenses/by/2.0/",
+        "id": 4,
+        "name": "Attribution License"
+      },
+      "attributionAuthor": null,
+      "attributionNote": "Original author name not present in COCO metadata; resolve Flickr photo page before any redistribution.",
+      "assistantVisualReview": {
+        "date": "2026-09-09",
+        "targetCountMatchesVisibleScene": true,
+        "absentTargetNotVisible": "motorcycle",
+        "reviewer": "coding assistant visual inspection, not independent human labeling"
+      },
+      "annotations": [
+        {
+          "id": 19679,
+          "categoryID": 64,
+          "categoryName": "potted plant",
+          "bboxXYWH": [
+            314.46,
+            261.42,
+            70.64,
+            100.13
+          ],
+          "area": 3350.2961000000005,
+          "iscrowd": 0
+        },
+        {
+          "id": 1119647,
+          "categoryID": 78,
+          "categoryName": "microwave",
+          "bboxXYWH": [
+            52.03,
+            149.05,
+            85.25,
+            116.36
+          ],
+          "area": 8420.582600000002,
+          "iscrowd": 0
+        },
+        {
+          "id": 1126217,
+          "categoryID": 79,
+          "categoryName": "oven",
+          "bboxXYWH": [
+            18.56,
+            367.08,
+            175.08,
+            251.22
+          ],
+          "area": 14292.877249999992,
+          "iscrowd": 0
+        },
+        {
+          "id": 1522856,
+          "categoryID": 49,
+          "categoryName": "knife",
+          "bboxXYWH": [
+            1.17,
+            336.35,
+            30.15,
+            29.51
+          ],
+          "area": 225.6485499999994,
+          "iscrowd": 0
+        },
+        {
+          "id": 1671147,
+          "categoryID": 86,
+          "categoryName": "vase",
+          "bboxXYWH": [
+            348.62,
+            334.1,
+            21.52,
+            32.15
+          ],
+          "area": 546.1377000000005,
+          "iscrowd": 0
+        },
+        {
+          "id": 1892832,
+          "categoryID": 49,
+          "categoryName": "knife",
+          "bboxXYWH": [
+            7.14,
+            371.24,
+            27.32,
+            20.55
+          ],
+          "area": 125.23890000000081,
+          "iscrowd": 0
+        },
+        {
+          "id": 1894424,
+          "categoryID": 49,
+          "categoryName": "knife",
+          "bboxXYWH": [
+            7.8,
+            342.05,
+            29.71,
+            29.56
+          ],
+          "area": 194.95874999999998,
+          "iscrowd": 0
+        },
+        {
+          "id": 1894668,
+          "categoryID": 49,
+          "categoryName": "knife",
+          "bboxXYWH": [
+            14.13,
+            351.78,
+            24.17,
+            24.32
+          ],
+          "area": 142.1528500000006,
+          "iscrowd": 0
+        },
+        {
+          "id": 1981416,
+          "categoryID": 81,
+          "categoryName": "sink",
+          "bboxXYWH": [
+            391.26,
+            361.28,
+            35.74,
+            12.65
+          ],
+          "area": 374.46850000000063,
+          "iscrowd": 0
+        },
+        {
+          "id": 1983627,
+          "categoryID": 82,
+          "categoryName": "refrigerator",
+          "bboxXYWH": [
+            249.35,
+            384.0,
+            139.64,
+            167.9
+          ],
+          "area": 19963.566099999996,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "id": "coco-000000058111",
+      "cocoImageID": 58111,
+      "localPath": "images/000000058111.jpg",
+      "fileName": "000000058111.jpg",
+      "width": 500,
+      "height": 490,
+      "bytes": 126017,
+      "sha256": "2c476318934bf7b8e6ddbb0bcb119b8ce5ed9409e3444a6b8f8b4622e59fa1fe",
+      "officialSourceURL": "http://images.cocodataset.org/val2017/000000058111.jpg",
+      "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/val2017/000000058111.jpg",
+      "flickrSourceURL": "http://farm2.staticflickr.com/1212/1432440864_7e0f17c51a_z.jpg",
+      "flickrPhotoPageURL": "https://www.flickr.com/photo.gne?id=1432440864",
+      "license": {
+        "url": "http://creativecommons.org/licenses/by/2.0/",
+        "id": 4,
+        "name": "Attribution License"
+      },
+      "attributionAuthor": null,
+      "attributionNote": "Original author name not present in COCO metadata; resolve Flickr photo page before any redistribution.",
+      "assistantVisualReview": {
+        "date": "2026-09-09",
+        "targetCountMatchesVisibleScene": true,
+        "absentTargetNotVisible": "dog",
+        "reviewer": "coding assistant visual inspection, not independent human labeling"
+      },
+      "annotations": [
+        {
+          "id": 52187,
+          "categoryID": 17,
+          "categoryName": "cat",
+          "bboxXYWH": [
+            32.74,
+            22.7,
+            461.48,
+            461.49
+          ],
+          "area": 107732.22255000002,
+          "iscrowd": 0
+        },
+        {
+          "id": 1141657,
+          "categoryID": 84,
+          "categoryName": "book",
+          "bboxXYWH": [
+            152.02,
+            16.2,
+            65.39,
+            35.6
+          ],
+          "area": 894.4491999999996,
+          "iscrowd": 0
+        },
+        {
+          "id": 1145902,
+          "categoryID": 84,
+          "categoryName": "book",
+          "bboxXYWH": [
+            166.98,
+            10.1,
+            90.28,
+            34.49
+          ],
+          "area": 1314.8175500000004,
+          "iscrowd": 0
+        },
+        {
+          "id": 1149313,
+          "categoryID": 84,
+          "categoryName": "book",
+          "bboxXYWH": [
+            0.0,
+            66.56,
+            125.63,
+            26.34
+          ],
+          "area": 1699.5729,
+          "iscrowd": 0
+        },
+        {
+          "id": 1149796,
+          "categoryID": 84,
+          "categoryName": "book",
+          "bboxXYWH": [
+            1.1,
+            24.22,
+            142.05,
+            33.04
+          ],
+          "area": 4301.236100000001,
+          "iscrowd": 0
+        },
+        {
+          "id": 1650117,
+          "categoryID": 84,
+          "categoryName": "book",
+          "bboxXYWH": [
+            0.0,
+            54.66,
+            110.88,
+            12.18
+          ],
+          "area": 783.6713500000004,
+          "iscrowd": 0
+        }
+      ]
+    },
+    {
+      "id": "coco-000000027620",
+      "cocoImageID": 27620,
+      "localPath": "images/000000027620.jpg",
+      "fileName": "000000027620.jpg",
+      "width": 640,
+      "height": 480,
+      "bytes": 112390,
+      "sha256": "035a452ad79eb267a669fad48b220b1bf7d2e3500a5d736a195dc007df01bbfe",
+      "officialSourceURL": "http://images.cocodataset.org/val2017/000000027620.jpg",
+      "downloadURL": "https://s3.amazonaws.com/images.cocodataset.org/val2017/000000027620.jpg",
+      "flickrSourceURL": "http://farm2.staticflickr.com/1052/1338060761_ababfaeb9b_z.jpg",
+      "flickrPhotoPageURL": "https://www.flickr.com/photo.gne?id=1338060761",
+      "license": {
+        "url": "http://creativecommons.org/licenses/by-sa/2.0/",
+        "id": 5,
+        "name": "Attribution-ShareAlike License"
+      },
+      "attributionAuthor": null,
+      "attributionNote": "Original author name not present in COCO metadata; resolve Flickr photo page before any redistribution.",
+      "assistantVisualReview": {
+        "date": "2026-09-09",
+        "targetCountMatchesVisibleScene": true,
+        "absentTargetNotVisible": "zebra",
+        "reviewer": "coding assistant visual inspection, not independent human labeling"
+      },
+      "annotations": [
+        {
+          "id": 372674,
+          "categoryID": 62,
+          "categoryName": "chair",
+          "bboxXYWH": [
+            298.2,
+            172.29,
+            314.97,
+            307.41
+          ],
+          "area": 49083.70119999999,
+          "iscrowd": 0
+        },
+        {
+          "id": 1102181,
+          "categoryID": 73,
+          "categoryName": "laptop",
+          "bboxXYWH": [
+            224.86,
+            40.0,
+            142.71,
+            123.24
+          ],
+          "area": 13147.658300000001,
+          "iscrowd": 0
+        },
+        {
+          "id": 1115159,
+          "categoryID": 76,
+          "categoryName": "keyboard",
+          "bboxXYWH": [
+            236.35,
+            175.19,
+            155.44,
+            34.8
+          ],
+          "area": 2704.6560000000013,
+          "iscrowd": 0
+        },
+        {
+          "id": 1629126,
+          "categoryID": 74,
+          "categoryName": "mouse",
+          "bboxXYWH": [
+            394.78,
+            168.49,
+            29.82,
+            14.0
+          ],
+          "area": 280.16920000000033,
+          "iscrowd": 0
+        },
+        {
+          "id": 1634621,
+          "categoryID": 76,
+          "categoryName": "keyboard",
+          "bboxXYWH": [
+            15.92,
+            391.84,
+            130.41,
+            57.0
+          ],
+          "area": 4427.391050000001,
+          "iscrowd": 0
+        },
+        {
+          "id": 2095958,
+          "categoryID": 44,
+          "categoryName": "bottle",
+          "bboxXYWH": [
+            177.04,
+            108.47,
+            38.65,
+            64.83
+          ],
+          "area": 2107.0765499999998,
+          "iscrowd": 0
+        },
+        {
+          "id": 2136888,
+          "categoryID": 76,
+          "categoryName": "keyboard",
+          "bboxXYWH": [
+            241.67,
+            129.86,
+            105.29,
+            19.49
+          ],
+          "area": 1032.8379499999992,
+          "iscrowd": 0
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "000000029596-count",
+      "imageID": "coco-000000029596",
+      "kind": "count",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。圖片中可見幾個椅子（chair）？部分可見也計入，照片／螢幕中的圖案不计。格式：{\"count\":整數,\"uncertain\":布林值}。看不清是否還有其他目標時 uncertain=true。",
+      "expected": {
+        "category": "chair",
+        "count": 2,
+        "annotationIDs": [
+          100285,
+          108105
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      }
+    },
+    {
+      "id": "000000029596-point",
+      "imageID": "coco-000000029596",
+      "kind": "point",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。找出畫面最左邊的椅子（chair），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。格式：{\"point\":[x,y],\"uncertain\":false}。找不到或無法確定時 point=null、uncertain=true。",
+      "expected": {
+        "category": "chair",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 100285,
+        "bboxXYWH": [
+          264.16,
+          227.41,
+          48.79,
+          119.65
+        ],
+        "bboxNormalizedXYWH": [
+          0.41275000000000006,
+          0.5313317757009346,
+          0.076234375,
+          0.27955607476635513
+        ],
+        "centerNormalizedXY": [
+          0.4508671875,
+          0.6711098130841122
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      }
+    },
+    {
+      "id": "000000029596-absent",
+      "imageID": "coco-000000029596",
+      "kind": "absent",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。請在圖片中尋找大象（elephant）。如果沒有可確認的目標，必須拒絕猜測位置並回傳{\"found\":false,\"point\":null}。若確實看見，才回傳{\"found\":true,\"point\":[x,y]}，座標是原始照片左上為(0,0)、右下為(1,1)。",
+      "expected": {
+        "category": "elephant",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      }
+    },
+    {
+      "id": "000000054605-count",
+      "imageID": "coco-000000054605",
+      "kind": "count",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。圖片中可見幾個飲料杯（cup）？部分可見也計入，照片／螢幕中的圖案不计。格式：{\"count\":整數,\"uncertain\":布林值}。看不清是否還有其他目標時 uncertain=true。",
+      "expected": {
+        "category": "cup",
+        "count": 2,
+        "annotationIDs": [
+          1502310,
+          1506712
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      }
+    },
+    {
+      "id": "000000054605-point",
+      "imageID": "coco-000000054605",
+      "kind": "point",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。找出畫面最左邊的飲料杯（cup），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。格式：{\"point\":[x,y],\"uncertain\":false}。找不到或無法確定時 point=null、uncertain=true。",
+      "expected": {
+        "category": "cup",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 1502310,
+        "bboxXYWH": [
+          0.0,
+          207.97,
+          78.9,
+          198.99
+        ],
+        "bboxNormalizedXYWH": [
+          0.0,
+          0.3398202614379085,
+          0.128921568627451,
+          0.3251470588235294
+        ],
+        "centerNormalizedXY": [
+          0.0644607843137255,
+          0.5023937908496733
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      }
+    },
+    {
+      "id": "000000054605-absent",
+      "imageID": "coco-000000054605",
+      "kind": "absent",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。請在圖片中尋找腳踏車（bicycle）。如果沒有可確認的目標，必須拒絕猜測位置並回傳{\"found\":false,\"point\":null}。若確實看見，才回傳{\"found\":true,\"point\":[x,y]}，座標是原始照片左上為(0,0)、右下為(1,1)。",
+      "expected": {
+        "category": "bicycle",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      }
+    },
+    {
+      "id": "000000132329-count",
+      "imageID": "coco-000000132329",
+      "kind": "count",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。圖片中可見幾個瓶子（bottle）？部分可見也計入，照片／螢幕中的圖案不计。格式：{\"count\":整數,\"uncertain\":布林值}。看不清是否還有其他目標時 uncertain=true。",
+      "expected": {
+        "category": "bottle",
+        "count": 4,
+        "annotationIDs": [
+          96066,
+          78703,
+          87987,
+          95919
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      }
+    },
+    {
+      "id": "000000132329-point",
+      "imageID": "coco-000000132329",
+      "kind": "point",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。找出畫面最左邊的瓶子（bottle），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。格式：{\"point\":[x,y],\"uncertain\":false}。找不到或無法確定時 point=null、uncertain=true。",
+      "expected": {
+        "category": "bottle",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 96066,
+        "bboxXYWH": [
+          107.35,
+          85.43,
+          53.68,
+          129.37
+        ],
+        "bboxNormalizedXYWH": [
+          0.2519953051643192,
+          0.13348437500000002,
+          0.1260093896713615,
+          0.20214062500000002
+        ],
+        "centerNormalizedXY": [
+          0.315,
+          0.23455468750000003
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      }
+    },
+    {
+      "id": "000000132329-absent",
+      "imageID": "coco-000000132329",
+      "kind": "absent",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。請在圖片中尋找長頸鹿（giraffe）。如果沒有可確認的目標，必須拒絕猜測位置並回傳{\"found\":false,\"point\":null}。若確實看見，才回傳{\"found\":true,\"point\":[x,y]}，座標是原始照片左上為(0,0)、右下為(1,1)。",
+      "expected": {
+        "category": "giraffe",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      }
+    },
+    {
+      "id": "000000127182-count",
+      "imageID": "coco-000000127182",
+      "kind": "count",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。圖片中可見幾個盆栽（potted plant）？部分可見也計入，照片／螢幕中的圖案不计。格式：{\"count\":整數,\"uncertain\":布林值}。看不清是否還有其他目標時 uncertain=true。",
+      "expected": {
+        "category": "potted plant",
+        "count": 1,
+        "annotationIDs": [
+          19679
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      }
+    },
+    {
+      "id": "000000127182-point",
+      "imageID": "coco-000000127182",
+      "kind": "point",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。找出畫面最左邊的盆栽（potted plant），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。格式：{\"point\":[x,y],\"uncertain\":false}。找不到或無法確定時 point=null、uncertain=true。",
+      "expected": {
+        "category": "potted plant",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 19679,
+        "bboxXYWH": [
+          314.46,
+          261.42,
+          70.64,
+          100.13
+        ],
+        "bboxNormalizedXYWH": [
+          0.7364402810304449,
+          0.40846875000000005,
+          0.16543325526932084,
+          0.156453125
+        ],
+        "centerNormalizedXY": [
+          0.8191569086651054,
+          0.48669531250000003
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      }
+    },
+    {
+      "id": "000000127182-absent",
+      "imageID": "coco-000000127182",
+      "kind": "absent",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。請在圖片中尋找摩托車（motorcycle）。如果沒有可確認的目標，必須拒絕猜測位置並回傳{\"found\":false,\"point\":null}。若確實看見，才回傳{\"found\":true,\"point\":[x,y]}，座標是原始照片左上為(0,0)、右下為(1,1)。",
+      "expected": {
+        "category": "motorcycle",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      }
+    },
+    {
+      "id": "000000058111-count",
+      "imageID": "coco-000000058111",
+      "kind": "count",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。圖片中可見幾個貓（cat）？部分可見也計入，照片／螢幕中的圖案不计。格式：{\"count\":整數,\"uncertain\":布林值}。看不清是否還有其他目標時 uncertain=true。",
+      "expected": {
+        "category": "cat",
+        "count": 1,
+        "annotationIDs": [
+          52187
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      }
+    },
+    {
+      "id": "000000058111-point",
+      "imageID": "coco-000000058111",
+      "kind": "point",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。找出畫面最左邊的貓（cat），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。格式：{\"point\":[x,y],\"uncertain\":false}。找不到或無法確定時 point=null、uncertain=true。",
+      "expected": {
+        "category": "cat",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 52187,
+        "bboxXYWH": [
+          32.74,
+          22.7,
+          461.48,
+          461.49
+        ],
+        "bboxNormalizedXYWH": [
+          0.06548000000000001,
+          0.0463265306122449,
+          0.92296,
+          0.9418163265306123
+        ],
+        "centerNormalizedXY": [
+          0.52696,
+          0.517234693877551
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      }
+    },
+    {
+      "id": "000000058111-absent",
+      "imageID": "coco-000000058111",
+      "kind": "absent",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。請在圖片中尋找狗（dog）。如果沒有可確認的目標，必須拒絕猜測位置並回傳{\"found\":false,\"point\":null}。若確實看見，才回傳{\"found\":true,\"point\":[x,y]}，座標是原始照片左上為(0,0)、右下為(1,1)。",
+      "expected": {
+        "category": "dog",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      }
+    },
+    {
+      "id": "000000027620-count",
+      "imageID": "coco-000000027620",
+      "kind": "count",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。圖片中可見幾個筆記型電腦（laptop）？部分可見也計入，照片／螢幕中的圖案不计。格式：{\"count\":整數,\"uncertain\":布林值}。看不清是否還有其他目標時 uncertain=true。",
+      "expected": {
+        "category": "laptop",
+        "count": 1,
+        "annotationIDs": [
+          1102181
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      }
+    },
+    {
+      "id": "000000027620-point",
+      "imageID": "coco-000000027620",
+      "kind": "point",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。找出畫面最左邊的筆記型電腦（laptop），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。格式：{\"point\":[x,y],\"uncertain\":false}。找不到或無法確定時 point=null、uncertain=true。",
+      "expected": {
+        "category": "laptop",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 1102181,
+        "bboxXYWH": [
+          224.86,
+          40.0,
+          142.71,
+          123.24
+        ],
+        "bboxNormalizedXYWH": [
+          0.35134375,
+          0.08333333333333333,
+          0.222984375,
+          0.25675
+        ],
+        "centerNormalizedXY": [
+          0.46283593750000007,
+          0.21170833333333333
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      }
+    },
+    {
+      "id": "000000027620-absent",
+      "imageID": "coco-000000027620",
+      "kind": "absent",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請讓你的 answer 欄位僅包含下列 JSON 格式，不要 Markdown 或其他文字。請在圖片中尋找斑馬（zebra）。如果沒有可確認的目標，必須拒絕猜測位置並回傳{\"found\":false,\"point\":null}。若確實看見，才回傳{\"found\":true,\"point\":[x,y]}，座標是原始照片左上為(0,0)、右下為(1,1)。",
+      "expected": {
+        "category": "zebra",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      }
+    }
+  ],
+  "derivedFromManifestSHA256": "9224a581281ad16eca8d17084f423de6c6eef8d000cd83991808974cdd24cdcb"
+}

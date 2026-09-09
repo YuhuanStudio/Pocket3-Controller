@@ -5,7 +5,7 @@ English · [繁體中文](zh-Hant/README.md) · [简体中文](zh-Hans/README.md
 [Back to the product overview](../README.md)
 
 The published download is **0.0.1 beta 1, build 9**. The `main` branch is preparing
-**beta 2, build 11**, with UI alignment fixes under test. Start with the [release page](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+**beta 2, build 21**, with control-validation and offline AI work in progress. Start with the [release page](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
 for the capabilities and limitations of the version you installed.
 
 ## Using the app
@@ -29,6 +29,8 @@ preview, controls, Bluetooth, local AI, MCP and troubleshooting.
 | [Contributing](../CONTRIBUTING.md) | Scope, reproducible changes, design consistency and hardware-test reporting |
 | [Hardware acceptance record](HARDWARE_ACCEPTANCE.md) | Dated physical trials and the conditions under which they passed or failed |
 | [AI validation](AI_VALIDATION.md) | Model evaluation, failure cases and the separation between simulated and physical camera actions |
+| [Local visual AI research](AI_RESEARCH.md) | Model selection, grounding, tracking, VLA boundaries and measurable product priorities (Traditional Chinese) |
+| [Reproducible grounding evaluation](../Evaluation/Grounding/README.md) | Public image metadata, explicit dataset preparation and independent schema/factual scoring |
 | [Acceptance audit](ACCEPTANCE_AUDIT.md) | Earlier software gates and explicitly untested areas |
 | [YunAudio parity](YUNAUDIO_PARITY.md) | Shared appearance and common app behaviour |
 | [Device capability roadmap](DEVICE_CAPABILITY_ROADMAP.md) | Planned camera functions and the evidence needed before enabling them |

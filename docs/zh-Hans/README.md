@@ -4,7 +4,7 @@
 
 ← [项目首页](../../README.zh-Hans.md)
 
-目前下载是 **0.0.1 beta 1，build 9**；`main` 正在开发 **beta 2，build 11**。已安装版本的功能范围，以 [beta 1 发行页](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 为准。
+目前下载是 **0.0.1 beta 1，build 9**；`main` 正在开发 **beta 2，build 21**。已安装版本的功能范围，以 [beta 1 发行页](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 为准。
 
 ## 使用 App
 
@@ -14,6 +14,11 @@
 |---|---|
 | [项目概览与安装](../../README.zh-Hans.md) | 下载、首次启动、Webcam 设置、功能与 MCP 设置 |
 | [完整使用指南](guide.md) | 从连接相机到本地 AI／MCP 的日常操作与问题排查 |
+
+## AI
+
+- [本地视觉 AI 深度研究](../AI_RESEARCH.md)：模型选择、语义定位、跟踪、VLA 边界与可量测的产品优先顺序。
+- [可复现的定位评测](../../Evaluation/Grounding/README.md)：公开数据来源与评分契约。
 
 ## 技术文档与验证记录
 

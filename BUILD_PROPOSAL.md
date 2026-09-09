@@ -25,7 +25,7 @@
 
 「有程式 API」不等於需要一個 HTTP server。首版的原生核心 API、CLI 與 MCP 已可支撐本機使用；App 和附帶程式間只需要本機通訊。
 
-專案目錄與 repository 名稱繼續使用 DJI Pocket 3 MCP／`dji-pocket3-mcp`。App 顯示名稱暫定 **Pocket 3 MCP**，可在討論時調整，不為命名延後實作；對外說明維持非官方整合定位。
+目前已統一產品名稱為 **Pocket 3 Controller**、repository 為 `YuhuanStudio/Pocket3-Controller`，本地資料夾亦為 `Pocket3-Controller`。內部 bundle／執行檔識別保持相容；下方提案中的舊介面名稱保留為歷史設計記錄。
 
 ## 2. 為什麼選 App
 
@@ -312,7 +312,7 @@ pocket3 mcp
 以下是邏輯責任，實作時不一定拆成同等數量的獨立套件。
 
 ```text
-DJI-Pocket3-MCP/
+Pocket3-Controller/
   App/                         SwiftUI 視窗、選單列與引導
   Packages/
     Pocket3Core/               裝置、影格、狀態與動作排程

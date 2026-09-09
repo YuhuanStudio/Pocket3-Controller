@@ -174,11 +174,19 @@ final class AppModel {
                     return ServiceReply(id: request.id, result: try .encode(try await service.capture.focus(at: CGPoint(x: x, y: y), sessionToken: token)))
                 case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", "validation-wireless-tap-focus", "validation-wireless-setting", "validation-wireless-property", "validation-wireless-disconnect":
                     return try await AppModel.shared.handleWirelessValidation(request)
-                case "evaluate-image", "evaluate-workflow", "evaluate-perception":
+                case "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding":
                     guard CommandLine.arguments.contains("--hardware-validation"), let encoded = request.arguments["imageData"].string, encoded.utf8.count <= 11_000_000, let data = Data(base64Encoded: encoded) else { throw BridgeFailure("evaluation_disabled", "圖片評測只供開發工作階段使用，請傳入 8 MB 以下圖片") }
                     let frame = try await Task.detached { try FramePacket.fixture(data: data) }.value
                     let start = ProcessInfo.processInfo.systemUptime
                     let engine = request.arguments["engine"].string ?? "apple"
+                    if request.operation == "evaluate-grounding" {
+                        guard let kind = GroundedImageKind(rawValue: request.arguments["kind"].string ?? "") else {
+                            throw BridgeFailure("invalid_grounding_kind", "定位評測 kind 須為 count、point 或 absent")
+                        }
+                        let result = try await intelligence.grounded(frame: frame,
+                            question: request.arguments["question"].string ?? "", kind: kind, engine: engine)
+                        return ServiceReply(id: request.id, result: try result.metadata())
+                    }
                     if request.operation == "evaluate-perception" {
                         guard let mode = PerceptionComputeMode(rawValue: request.arguments["compute"].string ?? "automatic") else { throw BridgeFailure("invalid_compute", "未知 Core AI 運算選項") }
                         #if DEBUG

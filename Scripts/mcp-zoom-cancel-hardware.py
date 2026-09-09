@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Observe a real MCP zoom cancellation during motion, without a client Stop.
+"""Observe real MCP zoom cancellation or helper EOF without a client Stop.
 
 Requires an already-connected App with control access and explicit binding.
 The successful run leaves the verified intermediate zoom in place. Restore it
@@ -27,7 +27,8 @@ require = ZOOM.require
 def run(args, *, client_factory=ZOOM.MCPClient, clock=time, cli_runner=subprocess.run):
     out = Path(args.output).resolve() / str(uuid.uuid4())
     out.mkdir(parents=True, exist_ok=False)
-    report = {"id": out.name, "startedAt": datetime.now(timezone.utc).isoformat(),
+    ending = getattr(args, "ending", "notification")
+    report = {"id": out.name, "startedAt": datetime.now(timezone.utc).isoformat(), "ending": ending,
               "passed": False, "status": "running", "simulation": False,
               "imagesSaved": False, "targetRaw": args.target_raw,
               "expectedInitialRaw": args.expected_raw, "samples": [],
@@ -90,10 +91,17 @@ def run(args, *, client_factory=ZOOM.MCPClient, clock=time, cli_runner=subproces
     def cancel_request(reason):
         nonlocal cancelled
         if not cancelled and request_id is not None:
-            client.send({"jsonrpc": "2.0", "method": "notifications/cancelled",
-                         "params": {"requestId": request_id, "reason": reason}})
+            if ending == "stdin-eof":
+                # Close only this test's helper input. The App must react to
+                # the independently closed IPC request; no client Stop is sent.
+                client.proc.stdin.close()
+                report["stdinEOFSubmitted"] = True
+                report["cancelNotificationSent"] = False
+            else:
+                client.send({"jsonrpc": "2.0", "method": "notifications/cancelled",
+                             "params": {"requestId": request_id, "reason": reason}})
+                report["cancelNotificationSent"] = True
             cancelled = True
-            report["cancelNotificationSent"] = True
             report["cancelSentUptime"] = clock.monotonic()
 
     def collect_messages(duration):
@@ -127,6 +135,7 @@ def run(args, *, client_factory=ZOOM.MCPClient, clock=time, cli_runner=subproces
     with (out / "stderr.log").open("w") as stderr:
         try:
             require(args.zoom is True, "Explicit --zoom is required")
+            require(ending in ("notification", "stdin-eof"), "Unknown request ending")
             require(not os.environ.get("POCKET3_BRIDGE_DIRECTORY"), "A live test cannot use an overridden IPC fixture")
             require(all(isinstance(value, str) and bool(value) for value in binding.values()), "Explicit binding is required")
             report["helperSHA256"] = hashlib.sha256(Path(args.binary).read_bytes()).hexdigest()
@@ -177,6 +186,10 @@ def run(args, *, client_factory=ZOOM.MCPClient, clock=time, cli_runner=subproces
             persist()
             cancel_request("Bounded live zoom cancellation acceptance")
             persist()
+            if ending == "stdin-eof":
+                report["helperExitCode"] = client.proc.wait(timeout=3)
+                report["helperExitedUptime"] = clock.monotonic()
+                require(report["helperExitCode"] == 0, "MCP helper did not exit normally after stdin EOF")
             deadline = clock.monotonic() + 7
             stable = []
             while clock.monotonic() < deadline:
@@ -201,17 +214,22 @@ def run(args, *, client_factory=ZOOM.MCPClient, clock=time, cli_runner=subproces
                     "No confirmed stable intermediate zoom after MCP cancellation")
             report["stableDurationSeconds"] = stable[-1]["uptime"] - stable[0]["uptime"]
             report["finalRaw"] = stable[-1]["raw"]
-            # The SDK suppresses the cancelled request's response. Check the
-            # transport still serves a new request and collect all queued IDs.
-            followup_id = client.next_id; client.next_id += 1
-            client.send({"jsonrpc": "2.0", "id": followup_id, "method": "tools/list", "params": {}})
-            messages = collect_messages(.5)
-            require(not any(x.get("id") == request_id for x in messages), "Cancelled request emitted a completion reply")
-            response = [x for x in messages if x.get("id") == followup_id]
-            require(len(response) == 1 and {x["name"] for x in response[0].get("result", {}).get("tools", [])} == ZOOM.TOOLS,
-                    "MCP helper was not usable after cancellation")
-            report["cancelledReplySuppressed"] = True
-            report["helperRemainedUsable"] = True
+            if ending == "notification":
+                # The SDK suppresses the cancelled request's response. Check
+                # that this still-running helper can serve another request.
+                followup_id = client.next_id; client.next_id += 1
+                client.send({"jsonrpc": "2.0", "id": followup_id, "method": "tools/list", "params": {}})
+                messages = collect_messages(.5)
+                require(not any(x.get("id") == request_id for x in messages), "Cancelled request emitted a completion reply")
+                response = [x for x in messages if x.get("id") == followup_id]
+                require(len(response) == 1 and {x["name"] for x in response[0].get("result", {}).get("tools", [])} == ZOOM.TOOLS,
+                        "MCP helper was not usable after cancellation")
+                report["cancelledReplySuppressed"] = True
+                report["helperRemainedUsable"] = True
+            else:
+                # A terminated helper cannot be tested for continued usability.
+                # Only CLI reads of the surviving App establish the hold.
+                report["helperRemainedUsable"] = None
             status(ready=True, access="observe", fresh=True)
             report.update(passed=True, status="complete")
         except BaseException as error:
@@ -252,6 +270,8 @@ def main():
     parser.add_argument("--expected-build", required=True)
     parser.add_argument("--expected-raw", type=int, required=True)
     parser.add_argument("--target-raw", type=int, required=True)
+    parser.add_argument("--ending", choices=("notification", "stdin-eof"), default="notification",
+                        help="Cancel by MCP notification or close only helper stdin while zoom is moving")
     args = parser.parse_args()
     def interrupt(signum, frame):
         raise KeyboardInterrupt(f"Signal {signum}")

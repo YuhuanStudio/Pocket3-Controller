@@ -35,7 +35,8 @@ class Fake:
         self.cli_calls, self.sent = [], []
         self.moving_reads = self.factory_count = self.close_count = self.stop_count = 0
         self.selector = SimpleNamespace(select=self.select)
-        self.proc = SimpleNamespace(stdout=SimpleNamespace(read1=self.read_last_reply))
+        self.proc = SimpleNamespace(stdout=SimpleNamespace(read1=self.read_last_reply),
+                                    stdin=SimpleNamespace(closed=False, close=self.close_stdin), wait=self.wait)
         self.final_chunk = b""
 
     def select(self, timeout):
@@ -91,18 +92,28 @@ class Fake:
         self.close_count += 1
         if self.mode == "close_failure": raise OSError("Synthetic client close failure")
 
+    def close_stdin(self):
+        assert not self.proc.stdin.closed
+        self.proc.stdin.closed = True
+        self.cancelled = True
+
+    def wait(self, timeout):
+        assert self.proc.stdin.closed
+        self.clock.sleep(.02)
+        return 1 if self.mode == "eof_exit_failure" else 0
+
     def cli(self, argv, **kwargs):
         args = argv[1:]; self.cli_calls.append(args)
         self.clock.sleep(.03)
         if args == ["status"]:
             session = "replacement" if self.started and self.mode == "changed_binding" else "session"
-            moving = self.started and not self.cancelled
+            moving = self.started and (not self.cancelled or self.mode == "eof_no_hold")
             value = {"buildVersion": "18" if self.mode == "wrong_build" else "19",
                      "selected": {"id": "device"}, "capture": {"sessionID": session, "age": .02,
                          "frame": {"sessionID": session, "deviceID": "device"}},
                      "gimbal": {"registryID": "registry", "bootSessionID": "boot"},
                      "phase": "moving" if moving else "ready", "motionActive": moving,
-                     "access": "observe" if self.cancelled else "control"}
+                     "access": "observe" if self.cancelled and self.mode != "eof_no_hold" else "control"}
         elif args == ["zoom-status", "--session", "session"]:
             if self.started and not self.cancelled:
                 self.moving_reads += 1
@@ -119,7 +130,7 @@ class Fake:
 
 
 class CancellationHarnessTests(unittest.TestCase):
-    def check_case(self, mode="pass", fault=None):
+    def check_case(self, mode="pass", fault=None, ending="notification"):
         clock = Clock(); fake = Fake(clock, mode)
         with tempfile.TemporaryDirectory(prefix="p3-mcp-cancel-fake-") as directory, ExitStack() as stack:
             root = Path(directory)
@@ -127,7 +138,7 @@ class CancellationHarnessTests(unittest.TestCase):
             binary.write_bytes(b"Never executed")
             args = SimpleNamespace(output=str(root / "reports"), binary=str(binary), zoom=True,
                 device="device", session="session", registry="registry", expected_build="19",
-                expected_raw=100, target_raw=400)
+                expected_raw=100, target_raw=400, ending=ending)
             blocked = [stack.enter_context(patch(name, side_effect=AssertionError("Offline test forbids " + name)))
                        for name in ("subprocess.Popen", "subprocess.run", "socket.socket", "os.system", "time.sleep")]
             stack.enter_context(patch.dict(M.os.environ, {"POCKET3_BRIDGE_DIRECTORY": ""}))
@@ -176,6 +187,39 @@ class CancellationHarnessTests(unittest.TestCase):
         self.assertFalse(fake.started)
         self.assertEqual(fake.factory_count, 0)
         self.assertEqual(fake.stop_count, 0)
+
+    def test_stdin_eof_requires_normal_exit_and_independent_app_hold_without_client_stop(self):
+        report, fake = self.check_case(ending="stdin-eof")
+        self.assertTrue(report["passed"])
+        self.assertTrue(report["stdinEOFSubmitted"] and fake.proc.stdin.closed)
+        self.assertFalse(report["cancelNotificationSent"])
+        self.assertEqual(report["helperExitCode"], 0)
+        self.assertIsNone(report["helperRemainedUsable"])
+        self.assertNotIn("cancelledReplySuppressed", report)
+        self.assertEqual(report["distinctProgressReadbacks"], [130, 160])
+        self.assertEqual(report["finalRaw"], 160)
+        self.assertGreaterEqual(report["stableDurationSeconds"], 1)
+        self.assertEqual(fake.stop_count, 0)
+        self.assertFalse(report["clientStopSent"])
+        self.assertFalse(any(item["method"] in {"notifications/cancelled", "tools/list"} for item in fake.sent))
+
+    def test_stdin_eof_without_hold_or_with_continued_ramp_fails_with_one_cleanup_stop(self):
+        for mode in ("eof_no_hold", "keeps_ramping"):
+            with self.subTest(mode=mode):
+                report, fake = self.check_case(mode, ending="stdin-eof")
+                self.assertFalse(report["passed"])
+                self.assertEqual(report["helperExitCode"], 0)
+                self.assertEqual(fake.stop_count, 1)
+                self.assertTrue(report["clientStopSent"])
+                self.assertFalse(report["cancelNotificationSent"])
+                self.assertFalse(any(item["method"] == "notifications/cancelled" for item in fake.sent))
+
+    def test_stdin_eof_abnormal_helper_exit_is_not_a_pass(self):
+        report, fake = self.check_case("eof_exit_failure", ending="stdin-eof")
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["helperExitCode"], 1)
+        self.assertEqual(fake.stop_count, 1)
+        self.assertIn("exit normally", report["error"])
 
     def test_target_already_completed_or_overshot_cannot_pass(self):
         for mode in ("already_completed", "overshot"):

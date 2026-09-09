@@ -142,6 +142,7 @@ public actor CameraService {
     private var streamValidationReport: StreamValidationReport?
     private let validationEnabled: Bool
     private var validationTask: Task<Void, Never>?
+    private var validationRunID: UUID?
     private var validationReport: HardwareValidationReport?
     private var validationError: String?
     private var nativeControl: NativeControlReservation?
@@ -1367,31 +1368,51 @@ public actor CameraService {
     }
     public func startUserValidation() throws { try beginValidation() }
     private func beginValidation() throws {
+        guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認縮放已停止，再驗證視角控制") }
+        guard !rollNeedsHold else { throw BridgeFailure("roll_stop_required", "請先確認 Roll 已停止，再驗證視角控制") }
         guard nativeControl == nil, !nativeControlPending else { throw BridgeFailure("native_control_active", "請先中斷原生控制，再執行 USB 診斷") }
-        guard validationTask == nil, motionID == nil, phase == "ready", let selected,
+        guard !connectionInProgress, validationTask == nil, motionID == nil, phase == "ready", let selected,
               let uvc = uvc as? UVCConnection else { throw BridgeFailure("validation_busy", "請先連接相機並結束其他操作") }
         interactionEpoch += 1; access = .manual; stopValidated = false; phase = "validating"; motionGeneration += 1
-        let generation = motionGeneration; motionID = UUID(); validationReport = nil; validationError = nil
+        let generation = motionGeneration, lifecycle = lifecycleGeneration
+        let runID = UUID(), permit = OperationPermit()
+        motionID = runID; activeMotionPermit = permit; validationRunID = runID
+        validationReport = nil; validationError = nil
         log("validation", "正在驗證小幅往返與中途保持；可隨時停止")
         validationTask = Task {
+            defer {
+                permit.invalidate()
+                if activeMotionPermit === permit { activeMotionPermit = nil }
+                if validationRunID == runID { validationRunID = nil; validationTask = nil }
+            }
             do {
-                let report = try await HardwareValidator.run(uvc: uvc, deviceID: selected.id, frames: capture.store)
-                if generation == motionGeneration {
-                    validationReport = report
-                    stopValidated = report.stopPassed && report.positionPassed && report.restored
+                let report = try await HardwareValidator.run(uvc: uvc, deviceID: selected.id, frames: capture.store, permit: permit)
+                guard validationRunID == runID else { return }
+                // Preserve this run's partial evidence after an external Stop.
+                // Its old task may never restore access or overwrite a new
+                // connection's state/cache merely because cleanup completed.
+                validationReport = report
+                validationError = report.failureCode
+                if generation == motionGeneration, lifecycle == lifecycleGeneration, motionID == runID, self.uvc === uvc {
+                    let accepted = HardwareValidator.accepts(report)
                     var retained = report; retained.images = [:]
                     let object: JSONValue = .object(["report": try .encode(retained), "minimum": try .encode(capabilities?.minimum), "maximum": try .encode(capabilities?.maximum)])
                     try BridgePaths.prepare()
                     try Data(object.pretty.utf8).write(to: BridgePaths.directory.appendingPathComponent("hardware-validation.json"), options: .atomic)
-                    phase = "ready"; motionID = nil; lastMotionEnded = ProcessInfo.processInfo.systemUptime
+                    stopValidated = accepted
+                    phase = report.cleanup.map { $0.stable ? "ready" : "error" } ?? "ready"
+                    motionID = nil; lastMotionEnded = ProcessInfo.processInfo.systemUptime
+                    if phase == "error" { lastError = "USB 停止未確認" }
                     log("validation", stopValidated ? "本機小幅控制与停止驗證通過" : "驗證完成，部分條件未通過", error: !stopValidated)
                 }
             } catch {
+                guard validationRunID == runID else { return }
                 validationError = error.localizedDescription
-                if generation == motionGeneration { phase = "error"; motionID = nil; lastError = error.localizedDescription }
+                if generation == motionGeneration, lifecycle == lifecycleGeneration, motionID == runID, self.uvc === uvc {
+                    phase = "error"; motionID = nil; lastError = error.localizedDescription
+                }
                 log("validation", error.localizedDescription, error: true)
             }
-            validationTask = nil
         }
     }
     private func loadValidationForCurrentDevice() {
@@ -1400,11 +1421,9 @@ public actor CameraService {
               let data = try? Data(contentsOf: BridgePaths.directory.appendingPathComponent("hardware-validation.json")),
               let object = try? JSONDecoder().decode(JSONValue.self, from: data),
               let report = try? object["report"].decode(HardwareValidationReport.self),
-              report.version == HardwareValidator.version, report.registryID != nil, report.bootSessionID != nil,
+              HardwareValidator.accepts(report), report.registryID != nil, report.bootSessionID != nil,
               report.registryID == capabilities.registryID, report.bootSessionID == capabilities.bootSessionID,
               report.deviceID == selected.id, report.osVersion == ProcessInfo.processInfo.operatingSystemVersionString,
-              report.stopPassed && HardwareValidator.stoppingPassed(report.stopTrials)
-                && report.positionPassed && HardwareValidator.positionsPassed(report.positionTrials) && report.restored,
               let min = try? object["minimum"].decode(GimbalPosition.self), let max = try? object["maximum"].decode(GimbalPosition.self),
               min == capabilities.minimum, max == capabilities.maximum else { return }
         stopValidated = true

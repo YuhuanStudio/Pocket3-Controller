@@ -2,6 +2,17 @@
 
 更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 20；本輪單次MLX控制＋Apple回答已完成真機驗收，原生快速預設及機身設定寫入仍未完成。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
 
+## 相機關閉期間：軟體與 AI
+
+- [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
+- [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
+- [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
+- [x] 新增只讀匯入圖片 typed 計數／定位／存在性評测 API；8項純回歸通過，不提供相機動作。合計492項Release測試通過、3項opt-in跳過。
+- [x] [公開資料評測](Evaluation/Grounding/README.md) 的6張照片／18題metadata、來源／授權／SHA與獨立評分器已可重現，照片不進repo或App。
+- [ ] 在同一批資料上完成 typed 真模型評測，區分格式、事實、定位與延遲；pilot不當成全面品質排名。
+- [ ] 完成新路徑下的完整軟體 gate、UI與安裝包驗證。
+- [ ] 離線照片／短片工作區、明示觀察／協助取景入口、主體定位 UI、構圖測量及時間軸依研究次序落地；不以評測 API 代替完整產品功能。
+
 ## beta 1 發布與整理
 
 - [x] 使用者選定產品名稱 Pocket 3 Controller、GitHub 儲存庫名稱 `YuhuanStudio/Pocket3-Controller`；內部 bundle ID、簽署身分與設定沿用。

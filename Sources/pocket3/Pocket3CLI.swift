@@ -127,7 +127,19 @@ import MCP
                     arguments[key] = .number(Double(value))
                 }
             }
-            if ["ask", "evaluate-image", "evaluate-workflow"].contains(command) { arguments["question"] = .string(option("--question") ?? ""); arguments["engine"] = .string(option("--engine") ?? "apple") }
+            if ["ask", "evaluate-image", "evaluate-workflow", "evaluate-grounding"].contains(command) { arguments["question"] = .string(option("--question") ?? ""); arguments["engine"] = .string(option("--engine") ?? "apple") }
+            if command == "evaluate-grounding" {
+                guard let path = option("--image"), let kind = option("--kind"), ["count", "point", "absent"].contains(kind) else {
+                    throw BridgeFailure("usage", "Use evaluate-grounding --image FILE --kind count|point|absent --question TEXT --engine apple|mlx")
+                }
+                let url = URL(fileURLWithPath: path)
+                let properties = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+                guard properties.isRegularFile == true, (properties.fileSize ?? .max) <= 8_000_000 else {
+                    throw BridgeFailure("fixture_size", "Evaluation images must be regular files smaller than 8 MB")
+                }
+                arguments["imageData"] = .string(try Data(contentsOf: url).base64EncodedString())
+                arguments["kind"] = .string(kind)
+            }
             if ["evaluate-image", "evaluate-workflow", "evaluate-perception"].contains(command) {
                 guard let path = option("--image") else { throw BridgeFailure("usage", "Use --image with an evaluation image") }
                 let url = URL(fileURLWithPath: path)
@@ -178,7 +190,7 @@ import MCP
             }
             if command == "validation-setup" { arguments["access"] = .string(option("--access") ?? "observe") }
             if let dimension = option("--max-dimension"), let size = Int(dimension) { arguments["maxDimension"] = .number(Double(size)) }
-            guard ["status", "doctor", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel"].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
+            guard ["status", "doctor", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel"].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
             let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
             if let data = reply.imageJPEG {
                 let output = option("--output") ?? "pocket3-\(Int(Date().timeIntervalSince1970)).jpg"

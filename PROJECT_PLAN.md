@@ -1,12 +1,12 @@
-# DJI Pocket 3 MCP — 獨立專案計劃
+# Pocket 3 Controller — 專案計劃與研究基線
 
 建立日期：2026-09-07  
-目前狀態：已完成深度研究與首輪 USB 實機短測；尚未實作正式相機核心／MCP server，里程碑 0 尚未完整通過。
+目前狀態（2026-09-09）：App、相機核心、MCP／CLI 已實作；0.0.1 beta 1 已發布，beta 2 持續開發。最新完成項目與限制以 [TODO](TODO.md) 及 [硬體驗收](docs/HARDWARE_ACCEPTANCE.md) 為準；下方初期技術里程碑保留為研究基線。
 
 研究報告：[DEEP_RESEARCH.md](DEEP_RESEARCH.md)  
 實機紀錄：[HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md)
 
-產品形態與構建提案：[BUILD_PROPOSAL.md](BUILD_PROPOSAL.md)。新提案採用 macOS 27 原生 AI 觀察 App＋附帶 MCP／CLI，納入 Foundation Models／MLX／Core AI，正討論完整範圍；本文件的技術里程碑保留為研究基線；產品形態與技術選擇以新提案為準，尚未開始產品實作。
+產品形態與構建提案：[BUILD_PROPOSAL.md](BUILD_PROPOSAL.md)。已採用 macOS 27 原生 AI 觀察 App＋附帶 MCP／CLI，納入 Foundation Models／MLX／Core AI；後續擴充範圍見 [裝置功能路線圖](docs/DEVICE_CAPABILITY_ROADMAP.md)。
 
 **2026-09-07 研究後決策**
 
@@ -22,12 +22,12 @@
 
 **命名與專案邊界**
 
-- 專案名稱：**DJI Pocket 3 MCP**。
-- 本地目錄：`~/Documents/YuhuanStudio/DJI-Pocket3-MCP`。
-- 建議遠端 repository 名稱：`dji-pocket3-mcp`。
-- `MCP` 後綴讓用途容易辨識；底層設計仍應允許 CLI、直接函式呼叫及模型 API 的 function calling 使用。
+- 產品名稱：**Pocket 3 Controller**。
+- 本地目錄：`~/Documents/YuhuanStudio/Pocket3-Controller`。
+- 遠端 repository：`YuhuanStudio/Pocket3-Controller`。
+- MCP 為 App 的接入功能之一；另提供 CLI、相機核心及內建模型工具流程。
 - 這是非官方整合專案，與 DJI 無隸屬或背書關係。
-- 目前有研究文件、探測程式與短測證據；尚未初始化 Git、建立遠端 repository、選定本專案授權或發布。
+- Git、遠端 repository、MIT 授權及 beta 1 發布均已建立；公開版本與開發版本分開記錄。
 
 **為什麼獨立做**
 

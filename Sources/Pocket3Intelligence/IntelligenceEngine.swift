@@ -39,21 +39,26 @@ public actor IntelligenceEngine {
     private var observing = false
     private var activeContext: ObservationContext?
     private var responseTask: Task<ObservationAnswer, Error>?
+    private var groundingTask: Task<GroundedImageValue, Error>?
     private var jobEpoch = 0
     private let observationStageOverride: (@Sendable (ObservationModelStage) async throws -> ObservationAnswer)?
-    public init() { observationStageOverride = nil }
+    private let groundingStageOverride: (@Sendable (GroundedImageStage) async throws -> GroundedImageValue)?
+    public init() { observationStageOverride = nil; groundingStageOverride = nil }
     init(observationStage: @escaping @Sendable (ObservationModelStage) async throws -> ObservationAnswer) {
-        observationStageOverride = observationStage
+        observationStageOverride = observationStage; groundingStageOverride = nil
+    }
+    init(groundingStage: @escaping @Sendable (GroundedImageStage) async throws -> GroundedImageValue) {
+        observationStageOverride = nil; groundingStageOverride = groundingStage
     }
     public func status() -> IntelligenceStatus {
         let model = SystemLanguageModel.default
         switch model.availability {
-        case .available: return IntelligenceStatus(available: true, engine: "Apple 本機 AI", detail: "系統模型已準備好", isBusy: observing, phase: observing ? (responseTask == nil ? "preparing" : "generating") : "idle")
-        case .unavailable(let reason): return IntelligenceStatus(available: false, engine: "Apple 本機 AI", detail: "\(reason)", isBusy: observing, phase: observing ? (responseTask == nil ? "preparing" : "generating") : "idle")
+        case .available: return IntelligenceStatus(available: true, engine: "Apple 本機 AI", detail: "系統模型已準備好", isBusy: observing, phase: observing ? (responseTask == nil && groundingTask == nil ? "preparing" : "generating") : "idle")
+        case .unavailable(let reason): return IntelligenceStatus(available: false, engine: "Apple 本機 AI", detail: "\(reason)", isBusy: observing, phase: observing ? (responseTask == nil && groundingTask == nil ? "preparing" : "generating") : "idle")
         }
     }
     public func cancelObservation() async {
-        jobEpoch += 1; responseTask?.cancel(); await activeContext?.cancel()
+        jobEpoch += 1; responseTask?.cancel(); groundingTask?.cancel(); await activeContext?.cancel()
     }
     public func unloadModel() async throws {
         guard !observing else { throw BridgeFailure("ai_busy", "請先取消 AI 任務，等待結束後再卸載模型") }
@@ -217,6 +222,56 @@ public actor IntelligenceEngine {
         else { session = LanguageModelSession(instructions: instructions) }
         guard epoch == jobEpoch else { throw CancellationError() }
         return try await respond(session: session, prompt: Prompt { question; "Input: one still image, no audio or video."; Attachment(frame.pixelBuffer) }, seconds: 90)
+    }
+
+    /// Imported-image evaluation only. Shares the observation busy/cancellation
+    /// gate and cached model manager, with no CameraService or tools involved.
+    public func grounded(frame: FramePacket, question: String, kind: GroundedImageKind,
+                         engine: String = "apple") async throws -> GroundedImageResult {
+        guard !observing else { throw BridgeFailure("ai_busy", "另一個 AI 觀察正在執行") }
+        guard frame.info.timestampSource == "local_image_import", frame.info.deviceID == "local-evaluation" else {
+            throw BridgeFailure("grounding_input_invalid", "定位評測只接受本機匯入的靜態影像")
+        }
+        guard ["apple", "mlx"].contains(engine) else { throw BridgeFailure("invalid_engine", "未知模型引擎") }
+        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, question.count <= 2000 else {
+            throw BridgeFailure("invalid_question", "請輸入 1–2000 字的影像問題")
+        }
+        try Task.checkCancellation()
+        observing = true; jobEpoch += 1; let epoch = jobEpoch
+        let started = ProcessInfo.processInfo.systemUptime
+        let stage = GroundedImageStage(frame: frame, question: question, kind: kind, engine: engine)
+        let task = Task<GroundedImageValue, Error> { [localModel, groundingStageOverride] in
+            if let groundingStageOverride { return try await groundingStageOverride(stage) }
+            let backend: any LanguageModel
+            if engine == "mlx" { backend = try await localModel.load() }
+            else {
+                guard case .available = SystemLanguageModel.default.availability else {
+                    throw BridgeFailure("model_unavailable", "Apple 本機模型尚未準備好")
+                }
+                backend = SystemLanguageModel.default
+            }
+            try Task.checkCancellation()
+            return try await GroundedImageAnalysis.generate(stage: stage, backend: backend)
+        }
+        groundingTask = task
+        defer { task.cancel(); groundingTask = nil; observing = false }
+        let value = try await withTaskCancellationHandler {
+            try await withThrowingTaskGroup(of: GroundedImageValue.self) { group in
+                group.addTask { try await task.value }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(45))
+                    task.cancel()
+                    throw BridgeFailure("model_timeout", "影像定位評測超時")
+                }
+                defer { group.cancelAll() }
+                guard let result = try await group.next() else { throw CancellationError() }
+                return result
+            }
+        } onCancel: { task.cancel() }
+        try validateJob(epoch)
+        try value.validate(kind: kind)
+        return GroundedImageResult(kind: kind, value: value, frame: frame.info, engine: engine,
+            elapsedSeconds: ProcessInfo.processInfo.systemUptime - started)
     }
 
     public func recognizeText(frame: FramePacket) throws -> [String] {

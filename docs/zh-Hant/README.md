@@ -4,7 +4,7 @@
 
 ← [專案首頁](../../README.zh-Hant.md)
 
-目前下載是 **0.0.1 beta 1，build 9**；`main` 正在開發 **beta 2，build 11**。已安裝版本的功能範圍，以 [beta 1 發行頁](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 為準。
+目前下載是 **0.0.1 beta 1，build 9**；`main` 正在開發 **beta 2，build 21**。已安裝版本的功能範圍，以 [beta 1 發行頁](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 為準。
 
 ## 使用 App
 
@@ -14,6 +14,11 @@
 |---|---|
 | [專案概觀與安裝](../../README.zh-Hant.md) | 下載、首次啟動、Webcam 設定、功能與 MCP 設定 |
 | [完整使用指南](guide.md) | 從連接相機到本機 AI／MCP 的日常操作與問題排查 |
+
+## AI
+
+- [本機視覺 AI 深度研究](../AI_RESEARCH.md)：模型選擇、語意定位、追蹤、VLA 界線與可量測的產品優先次序。
+- [可重現的定位評測](../../Evaluation/Grounding/README.md)：公開資料來源與評分契約。
 
 ## 技術文件與驗證紀錄
 
