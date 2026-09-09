@@ -11,6 +11,7 @@
 - [x] 已對照 YunAudio 並落地純本機 Release 預備工具、資產白名單、checksums／notes／draft argv；9 項離線測試通過。[發布流程](docs/RELEASE.md)
 - [x] 已取得發布授權，建立獨立 Sparkle Keychain account 與公開更新設定，保留私鑰於 Keychain。
 - [x] 公開 build 9：乾淨來源 commit／tag、完整 gate、GitHub prerelease、四項資產公開下載、signed feed／ZIP 公鑰驗證已完成。[Release](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+- [x] 正式 Beta feed 已完成 Keychain 簽署與公開發布；重新取得的公開 feed／ZIP 經 CryptoKit 與本專案 Ed25519 公鑰驗證，`feedVerified=true`、`archiveVerified=true`。[公開簽章驗證](artifacts/public-beta1/public-signature-verification.json)。此項不包含跨版本安裝／重啟。
 - [x] 三語 README／文件索引／使用指南與九張排除取景照片的 UI 圖已完成，圖片與公開下載版本分別標明。[公開呈現清單](docs/RELEASE_PRESENTATION_CHECKLIST.md)
 - [x] beta 2 build 11 版面修正：AI卡等高與控制列齊、MCP長路徑、設定長標籤與更新列、權限圖示、診斷卡、音訊動態本地化；三語、兩種視窗尺寸已逐張視覺檢查，完整回歸測試另記。
 - [ ] 新版真正下載、更新安裝、重新啟動驗收；未公證可明示發布 beta，不把它描述成 Apple 已驗證。
@@ -22,19 +23,21 @@
 - [x] 不改Mac網路，重新配對同一BLE peer，取得電池100%／未充電及新鮮姿態。[遙測](artifacts/hardware-roll-2026-09-09/live-telemetry.json)
 - [x] BLE `00/99`只讀通道取得實際相機回覆：AF-C、WB Auto、曝光Auto／EV0。[三項查詢](artifacts/hardware-roll-2026-09-09/properties/result.json)
 - [x] 一般面板的只讀設定／讀取按鈕及5秒過期處理已完成，build 7 軟體 gate 和三項實機讀值通過。
-- [ ] 鏡頭狀態首9 bytes包含兩個約0.5的候選座標，正等待使用者在機身左上點按的比對；尚未發送tap AF或WB／曝光setter。[候選座標](artifacts/hardware-roll-2026-09-09/lens-coordinate-baseline.json)
+- [x] BLE lens 只讀連續觀察已取得基線31筆／12.009秒，以及兩輪機身操作期間的37／35筆候選座標；未發送相機設定寫入或保存照片。[基線](artifacts/focus-live-2026-09-09/baseline-summary.json)、[本輪紀錄](docs/HARDWARE_ACCEPTANCE.md#2026-09-09-ble-lens-連續讀回與機身操作)
+- [ ] 完成機身實際點按順序與 lens 座標的關聯驗證。第一輪使用者回報只點左上／右下、但誤觸鏡頭轉向，屬 confounded，不能解讀中途返回中心的原因；第二輪35筆、USB pan／tilt span均0，但實際操作順序仍待使用者確認。這些讀回不表示完整座標校準、App tap AF或光學合焦已完成。[第一輪條件](artifacts/focus-live-2026-09-09/body-tap/context.json)、[第二輪摘要](artifacts/focus-live-2026-09-09/axis-taps-7a14c2a3-c7fa-4c8f-b70e-e7c21c8b7c60/summary.json)
+- [x] 公開beta1的橫幅NV12補驗：720p30、1080p24、4K30均取得新影格；1080p30另有本版smoke。這是已完成的子矩陣，不覆蓋所有格式、方向／黑邊或後續candidate。[矩陣](artifacts/public-beta1/nv12-landscape-matrix/b765fe71-749f-4261-a966-126179c87fea/result.json)、[build9 smoke](artifacts/public-beta1/hardware-smoke/result.json)
 - [ ] 當前直幅輸出含機內影像的上下黑邊，方向／完整直幅內容仍待核對，不能僅憑1920高metadata算完成。
 
 目前可用主路徑是 **USB 取像＋USB 按住／拖曳位置控制**。Mac 必須保留原有網路與網際網路連線；App 不要求加入相機 Wi-Fi，開發 join RPC 亦拒絕該操作。BLE 配對、電池與姿態有實測證據，原生馬達控制及快速預設仍未完成。速度拉條已移除；拖曳距離控制輸入幅度，UVC raw 速率不宣稱為校準物理速度。
 
-## 最新 build 5：電量提醒與只讀姿態
+## 歷史 build 5：電量提醒與只讀姿態
 
 - [x] 已配對藍牙相機的低電量／持續下降提醒接入面板與原有 Yun 狀態膠囊。低量門檻20%；下降須多筆同peer/session有效資料，過期、斷線或重新選擇會清除，100%未充電不當故障。[規則與來源界線](docs/BLUETOOTH_TELEMETRY.md)
 - [x] 普通配對面板顯示既有04/05回報的偏航、俯仰、翻滾；5秒有效期、序列去重與連線清理，不發新查詢、不覆蓋frame callback，也不當作USB座標校準或原生馬達成功證據。
 - [x] 新增18項Core與1項App整合測試，本批總計351項Release測試（Intelligence21／Evaluation1／Core286／App43）。[日誌](artifacts/offline-telemetry-2026-09-09/final/test-gate.log)
 - [x] 331個三語字串、7個未修改共用設計檔；41張UI＝29張一般介面＋12張明示遙測fixture。視覺檢查修正繼承自音訊App的Pitch譯名為「俯仰」。[UI](artifacts/offline-telemetry-2026-09-09/final/ui-gate.log)、[視覺核對](artifacts/offline-telemetry-2026-09-09/final/visual-review.json)
 - [x] 更新簽章／偏好隔離、MCP／取消、搬移後MLX／Core AI推論與卸載、ZIP／DMG內版本及簽章再次通過。[產物](artifacts/offline-telemetry-2026-09-09/final/release-artifacts.json)、[包內核對](artifacts/offline-telemetry-2026-09-09/final/release-artifacts-verification.json)
-- [ ] 相機開啟後，核對新電量提醒、真實姿態更新、失聯過期及重連。新增fixture只驗證軟體與UI，不當本批實機遙測。
+- [ ] 真實低電量／持續下降提醒與失聯過期的完整UI場景仍待核對；重新配對後的電池／姿態及三項設定讀值已由上節實測補足，100%正常回報與fixture不能代替低量／下降告警驗收。
 
 build 5 App SHA-256：`314f6cc8c769ce6640e36cbab6f989f71a4e192ce85c6947061b3904247751ac`。本批仍未驗實機影音／動作、公開更新／公證及鎖屏下popover動畫。
 
@@ -90,13 +93,13 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 
 ## 相機重新開啟後的必要驗收
 
-- [ ] **Zoom Stop 新容差與穩定窗口重測。** 舊實機 hold target147、三次讀回147，稍後146；`zoom-final` 的 `passed=false` 保留。新規則最多一個 advertised step 且≤1%行程（本例1 raw），有整窗漂移檢查；尚未按新規則實機重跑。[離線依據](research/2026-09-08/zoom-readback-tolerance.md)
+- [x] **build11 Zoom moving-stop 新規則實機讀回通過。** 從100請求400，讀到194、再200且仍moving時Stop；hold target／observed均200，內部11筆／0.847秒、其後8筆獨立讀回／0.899秒均穩定，原請求以CancellationError結束。之後明確恢復100亦verified。[Stop結果](artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/result.json)、[恢復](artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/restoration.json)。只驗本次有界途中停止，不涵蓋倍率、物理煞停延遲、完整UI拖曳／所有視角。
 - [ ] Zoom 最新整合版的持續拖曳、取消／Stop、重連、gimbal 接管與新影格／視覺效果；校準倍率另行驗證。
 - [ ] 使用者要求的機身搖桿 double／triple **原生快速回中與前後切換**。單次 FE08 已提交但3秒無回覆、30筆姿態無變化；FE09未由此得到成功證據，慢速 USB approach 不作產品替代。[FE08](artifacts/hardware-resumed/native-recenter-result.json)
 - [ ] App 預覽 **tap AF** 的可用傳輸。使用者已確認 Pocket 3 **機身在 Webcam 模式可點按 AF**；當次 USB／AVFoundation 卻回報 point／auto／continuous 均 false。缺的是 host 控制路徑，不是機身 AF，也不能以 MF 拉條替代。[AVF 能力](artifacts/hardware-resumed/focus-capabilities.json)
 - [ ] 完整宣告視角範圍、各姿態、物理角度／速度、平滑度、停止延遲與尾移校準；不以一次大角度往返或穩定 USB 回讀宣稱全範圍／機械停止通過。
 - [ ] 收緊後的完整控制報告：每軸至少20次往返、中途停止、競爭控制、快速拔插／喚醒及動作後新影格。v3錯誤通過標記已撤銷；v4曾24次保持通過但首個目標未到位，整份仍未接受。
-- [ ] 最新版本橫幅／直幅、720p／1080p／4K、方向、黑邊、視窗縮放與重連矩陣。早期未充分暖機的 FPS 失敗保留，不當作已證明不相容；五種直幅通過也不涵蓋全部模式。
+- [ ] 完成最新candidate的直幅方向／完整內容、黑邊、視窗縮放與切換重連，以及尚未覆蓋的格式組合。公開beta1的NV12橫幅子矩陣已通過；早期五種直幅的通過受當次機身方向限制，不涵蓋全部模式。未充分暖機的FPS失敗保留，不當作已證明不相容。
 - [ ] UYVY 選項對應的 H.264 路徑與4K高幀率：多種 AVF output policy、延長20秒及解鎖環境仍無 sample callback；繼續核對 OBS 的實際影像及其他路徑，不能把選單宣告當可用。[解鎖對照](artifacts/hardware-resumed/uyvy-unlocked-20s.json)、[協議／格式證據](docs/HARDWARE_ACCEPTANCE.md)
 - [ ] BLE 原生持續馬達控制。有效時序的200 ms低速脈衝沒有位移；04/50 readiness 查詢無回覆。已配對／可讀姿態不等於可控制馬達。[脈衝](artifacts/hardware-resumed/ble-native-probe-2/result.json)、[readiness](artifacts/hardware-resumed/ble-readiness-result.json)
 - [ ] 真實相機下 App 內 Apple／MLX 與 MCP「先看→移動／縮放→新影格→回答」，包含拒絕、取消與錯誤恢復；目前真模型 zoom 的通過證據使用模擬相機。
@@ -107,7 +110,8 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 - [x] DUML CRC／fragment／ACK／session 邊界、BLE 配對及原生 UDP codec 已實作；Wi-Fi join／datalink 保留研究，不是主流程或可用控制的前提。
 - [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；首批協議整理不代表全部設定可寫。[路線圖](docs/DEVICE_CAPABILITY_ROADMAP.md)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
-- [ ] 確定正式 appcast／公鑰／archive 發布位置，驗證真實更新下載及安裝；測試 feed 不當正式服務。
+- [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
+- [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。
 - [ ] Developer ID／公證及公開分發驗收。本機版已有固定開發簽署，不再稱無有效本機身分；公開發布條件尚未完成，也不阻止可離線完成的工作。
 
 ## 歷史證據與已被取代的狀態
@@ -117,8 +121,8 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 - 2026-09-08 的軌跡批次另有重建／打包摘要，也不代表後續 zoom、focus、原生預設或語言修正的新包通過。[摘要](artifacts/hardware-resumed/github-trajectory-summary.json)
 - 早期「尚缺完整長測執行器／只有模擬 timeline」與首輪音訊配置停流的紀錄保留；後續已補執行器並取得上列指定模式1800秒通過，不再寫成現在仍完全沒有30分鐘影音證據。
 - 早期「桌面鎖定／首次藍牙授權未決定／新簽署 App 尚未授權」均是當時限制；後續解鎖、藍牙配對與跨建置相機權限保留已有證據。
-- 早期「DUML 電池只用 fixture／尚未接入即時遙測」已由 BLE 實測取代；現在相機關機，不能把歷史電量當目前即時狀態。
-- Zoom 舊短窗口停在164／返回停在128的未確認結果保留；後續100→200→100已匹配，**新 Stop 容差仍待實機**。[舊窗口](artifacts/hardware-resumed/zoom-live/result.json)、[新往返與舊 Stop 判定](artifacts/hardware-resumed/zoom-final/result.json)
+- 早期「DUML 電池只用 fixture／尚未接入即時遙測」及「相機關機待恢復」已由重新配對／即時回報補足；每次仍以當前session與有效期判定，不能把歷史電量當目前狀態。
+- Zoom 舊短窗口停在164／返回停在128的未確認結果保留，後續100→200→100已匹配。舊`zoom-final`整體`passed=false`不改寫；本次新Stop規則通過見上節。另一輪100→200太快到位，未捕捉途中Stop，`not_confirmed/passed=false`亦保留，不能借靜止Stop算通過。[舊窗口](artifacts/hardware-resumed/zoom-live/result.json)、[舊Stop判定](artifacts/hardware-resumed/zoom-final/result.json)、[未捕捉中途停止](artifacts/zoom-moving-stop-2026-09-09/36fbbb32-110d-4f0d-88bc-2d6fd01a15f1/result.json)
 - 直接單次180°未到位、BLE脈衝／FE08未觀察到作用、H.264無回呼及未完成的MLX嘗試均不刪除、不改成通過。
 
 ## 1.0 後、尚未提升為首發需求

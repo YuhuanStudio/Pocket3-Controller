@@ -4,12 +4,16 @@
 
 2026-09-08 使用者已恢復 Pocket 3，實機驗收正在進行。韌體由使用者在機身確認：主韌體 `01.06.10.04`、相機 `10.00.50.51`、雲台 `01.00.15.81`。
 
+**2026-09-09更新：** 公開beta1為build9；後續build11新增Zoom途中Stop讀回成功及BLE lens連續觀察，詳細條件見本文件末段。第一輪機身點按有轉向干擾，第二輪操作順序仍待確認，兩者均不當作完整AF或座標校準。下方較早日期的失敗、測試範圍與限制保留，不是目前功能清單。
+
+公開Beta feed已完成Keychain簽署與發布，公開下載的feed／ZIP經本專案Ed25519公鑰驗證通過；真正跨版本更新安裝及重啟仍待驗收。[公開簽章結果](../artifacts/public-beta1/public-signature-verification.json)。此為發布證據，不是相機控制證據。
+
 ## 30 分鐘影音
 
 先由操作者啟動開發工作階段，接上相機並在 App 連接：
 
 ```sh
-open 'dist/Pocket 3 MCP.app' --args --hardware-validation
+open 'dist/Pocket 3 Controller.app' --args --hardware-validation
 python3 Scripts/validate-stream.py --seconds 1800 --audio
 ```
 
@@ -158,4 +162,24 @@ far的此次位移約為near的3.83倍，支持拖曳距離已影響實際USB回
 
 **USB變焦：** 當次宣告範圍100…400、step1、writable=true。100→200只送一次SET，舊約0.64秒讀回窗口結束時observed=164，故`completed=false`、`verified=false`並保留未確認結果，沒有自動重送。[首輪結果](../artifacts/hardware-resumed/zoom-live/result.json)。後續只讀取得current=200，主驗證程序目視before／zoom200影像確有放大。[稍後到位回讀](../artifacts/hardware-resumed/zoom-live/settled.json)。這是延遲到位證據，不把最初未確認覆寫成即時成功，也不據raw數值宣稱校準倍率或光學變焦。
 
-返回100的舊窗口同樣只到128，仍記為未確認。[舊返回結果](../artifacts/hardware-resumed/zoom-live/restore-old-window.json)。源碼已將settling改為最少2秒、最多6秒的只讀等待，不重送SET；新判準的實機往返驗證尚待完成，不能先勾變焦整合已全部通過。
+返回100的舊窗口同樣只到128，仍記為未確認。[舊返回結果](../artifacts/hardware-resumed/zoom-live/restore-old-window.json)。後續settling改為最少2秒、最多6秒的只讀等待、不重送SET，100→200→100已取得匹配回讀；當時`zoom-final`的整體Stop判定仍為`passed=false`，不改寫為通過。[後續往返與舊Stop結果](../artifacts/hardware-resumed/zoom-final/result.json)。本次新Stop規則的獨立實機結果見下節。
+
+## 2026-09-09 BLE lens 連續讀回與機身操作
+
+本批使用既有`00/99 cam_lens_state`單次訂閱，觀察最多12秒的命名property回報；`cameraSettingsWritten=false`、`imagesSaved=false`。只解讀原始值前9 bytes的Float32候選x/y，保存每筆接收時間，不把property ACK或候選座標當作App對焦寫入成功。
+
+- **基線：** 31筆有效樣本、0筆無效、12.009秒，均約`(0.499992, 0.499992)`，名義接收間隔約0.405秒。這證明連續回報可用，不是座標校準。[基線摘要](../artifacts/focus-live-2026-09-09/baseline-summary.json)
+- **第一輪 body-tap：** 37筆／12.019秒，候選點分為中心6筆、約`(0.098894, 0.160204)`13筆、中心7筆、約`(0.908202, 0.762798)`11筆。使用者後續明確說只點左上／右下，但誤觸鏡頭轉向；context已記`confound=native_direction_change`、`calibrationConfirmed=false`。因此整輪屬有干擾觀察，**不能把中途回中心解釋成AF自動返回、模式規則或點位映射**。[序列](../artifacts/focus-live-2026-09-09/body-tap/series.json)、[分組](../artifacts/focus-live-2026-09-09/body-tap/groups.json)、[使用者補充與條件](../artifacts/focus-live-2026-09-09/body-tap/context.json)
+- **第二輪 axis-taps：** 35筆／12.006秒，前2筆約`(0.230198, 0.387793)`、後33筆約`(0.519707, 0.317296)`，USB位置樣本的pan／tilt span均為0。指示為左中、再上中，但**實際操作順序仍待使用者確認**；沒有USB位置變化不會自動證明點按順序、座標軸或完整映射。兩筆／三十三筆分組及時序均保留。[摘要](../artifacts/focus-live-2026-09-09/axis-taps-7a14c2a3-c7fa-4c8f-b70e-e7c21c8b7c60/summary.json)、[完整序列](../artifacts/focus-live-2026-09-09/axis-taps-7a14c2a3-c7fa-4c8f-b70e-e7c21c8b7c60/series.json)、[操作指示](../artifacts/focus-live-2026-09-09/axis-taps-7a14c2a3-c7fa-4c8f-b70e-e7c21c8b7c60/context.json)
+
+上述觀察沒有發送tap AF、WB或曝光setter，也沒有改變Mac網路。下一步仍需確認機身操作與時間／座標對照、可用的host寫入路徑及其實際結果；原生快速preset、完整方向／鏡像校準及光學合焦都不據此勾選完成。
+
+## 2026-09-09 build11 Zoom 途中停止與恢復
+
+新規則已在一次有界真機操作通過：原始值100，單次請求目標400；客戶端讀到194、再200，且請求仍為`moving`，此時發出全域Stop。保持目標／回讀均200；Stop內部摘要為11筆、穩定0.847秒、`toleranceRaw=1`，其後8筆獨立只讀樣本亦全為200、跨0.899秒。`stop.verified=true`、`zoomStop.verified=true`，整體`passed=true/status=complete`；原400請求以CancellationError結束，沒有到400再把靜止Stop當途中停止。[完整結果](../artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/result.json)
+
+該驗證器按政策停留在已確認的200，不自動恢復。其後明確恢復100，得到target／observed同為100、13筆回讀、穩定0.251秒及`completed=true/verified=true`。[獨立恢復結果](../artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/restoration.json)
+
+前一輪100→200過快完成，沒有捕捉到moving Stop，保留`status=not_confirmed/passed=false`；雖然當時目標回讀及後續靜止保持成功，也不能當途中Stop驗收。[前輪未確認](../artifacts/zoom-moving-stop-2026-09-09/36fbbb32-110d-4f0d-88bc-2d6fd01a15f1/result.json)。更早hold147後晚一筆146的`zoom-final`失敗紀錄同樣保留。
+
+本次通過只確認該session的原始縮放途中保持及後續穩定讀回。報告明列內部Stop逐筆樣本未匯出、全域Stop端點沒有原子expected-session參數（客戶端在請求前後檢查身分），不能擴張成所有競爭／重連情況已驗收。沒有拍照；不宣稱校準倍率、物理煞停延遲、完整UI拖曳、Roll停止或全部視角完成。

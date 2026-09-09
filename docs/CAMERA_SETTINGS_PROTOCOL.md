@@ -2,7 +2,15 @@
 
 > 本文件的 `artifacts/` 與 `research/` 連結指向本機證據目錄，不隨公開原始碼發布；版本摘要與公開下載驗證見 Release 說明。
 
-研究日期：2026-09-08。固定來源為 Kaze for DJI `341a35de18493ff61f97c93b8b10161a7512aa36`。本文件只建立可實作的範圍與驗證條件；**沒有實作 setter、沒有連接或寫入本機相機，也沒有把上游硬體測試當成我們已驗收**。來源全文、MIT 授權及 16 份檔案的 SHA-256 見 [PROVENANCE](../research/2026-09-08/camera-settings/PROVENANCE.md)。
+初次研究日期：2026-09-08；進度更新：2026-09-09。固定設定來源為 Kaze for DJI `341a35de18493ff61f97c93b8b10161a7512aa36`。初次研究沒有操作相機；後續已實作首批 command encoder／純狀態管理與 BLE 只讀面板，並在本機取得 AF-C、WB Auto、曝光 Auto／EV0。**WB／EV／AF 模式 setter 仍未通過本機寫入驗收。** 來源全文、MIT 授權及16份檔案的 SHA-256 見 [PROVENANCE](../research/2026-09-08/camera-settings/PROVENANCE.md)，逐批結果見[硬體驗收](HARDWARE_ACCEPTANCE.md)。
+
+## 2026-09-09：點選對焦的新增證據
+
+本機 `cam_lens_state` 的47-byte值可從 offset1／5讀到有限的 Float32 LE 候選座標。新的12秒被動觀察已取得31筆中心基準；機身點按後也有非中心值。第一次左上／右下操作混入使用者誤按鏡頭轉向，第二次軸向操作仍待使用者核對，因此尚未完成預覽座標、鏡像及方向校準；也沒有光學合焦成功的遙測欄位。
+
+補充來源 OpenPocketCine `9c4e7334ca4d935c5d467abecaf8f968f7927d84` 提供四步點選流程：`02/22`準備測光、`02/30`焦點區域、`02/68`測光提示、`02/32`提交區域，皆由`02→01`、flags`40`送出。它的實際呼叫走 datalink，不能直接當成 Pocket3 BLE 可寫的證據。[命令](https://github.com/erik-sutton95/OpenPocketCine/blob/9c4e7334ca4d935c5d467abecaf8f968f7927d84/Sources/OpenPocketViewCore/Commands.swift#L270-L314)、[呼叫順序](https://github.com/erik-sutton95/OpenPocketCine/blob/9c4e7334ca4d935c5d467abecaf8f968f7927d84/ios/OpenPocketCine/CameraSession.swift#L2197-L2214)
+
+本案開發探針限制單次序列、同 BLE peer/session 與新鮮 USB capture，逐步區分提交／ACK／座標讀回。Point、Hint、Commit 均要求800ms內成功ACK；其中要求 Hint 成功才繼續是本案較保守的政策，上游會忽略該步ACK失敗。中途取消或拒絕不重送、不猜恢復值；已提交步驟可能影響測光，必須保留部分完成狀態。一般預覽點選功能仍須取得可用傳輸和座標映射的本機證據才開放。
 
 ## 建議先做什麼
 
