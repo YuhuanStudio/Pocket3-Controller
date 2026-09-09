@@ -313,6 +313,7 @@
   "The operation timed out. Check the camera before trying again.",
   "The operation was cancelled.",
   "The preview changed. Choose the focus point again.",
+  "The requested camera adjustment was not completed. Rephrase the request or check camera control access.",
   "The stop could not be confirmed. Check the camera before continuing.",
   "Third-party licences",
   "This camera connection does not expose point focus control.",
