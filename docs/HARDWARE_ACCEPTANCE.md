@@ -326,3 +326,13 @@ USB前後位置亦相同，cleanup target／observed保持−14040／6120且veri
 四項均使用capture-only隔離（skipUVC）、有界6秒窗口，無runtime error或interruption回報，也沒有保存影像。NV12正向對照證明新設定確實可產生壓縮資料；另外三項仍沒有可交給解碼器的sample，不能把它們列為H.264／4K60已可用。[結果](../artifacts/h264-output-build19/result.json)
 
 測完清除App的診斷環境、正常重啟並恢復3840×2160@30 NV12→BGRA與USB控制。暖機後約29.983fps、影格age約0.0223秒，raw100、manual、motion inactive；早期重連後1秒的22.93fps讀值保留，不將它改寫成已穩定30fps。[恢復](../artifacts/h264-output-build19/normal-restored.json)、[暖機後](../artifacts/h264-output-build19/normal-restored-settled.json)
+
+## 2026-09-09 build20：逾時保持與取消回歸
+
+正常settling deadline耗盡也會呼叫與取消相同的`stopCurrentZoom`，僅處理仍由原motion owner持有的連線。先保留原未完成縮放的snapshot，再等待獨立Stop，回覆仍是`completed=false/verified=false`；停止成功不會把原目標算成已達成。新增第6項Core回歸實際等完settling及hold窗口（3.325秒），假UVC恰有`[200,160]`兩次寫入，沒有重試200或自行恢復100，AI動作權限撤回。完整Release suite為471項，468執行通過、3項opt-in跳過。[回歸](../artifacts/mcp-cancel-build20/release-tests.log)
+
+乾淨來源`27b6119ca6ffef6d3538403aeb19b5341b389dab`的build20已安裝，App SHA-256為`643395599dd4ae38c361fc54df47427cdf1aa7ba410846c119157a64c7e408b9`。[建置](../artifacts/mcp-cancel-build20/build-metadata.json)
+
+新版本再次進行實際MCP縮放中取消：原目標400，取消後保持200，獨立穩定窗口1.089544秒、clientStopSent=false、helper仍可用、取消回覆被抑制。這驗證共用清理重構沒有破壞已開始請求的真機取消；正常逾時路徑仍是上面的假UVC回歸，沒有製造或宣稱真機逾時成功。[實機取消](../artifacts/mcp-zoom-cancellation/522db46d-a71a-4358-8f3f-75ee0023e89e/result.json)
+
+其後明確恢復100並確認verified。最終4K30 NV12→BGRA約29.989fps、新影格age約0.00374秒、manual且motion inactive。[恢復](../artifacts/mcp-zoom-cancellation/522db46d-a71a-4358-8f3f-75ee0023e89e/explicit-restoration.json)、[最終狀態](../artifacts/mcp-cancel-build20/final-status.json)。本輪無照片或網路切換；原生preset、UYVY／4K60、早到取消、EOF及實際遠端桌面仍不據此宣稱完成。

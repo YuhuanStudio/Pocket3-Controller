@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 19；本輪單次MLX控制＋Apple回答已完成真機驗收，原生快速預設及機身設定寫入仍未完成。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
+更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 20；本輪單次MLX控制＋Apple回答已完成真機驗收，原生快速預設及機身設定寫入仍未完成。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
 
 ## beta 1 發布與整理
 
@@ -124,7 +124,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 - [ ] BLE 原生持續馬達控制。有效時序的200 ms低速脈衝沒有位移；04/50 readiness 查詢無回覆。已配對／可讀姿態不等於可控制馬達。[脈衝](artifacts/hardware-resumed/ble-native-probe-2/result.json)、[readiness](artifacts/hardware-resumed/ble-readiness-result.json)
 - [x] build17的外部packaged MCP完成真機縮放100→200→100，三張同session新影格與兩次精確回讀均通過；獨立manual模式的合法縮放請求回`access_denied`且原值不變。只保留圖片hash／大小，不保存照片。[縮放](artifacts/mcp-zoom-hardware/6c10d197-9e1e-4b4b-b518-348f56141472/result.json)、[拒絕](artifacts/mcp-zoom-hardware/cea79505-a683-4c99-9b54-f10aedd42c4e/result.json)
 - [x] build19實際MCP縮放中取消通過：原目標400，兩筆moving讀回105／200後送notifications/cancelled，App自行保持200；獨立穩定1.087秒、helper仍可用、取消回覆被抑制、客戶端未發Stop。之後另外恢復100／manual。舊請求／replacement、failedhold阻擋及重複授權的5項Core回歸通過。[結果](artifacts/mcp-zoom-cancellation/59d10e7c-ccc3-4a09-9094-54486775c469/result.json)、[恢復](artifacts/mcp-zoom-cancellation/59d10e7c-ccc3-4a09-9094-54486775c469/explicit-restoration.json)
-- [x] build20來源補上正常縮放逾時的相同保持流程；回覆仍保留原動作completed=false／verified=false。新增第6項Core測試實際等完逾時與保持窗口，確認只寫目標200和保持160、不重試200。完整Release 468項執行通過、3项opt-in跳過。[測試](artifacts/mcp-cancel-build20/release-tests.log)
+- [x] build20來源補上正常縮放逾時的相同保持流程；回覆仍保留原動作completed=false／verified=false。新增第6項Core測試實際等完逾時與保持窗口，確認只寫目標200和保持160、不重試200。完整Release 468項執行通過、3項opt-in跳過。build20實機MCP取消亦再次保持200、獨立穩定1.090秒且clientStopSent=false，另已恢復100／manual。[測試](artifacts/mcp-cancel-build20/release-tests.log)、[實機](artifacts/mcp-zoom-cancellation/522db46d-a71a-4358-8f3f-75ee0023e89e/result.json)
 - [ ] 完成真實相機下模型與外部MCP的取消、重連、錯誤恢復及移動後新影格完整流程。MLX與MLX控制／Apple回答的單次真機任務已有上節證據；外部MCP縮放與拒絕已補足，但不代表所有語句／全視角已驗收。
 - [ ] Mac Studio遠端桌面／無實體螢幕驗收：區分顯示器關閉、GUI鎖定、使用者登出及整機睡眠；涵蓋預覽、MCP、手動拖曳／放開及遠端斷線。核心控制無螢幕亮起門檻；AppKit合成事件／popover動畫的不可用不能等同相機服務失效。本次MCP操作前displayAsleep=false，**尚非關螢幕或實際遠端驗收**。[環境](artifacts/mcp-zoom-hardware/build17-context.json)
 - [x] build18來源加入隨取像生命週期管理的ProcessInfo活動：防止閒置系統睡眠及App Nap，允許螢幕休眠，Stop／失敗／實際session停止或斷線時釋放，舊generation通知不得釋放新活動。460項Release測試執行通過、3項opt-in跳過；另8個MCP離線流程含磁碟失敗清理通過。實際App已確認取像時一份防閒置系統睡眠保護、暫停後零份、重連後一份，沒有display-sleep保護；最終4K30新影格及manual恢復。[測試](artifacts/capture-activity-build18/release-tests.log)、[實機生命週期](artifacts/capture-activity-build18/live-activity-lifecycle.json)
