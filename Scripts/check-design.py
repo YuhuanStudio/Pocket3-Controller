@@ -38,7 +38,7 @@ for path in (root/'Sources/Pocket3BridgeApp').glob('*.swift'):
  assert 'Pocket 3 Bridge' not in text,f'Old visible product name in {path}'
  if path.name!='AppErrorPresentation.swift':
   assert not re.search(r'\b(?:message|audioMessage|issue|lastError|bridgeConnectionError)\s*=\s*error\.localizedDescription',text),f'Raw exception assigned to user-facing text in {path}'
- keys.update(json.loads('"'+m+'"') for m in re.findall(r'(?:loc|caption|heading|setting|shortcut|permissionCard)\("((?:[^"\\]|\\.)*)"',text))
+ keys.update(json.loads('"'+m+'"') for m in re.findall(r'(?:loc|localize|caption|heading|setting|shortcut|permissionCard)\("((?:[^"\\]|\\.)*)"',text))
 missing={lang:sorted(keys-table.keys()) for lang,table in tables.items()}
 assert not any(missing.values()),missing
 info=plistlib.loads((root/'Resources/Info.plist').read_bytes())

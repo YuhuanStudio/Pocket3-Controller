@@ -10,6 +10,18 @@ extension AppModel {
         guard CommandLine.arguments.contains("--hardware-validation") else { throw BridgeFailure("development_only", "Interface capture requires a development launch") }
         guard !capturingUI else { throw BridgeFailure("capture_busy", "Another interface capture is running") }
         guard let path = request.arguments["output"].string, path.hasPrefix("/"), path.hasSuffix(".png") else { throw BridgeFailure("capture_path", "UI capture requires an absolute PNG path") }
+        let requestedSurface = request.arguments["surface"].string ?? "main"
+        var requestedSize: NSSize?
+        if request.arguments["width"] != .null || request.arguments["height"] != .null {
+            let minimum = requestedSurface == "settings" ? NSSize(width: 620, height: 440) : MainWindowLayout.minimumSize
+            guard ["main", "settings"].contains(requestedSurface),
+                  let width = request.arguments["width"].number, let height = request.arguments["height"].number,
+                  width.isFinite, height.isFinite,
+                  (minimum.width...2400).contains(width), (minimum.height...1600).contains(height) else {
+                throw BridgeFailure("capture_dimensions", "Pass both width and height within the supported window limits")
+            }
+            requestedSize = NSSize(width: width, height: height)
+        }
         capturingUI = true
         let oldPage = selectedPage, oldAppearance = NSApp.appearance, oldLanguage = YunStrings.language, oldMessage = message
         let oldThemeLanguage = YunTheme.shared.language
@@ -71,18 +83,28 @@ extension AppModel {
         }
         if let fixtureMessage = request.arguments["message"].string { message = fixtureMessage }
         let oldFrame = window.frame
+        var scrollPositions: [(NSScrollView, NSPoint)] = []
         defer {
             capturePreview = nil; selectedPage = oldPage; message = oldMessage; NSApp.appearance = oldAppearance
             window.setFrame(oldFrame, display: true)
+            for (scroll, point) in scrollPositions {
+                scroll.contentView.scroll(to: point)
+                scroll.reflectScrolledClipView(scroll.contentView)
+            }
             if surface == "settings" { SettingsWindow.selection = oldSection; if !settingsWasVisible { window.close() } }
             transient?.close(); capturingUI = false
         }
         NSApp.appearance = NSAppearance(named: request.arguments["appearance"].string == "light" ? .aqua : .darkAqua)
-        if request.arguments["minimum"].bool != false && ["settings", "main"].contains(surface) {
+        if let requestedSize {
+            window.setFrame(NSRect(origin: window.frame.origin, size: requestedSize), display: true)
+        } else if request.arguments["minimum"].bool != false && ["settings", "main"].contains(surface) {
             let size = surface == "settings" ? NSSize(width: 620, height: 440) : NSSize(width: 1180, height: 720)
             window.setFrame(NSRect(origin: window.frame.origin, size: size), display: true)
         }
-        if let frame = try? service.capture.store.latest(),
+        // Public UI captures omit sensor images unless the caller explicitly
+        // requests one. The live preview view is also detached while capturing.
+        if request.arguments["includeCameraPreview"].bool == true,
+           let frame = try? service.capture.store.latest(),
            let data = try? await Task.detached(operation: { try frame.jpeg(maxDimension: 1280) }).value,
            frame.info.sessionID == service.capture.store.stats().sessionID { capturePreview = NSImage(data: data) }
         // Reattach settings so a temporary language selection invalidates the
@@ -90,13 +112,29 @@ extension AppModel {
         if surface == "settings" { SettingsWindow.refreshContent(model: self) }
         try await Task.sleep(for: .milliseconds(350))
         guard let frame = window.contentView?.superview else { throw BridgeFailure("render_failed", "No theme frame") }
-        frame.layoutSubtreeIfNeeded(); frame.displayIfNeeded()
+        frame.layoutSubtreeIfNeeded()
+        if request.arguments["preserveScroll"].bool != true {
+            for scroll in interfaceScrollViews(in: frame) {
+                guard let document = scroll.documentView else { continue }
+                scrollPositions.append((scroll, scroll.contentView.bounds.origin))
+                let top = document.isFlipped ? document.bounds.minY
+                    : max(document.bounds.minY, document.bounds.maxY - scroll.contentView.bounds.height)
+                scroll.contentView.scroll(to: NSPoint(x: document.bounds.minX, y: top))
+                scroll.reflectScrolledClipView(scroll.contentView)
+            }
+            frame.layoutSubtreeIfNeeded()
+        }
+        frame.displayIfNeeded()
         guard let bitmap = frame.bitmapImageRepForCachingDisplay(in: frame.bounds) else { throw BridgeFailure("render_failed", "Unable to allocate the window bitmap") }
         frame.cacheDisplay(in: frame.bounds, to: bitmap)
         guard let data = bitmap.representation(using: .png, properties: [:]) else { throw BridgeFailure("render_failed", "Unable to encode the window") }
         try FileManager.default.createDirectory(at: URL(fileURLWithPath: path).deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: URL(fileURLWithPath: path), options: .atomic)
-        return ServiceReply(id: request.id, result: .object(["saved": .string(path), "width": .number(Double(bitmap.pixelsWide)), "height": .number(Double(bitmap.pixelsHigh)), "chromeIntegrated": .bool(WindowChrome.isIntegrated(window)), "surface": .string(surface), "simulation": .bool(["telemetry-fixture", "roll-fixture", "settings-readback-fixture"].contains(surface)), "layout": try .encode(layoutBounds), "method": .string("AppKit window rendering; camera layer represented by a fresh still")]))
+        return ServiceReply(id: request.id, result: .object(["saved": .string(path), "width": .number(Double(bitmap.pixelsWide)), "height": .number(Double(bitmap.pixelsHigh)), "chromeIntegrated": .bool(WindowChrome.isIntegrated(window)), "surface": .string(surface), "simulation": .bool(["telemetry-fixture", "roll-fixture", "settings-readback-fixture"].contains(surface)), "cameraPhase": .string(status?.phase ?? "unknown"), "cameraPreviewIncluded": .bool(capturePreview != nil), "layout": try .encode(layoutBounds), "method": .string("AppKit window rendering; sensor preview omitted by default")]))
+    }
+
+    private func interfaceScrollViews(in view: NSView) -> [NSScrollView] {
+        (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap { interfaceScrollViews(in: $0) }
     }
 
     func checkInterface(_ request: ServiceRequest) async throws -> ServiceReply {

@@ -68,6 +68,9 @@ final class AppUpdateController: NSObject, SPUUpdaterDelegate, NSWindowDelegate 
         let isEvidence = CommandLine.arguments.contains("--hardware-validation")
         let feed = bundle.object(forInfoDictionaryKey: "SUFeedURL") as? String
         let publicKey = bundle.object(forInfoDictionaryKey: "SUPublicEDKey") as? String
+        if isEvidence, !verifiesFeed, Self.hasValidConfiguration(feed: feed, publicKey: publicKey) {
+            statusMessage = "Updates are paused for this validation session."
+        }
         let fixture = Self.allowsLoopbackFixture(bundleIdentifier: bundle.bundleIdentifier, feed: feed,
             enabled: environment["POCKET3_UPDATE_FIXTURE"] == "loopback",
             explicitLaunch: CommandLine.arguments.contains("--update-verification"))

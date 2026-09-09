@@ -136,6 +136,14 @@ import MCP
                 if let message = option("--message") { arguments["message"] = .string(message) }
                 arguments["language"] = .string(option("--language") ?? "zh-Hant")
                 arguments["minimum"] = .bool(!args.contains("--default-size"))
+                arguments["includeCameraPreview"] = .bool(args.contains("--include-camera-preview"))
+                arguments["preserveScroll"] = .bool(args.contains("--preserve-scroll"))
+                for dimension in ["width", "height"] where args.contains("--" + dimension) {
+                    guard let raw = option("--" + dimension), let value = Double(raw), value.isFinite else {
+                        throw BridgeFailure("capture_dimensions", "Capture dimensions must be finite numbers")
+                    }
+                    arguments[dimension] = .number(value)
+                }
             }
             if command == "validation-stream-status" { arguments["fullReport"] = .bool(args.contains("--full")) }
             if command == "validation-stream-start" {

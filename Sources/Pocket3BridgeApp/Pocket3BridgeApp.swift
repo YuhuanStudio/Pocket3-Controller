@@ -120,7 +120,8 @@ final class AppModel {
     var busy = false
     var connecting = false
     var message: String?
-    var audioMessage = loc("Microphone off by default")
+    var audioState: AppAudioMessage = .idle
+    var audioMessage: String { audioState.formatted() }
     var aiTask: Task<Void, Never>?
     var started = false
     var bridgeRunning = false
@@ -480,9 +481,14 @@ final class AppModel {
         catch { message = AppErrorPresentation.message(error) }
     }
     func audioTest() async {
-        audioMessage = loc("Testing audio for 3 seconds…")
-        do { let stats = try await service.audioTest(); audioMessage = String(format: loc("%d channels · %d Hz · %d samples; no audio saved"), stats.channels, Int(stats.sampleRate), stats.sampleFrames) }
-        catch { audioMessage = AppErrorPresentation.message(error, fallback: .audio) }
+        audioState = .testing
+        do { audioState = .completed(try await service.audioTest()) }
+        catch {
+            // Retain the existing bounded technical diagnostic independently
+            // from the key that is translated when either view renders.
+            _ = AppErrorPresentation.message(error, fallback: .audio)
+            audioState = .failed(AppErrorPresentation.key(for: error, fallback: .audio))
+        }
     }
     func exportDiagnostics() async {
         let status = await service.status()
@@ -604,6 +610,7 @@ struct RootView: View {
         .yunWindowBackground()
         .foregroundStyle(Yun.Palette.textPrimary)
         .tint(Yun.Palette.accent)
+        .environment(\.locale, theme.language == .system ? .autoupdatingCurrent : Locale(identifier: theme.language.rawValue))
         .focusEffectDisabled()
         .background(WindowChromeInstaller().frame(width: 0, height: 0))
         .background(RemembersFrame(name: "Pocket3BridgeMainWindow").frame(width: 0, height: 0))
@@ -690,15 +697,17 @@ struct RootView: View {
                         }
                     }
                 }.padding(.bottom, Yun.Space.md)
-            }.scrollIndicators(.never).yunScrollFade().frame(width: MainWindowLayout.sourceWidth).measuredForLayout("source")
+            }.scrollIndicators(.automatic).yunScrollFade().frame(width: MainWindowLayout.sourceWidth).measuredForLayout("source")
             VStack(alignment: .leading, spacing: Yun.Space.md) {
                 heading(loc("Live view"), loc("Live preview · images shared with AI on request"))
                 YunCard(padding: 0) {
                     ZStack {
+                        let previewIsActive = ["ready", "moving", "stopping", "validating", "soaking"].contains(model.status?.phase ?? "")
                         Yun.Palette.elevated
                         if let image = model.capturePreview { Image(nsImage: image).resizable().scaledToFit() }
-                        else { Preview(session: model.service.capture.session, frame: model.status?.capture.frame, focus: model.focus) }
-                        if !["ready", "moving", "stopping", "validating", "soaking"].contains(model.status?.phase ?? "") {
+                        else if !model.capturingUI { Preview(session: model.service.capture.session, frame: model.status?.capture.frame, focus: model.focus) }
+                        else if previewIsActive { YunEmptyState(symbol: "eye.slash", message: loc("Preview hidden for this screenshot")) }
+                        if !previewIsActive {
                             YunEmptyState(symbol: model.status?.phase == "paused" ? "eye.slash" : "camera", message: model.status?.phase == "paused" ? loc("Observation paused\nReconnect to continue") : model.status?.phase == "stalled" ? loc("Camera stream interrupted\nReconnect or check other camera apps") : loc("Connect Pocket 3\nGive AI a view of your workspace"))
                         }
                     }.frame(maxWidth: .infinity, minHeight: 265, maxHeight: .infinity).clipShape(.rect(cornerRadius: Yun.Radius.card))
@@ -788,14 +797,22 @@ struct RootView: View {
             VStack(alignment: .leading, spacing: Yun.Space.xl) {
                 heading(loc("On-device AI engines"), loc("Choose a model for camera images. Unload it when it is no longer needed."))
                 HStack(alignment: .top, spacing: Yun.Space.lg) {
-                    engineCard(name: loc("Apple on-device AI"), icon: "apple.logo", subtitle: "Foundation Models 27", status: model.modelStatus?.available == true ? loc("Available") : loc("Not ready")) {
+                    engineCard(id: "appleEngine", name: loc("Apple on-device AI"), icon: "apple.logo", subtitle: "Foundation Models 27", status: model.modelStatus?.available == true ? loc("Available") : loc("Not ready")) {
                         Text(loc(model.modelStatus?.detail ?? "Checking the model")).font(Yun.Text.body).foregroundStyle(Yun.Palette.textSecondary)
+                    } capabilities: {
                         YunWrap(spacing: 6) { YunBadge(loc("Image understanding")); YunBadge(loc("Structured answers")); YunBadge(loc("On-device")) }
+                    } actions: {
                         Button(loc("Check again")) { Task { model.modelStatus = await model.intelligence.status() } }.buttonStyle(YunButtonStyle(.secondary, small: true))
                     }
-                    engineCard(name: "Qwen 3.5 · 4B", icon: "square.stack.3d.up", subtitle: "MLX Swift · 4-bit", status: model.localPhaseTitle) {
-                        Text(model.localModelDescription).font(Yun.Text.body).foregroundStyle(Yun.Palette.textSecondary)
-                        if model.localStatus?.phase == "downloading" { ProgressView(value: model.localStatus?.progress ?? 0); Button(loc("Cancel download")) { Task { await model.intelligence.localModel.cancelDownload() } }.buttonStyle(YunButtonStyle(.secondary, small: true)) }
+                    engineCard(id: "mlxEngine", name: "Qwen 3.5 · 4B", icon: "square.stack.3d.up", subtitle: "MLX Swift · 4-bit", status: model.localPhaseTitle) {
+                        VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                            Text(model.localModelDescription).font(Yun.Text.body).foregroundStyle(Yun.Palette.textSecondary)
+                            if model.localStatus?.phase == "downloading" { ProgressView(value: model.localStatus?.progress ?? 0) }
+                        }
+                    } capabilities: {
+                        YunWrap(spacing: 6) { YunBadge(loc("Vision model")); YunBadge("GPU"); YunBadge("Apache-2.0") }
+                    } actions: {
+                        if model.localStatus?.phase == "downloading" { Button(loc("Cancel download")) { Task { await model.intelligence.localModel.cancelDownload() } }.buttonStyle(YunButtonStyle(.secondary, small: true)) }
                         else {
                             YunWrap(spacing: 8) {
                                 Button(model.localStatus?.available == true ? loc("Load model") : loc("Download model")) { model.prepareLocalModel() }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(model.aiWorking)
@@ -805,14 +822,20 @@ struct RootView: View {
                                 }
                             }
                         }
-                        YunWrap(spacing: 6) { YunBadge(loc("Vision model")); YunBadge("GPU"); YunBadge("Apache-2.0") }
                     }
-                }
+                }.fixedSize(horizontal: false, vertical: true)
                 heading(loc("Integration"), loc("Use the same camera through MCP and the command line."))
                 YunCard {
                     VStack(alignment: .leading, spacing: Yun.Space.md) {
                         HStack { Label("MCP", systemImage: "point.3.connected.trianglepath.dotted").font(Yun.Text.title); Spacer(); Button(loc("Copy configuration")) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(model.mcpConfiguration, forType: .string) }.buttonStyle(YunButtonStyle(.secondary, small: true)) }
-                        Text(model.mcpConfiguration).font(Yun.Text.mono).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(Yun.Space.lg).background(Yun.Palette.elevated, in: .rect(cornerRadius: Yun.Radius.control))
+                        ScrollView(.horizontal) {
+                            Text(model.mcpConfiguration).font(Yun.Text.mono).textSelection(.enabled)
+                                .fixedSize(horizontal: true, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(Yun.Space.lg)
+                        .background(Yun.Palette.elevated, in: .rect(cornerRadius: Yun.Radius.control))
+                        .measuredForLayout("mcpConfiguration")
                         Text(loc("Choose AI access in the camera window. Closing the window keeps the app in the menu bar; quitting ends the service.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                         YunDivider()
                         HStack {
@@ -862,7 +885,11 @@ struct RootView: View {
         case .cancelled: loc("Cancelled")
         }
     }
-    private func engineCard<Content: View>(name: String, icon: String, subtitle: String, status: String, @ViewBuilder content: () -> Content) -> some View {
+    private func engineCard<Description: View, Capabilities: View, Actions: View>(
+        id: String, name: String, icon: String, subtitle: String, status: String,
+        @ViewBuilder description: () -> Description, @ViewBuilder capabilities: () -> Capabilities,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
         YunCard {
             VStack(alignment: .leading, spacing: Yun.Space.lg) {
                 HStack(alignment: .top, spacing: Yun.Space.md) {
@@ -870,9 +897,12 @@ struct RootView: View {
                     VStack(alignment: .leading, spacing: 5) { Text(name).font(Yun.Text.title); Text(loc(subtitle)).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }
                     Spacer(minLength: 0); YunBadge(status)
                 }
-                content()
-            }.frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-        }.frame(maxWidth: .infinity)
+                description().fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                capabilities().measuredForLayout(id + "Capabilities")
+                actions().measuredForLayout(id + "Actions")
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity).measuredForLayout(id)
     }
     private var diagnostics: some View {
         ScrollView {
@@ -892,8 +922,8 @@ struct RootView: View {
                                 .buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.ready || model.aiWorking)
                             Text(loc("Runs small round trips and stopping checks for about two minutes. Stop operation cancels the test."))
                                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }.measuredForLayout("cameraDiagnostics")
                     YunCard {
                         VStack(alignment: .leading, spacing: Yun.Space.md) {
                             Text(loc("Local perception")).font(Yun.Text.title)
@@ -901,9 +931,9 @@ struct RootView: View {
                             Text(loc("Detect common objects on request. Core AI selects the compute device.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                             Button(loc("Detect objects")) { Task { await model.detectObjects() } }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(!model.ready || model.busy)
                             if let p = model.perceptionResult { detail(loc("Inference time"), String(format: "%.2f s", p.inferenceSeconds)); Text(p.objects.map { "\($0.label) \(Int($0.confidence*100))%" }.joined(separator: " · ")).font(Yun.Text.caption); if p.objects.isEmpty { Text(loc("No objects met the confidence threshold.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) } }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
+                        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }.measuredForLayout("perceptionDiagnostics")
+                }.fixedSize(horizontal: false, vertical: true)
                 YunCard {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text(loc("USB audio")).font(Yun.Text.title); Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }; Spacer(); Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.ready) }
                 }

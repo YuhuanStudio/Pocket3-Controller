@@ -1367,3 +1367,7 @@
 "Camera settings could not be read. Check the paired camera and try again." = "無法讀取相機設定，請確認已配對的相機後再試一次。";
 
 "Experimental" = "實驗";
+
+"Preview hidden for this screenshot" = "此截圖已隱藏取景畫面";
+
+"Updates are paused for this validation session." = "此驗證工作階段已暫停更新檢查。";

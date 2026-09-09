@@ -1367,3 +1367,7 @@
 "Camera settings could not be read. Check the paired camera and try again." = "Camera settings could not be read. Check the paired camera and try again.";
 
 "Experimental" = "Experimental";
+
+"Preview hidden for this screenshot" = "Preview hidden for this screenshot";
+
+"Updates are paused for this validation session." = "Updates are paused for this validation session.";
