@@ -267,3 +267,15 @@ build17將**命令前取得基線的等待上限**設為3秒；半秒穩定、�
 這次是真實外部MCP工具路徑，不含LLM回答、雲台移動、MCP取消／重連競爭或倍率校準。Global Stop沒有原子expected-session參數，失敗清理的限制保留在執行器；不能據單次成功擴大成所有競爭情況通過。
 
 使用者提出Mac Studio遠端桌面情境後，另檢查螢幕判定的用途：`screenUnavailable`只出現在popover介面驗證；相機服務沒有實體螢幕亮起的許可條件。早先螢幕不可用時取像仍更新，但這次操作前11:25:16Z的獨立讀值已為`displayAsleep=false/displayActive=true`，因此**不列為關螢幕／headless／遠端桌面成功**。顯示器關閉、登入工作階段鎖定和整台Mac睡眠須分開驗收；現有`willSleep`處理會停止操作並suspend相機。[版本與環境](../artifacts/mcp-zoom-hardware/build17-context.json)
+
+## 2026-09-09 build18：背景取像的活動保護
+
+新增`CaptureActivityLease`，在AVFoundation成功啟動並通過格式／generation檢查後持有`.userInitiated`活動。依本機SDK定義，它包含`idleSystemSleepDisabled`而不包含`idleDisplaySleepDisabled`；普通停止、失敗或實際session停止／裝置斷線時釋放。延遲通知先記錄generation，再於capture queue檢查當前session／裝置，不能因舊stop事件釋放新活動。明確系統睡眠仍走既有best-effort Stop／suspend流程，不宣稱OS保證等待機械停止。
+
+完整Release suite共有463項，其中460項執行通過、3項opt-in跳過（兩個模型任務與一個recorded evaluation）；新增4項activity生命週期測試通過。另一個SDK平台差異的首次編譯失敗已保留，修正後才記錄通過。7個共用Yun設計檔未改、366個三語字串檢查通過。[Release log](../artifacts/capture-activity-build18/release-tests.log)
+
+由乾淨來源`f54b37499c96420f55615e275d89317a76370f93`打包並安裝build18，App SHA-256為`a98ab3614ed120fa25f5e1b70261864ff88d8e9a85dea5fa49f57f38c89e5220`。[建置身分](../artifacts/capture-activity-build18/build-metadata.json)
+
+實機透過`pmset -g assertions`確認：取像時App PID持有一份名為`Pocket 3 active camera capture`的`PreventUserIdleSystemSleep`；`validation-pause`後App活動為空，重新連接同相機後恰有一份新活動。各窗口均沒有App的`PreventUserIdleDisplaySleep`。capture session確實更新，最終4K30 NV12約29.999fps、新影格age約0.00143秒、manual且motion inactive，縮放讀回100。[實機生命週期](../artifacts/capture-activity-build18/live-activity-lifecycle.json)、[最終取像](../artifacts/capture-activity-build18/final-status.json)
+
+本輪沒有拍照、修改系統睡眠偏好、要求螢幕亮起或切換Mac網路。這是活動建立／釋放及新連線的實測；**未實際讓顯示器關閉或整機睡眠，也未進行Mac Studio遠端桌面手勢／斷線驗收**。App仍是登入後的使用者服務，不是登入前daemon。
