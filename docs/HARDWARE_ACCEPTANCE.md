@@ -241,3 +241,19 @@ Apple的獨立文字計畫提取已保存三份JSON及來源／instructions hash
 解鎖後的另一輪native-recenter，基線只收到2筆，間隔1.4174705秒；超過既有0.35秒新鮮間隔限制，穩定窗口重設，`baselineDurationSeconds=0/baselineStable=false`，以`bluetooth_recenter_baseline`中止，`localSubmitted=false`。**這一輪沒有發FE08，不能寫成FE08再次發送後無效。** 當時USB前後及cleanup target／observed均pan12240、tilt0，cleanup verified只代表USB保持。[結果](../artifacts/full-pair-control-2026-09-09/native-recenter-unlocked-5427968d-0030-4be5-bfaf-544fe80c2071/native-recenter.stdout.json)、[當次後續相機狀態](../artifacts/full-pair-control-2026-09-09/native-recenter-unlocked-5427968d-0030-4be5-bfaf-544fe80c2071/after-camera.stdout.json)
 
 主驗證程序稍後另查到pan0，期間未追加restore；原因未知，不能歸因到未送出的FE08，也不能將上述12240的原始snapshot改寫成0。程式審查確認native preset活動期間原本會關閉keepalive及`drainWrites`；root已修正讓只讀基線／觀察階段保留會話維持流量，原有0.5秒穩定基線及其他門檻不變。此修正尚未在新code實測，不能先認定基線問題或原生回中已解決。
+
+## 2026-09-09 build16–17：混合AI與介面更新
+
+build16的實際模型分工為MLX執行相機工具、App更新影格、Apple回答。一次真機任務耗時38.039秒，模型工具依序為capture／zoom status／單次raw200／capture，縮放回讀確認；之後App取得同裝置、同session且較新的影格才交給Apple。`executionRoles`明示`controllerEngine=mlx`、`answerEngine=apple`、`finalFrameRefresh=app`；host取像沒有冒充第五個模型工具呼叫。11項檢查通過，恢復raw100與manual亦確認。[完整結果](../artifacts/live-ai-2026-09-09/hybrid-build16-c7cf0025-cc5e-4b3a-b4fa-c0b684493ecd/result.json)、[角色與工具](../artifacts/live-ai-2026-09-09/hybrid-build16-c7cf0025-cc5e-4b3a-b4fa-c0b684493ecd/observation.stdout.json)
+
+這證明該混合流程可完成這次請求，不代表Apple獨立控制、所有自然語句、外部MCP或完整視角均已驗收。失敗的Apple文字計畫實驗已從產品移除；純Apple觀察仍不需要MLX，選MLX時維持其完整工具／回答流程。沒有自動下載模型，未保存相機照片。
+
+build16通過454項Release測試；新增角色文字與縮放紀錄顯示後，12張介面截圖已逐張檢視，九張更新到公開文件。三語卡片／控制列／狀態條保持對齊，所有圖均遮蔽感測器畫面，沒有私人`/Users`路徑；最小視窗左欄仍可滾動。[視覺記錄](../artifacts/hybrid-ui-build16/visual-review.json)、[公開圖片](images/manifest.json)
+
+## 2026-09-09 原生基線等待：取得資料與發送命令分開
+
+build16保留session housekeeping後，一次原生回中前的基線有5筆、穩定0.474秒，未達0.5秒；另一個只讀暖機窗口取得15筆並觀察到合格半秒穩定區段，但後續probe重新收集的基線仍不足。兩輪`localSubmitted=false`，沒有FE08的裝置反應可供判斷；不把它們當作命令已發送後失敗。[第一輪](../artifacts/native-heartbeat-build16/summary.json)、[只讀暖機](../artifacts/native-heartbeat-build16/warm-telemetry.json)、[後續未提交](../artifacts/native-heartbeat-build16/native-recenter-warm.json)
+
+之後用USB恢復pan目標0，回讀−360在既有容差內確認，tilt0；BLE在恢復前的yawRaw23與當時UVC pan8280分別記錄，不宣稱已完成跨座標校準。[恢復前](../artifacts/native-heartbeat-build16/before-restore-camera.json)、[USB恢復](../artifacts/native-heartbeat-build16/restore-usb.stdout.json)
+
+build17將**命令前取得基線的等待上限**設為3秒；半秒穩定、至少3筆、最大樣本間隔0.35秒及角度span0.25°不變。用途在型別上分開，所有既有Stop呼叫仍使用1.5秒；命令後觀察仍為3秒、單次提交而不重送。459項Release測試通過。安裝後新輪次回報螢幕不可用，manual offset未開始，pan／tilt保持0，因此FE08沒有送出。新基線實測與原生快速預設仍待完成。[測試](../artifacts/native-baseline-build17/release-tests.log)、[本輪未執行結果](../artifacts/native-baseline-build17/result.json)、[建置](../artifacts/native-baseline-build17/build-metadata.json)

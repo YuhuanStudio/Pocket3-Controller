@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，本段記錄時已安裝 beta 2 開發 build 15，candidate build 16 正在編譯／測試；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
+更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 17；本輪單次MLX控制＋Apple回答已完成真機驗收，原生快速預設及機身設定寫入仍未完成。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
 
 ## beta 1 發布與整理
 
@@ -16,16 +16,21 @@
 - [x] beta 2 build 11 版面修正：AI卡等高與控制列齊、MCP長路徑、設定長標籤與更新列、權限圖示、診斷卡、音訊動態本地化；三語、兩種視窗尺寸已逐張視覺檢查，完整回歸測試另記。
 - [ ] 新版真正下載、更新安裝、重新啟動驗收；未公證可明示發布 beta，不把它描述成 Apple 已驗證。
 
-## 本輪 build13–15 真機 AI、設定與完整配對
+## 本輪真機 AI、設定與完整配對
+
+- [x] **build16混合流程真機通過**：MLX執行4個模型工具／單次raw200，App另取一次較新的影格，Apple回答；38.039秒、11項檢查通過，`executionRoles`明示`mlx / apple / app`，之後恢復100及manual。這不代表Apple模型獨立完成控制。[結果](artifacts/live-ai-2026-09-09/hybrid-build16-c7cf0025-cc5e-4b3a-b4fa-c0b684493ecd/result.json)
+- [x] 移除未可靠運作的Apple文字計畫實驗，保留取消／新影格／單一控制者檢查；UI顯示角色分工，縮放紀錄不再誤標成擷取圖片。build16共454項、build17共459項Release測試通過。[build16](artifacts/hybrid-ai-build16/release-tests.log)、[build17](artifacts/native-baseline-build17/release-tests.log)
+- [x] build16的12張介面圖已逐張檢視，包含三語相機大／小視窗、引擎與外觀；九張公開圖更新，無感測器畫面或私人路徑。[視覺紀錄](artifacts/hybrid-ui-build16/visual-review.json)、[公開圖片manifest](docs/images/manifest.json)
+- [ ] build17原生preset基線等待由1.5秒改為3秒，仍需0.5秒／3樣本／0.35秒間隔／0.25°穩定，Stop本身保持1.5秒上限。新實機輪次因螢幕不可用而未能建立手動偏移，沒有送FE08，不能當新基線或原生預設已通過。[本輪結果](artifacts/native-baseline-build17/result.json)
 
 - [x] **MLX真機觀察／縮放任務通過**：34.111秒，實際工具順序`capture_frame → camera_zoom_status → camera_set_zoom(raw200) → capture_frame`；只有一次縮放，回讀verified、動作後及最終影格來自真實裝置／同session。之後恢復raw100及manual，cleanup確認。[結果](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/result.json)、[工具與影格](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/observation.stdout.json)
 - [x] 該次MLX卸載後cache為0、active為4036 bytes；只描述MLX配置器，不寫成記憶體完全歸零或App RSS歸零。[卸載後](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/after-model-unload.json)
-- [ ] **Apple真機動作流程仍未完成**：build13回答有內容但`actions=[]`、raw仍100；build14文字計畫錯誤拒絕合法raw200，build15明確raw150也被拒絕，均未移動縮放。三份失敗保留；build16的新混合流程／roles修正尚未實測，不先標通過。[build13](artifacts/live-ai-2026-09-09/apple-6a154bec-4fd6-410d-b486-25a41b7abb21/result.json)、[build14](artifacts/live-ai-2026-09-09/apple-plan-15eb7103-ea06-41b9-8672-a8ef120d59a3/result.json)、[build15](artifacts/live-ai-2026-09-09/apple-build15-explicit-7d730d99-86c1-40b4-a1df-3da430989fbc/result.json)
+- Apple原始流程及文字計畫的三份失敗保留：build13 `actions=[]`、build14錯拒合法raw200、build15錯拒raw150，均未縮放。後續改由MLX負責控制、Apple負責回答，通過範圍見上列混合流程。[build13](artifacts/live-ai-2026-09-09/apple-6a154bec-4fd6-410d-b486-25a41b7abb21/result.json)、[build14](artifacts/live-ai-2026-09-09/apple-plan-15eb7103-ea06-41b9-8672-a8ef120d59a3/result.json)、[build15](artifacts/live-ai-2026-09-09/apple-build15-explicit-7d730d99-86c1-40b4-a1df-3da430989fbc/result.json)
 - [x] 三份獨立Apple計畫提取結果與來源／instructions hash已保存；此為模型提取診斷，不是額外硬體成功。[來源紀錄](artifacts/apple-plan-extraction-2026-09-09/source-provenance.json)、[自然語句](artifacts/apple-plan-extraction-2026-09-09/current-natural.json)、[明確raw150](artifacts/apple-plan-extraction-2026-09-09/current-raw150.json)、[另一schema對照](artifacts/apple-plan-extraction-2026-09-09/associated-raw150.json)
 - [x] 完整配對已到`credentialsReady`，且`samePrimaryRoute=true`、沒有呼叫Mac Wi-Fi join；只記錄狀態，不輸出密碼。[配對](artifacts/full-pair-control-2026-09-09/paired.json)、[網路核對](artifacts/full-pair-control-2026-09-09/network-check.json)
 - [ ] **WB writer仍未生效**：pairOnly/build14與完整配對/build15各只送一次5600K，分別7／6筆回報仍Auto、都無ACK及matching readback，`applied=false`。原Auto未變，沒有restore寫入，也沒有盲重試。[pairOnly](artifacts/camera-settings-live-2026-09-09/white-balance-129a5c24-0e92-4fd2-acce-9596ce96fb68/result.json)、[full pair](artifacts/full-pair-control-2026-09-09/white-balance-43db759b-752c-4983-be27-ebbd04da92ae/result.json)
 - [x] 使用者開啟視窗後，UI檢查`animationVerified=true`，可見manual button放開流程通過，pan由0到11880；不把先前screenUnavailable下的offset timeout當控制功能成功。[解鎖UI](artifacts/full-pair-control-2026-09-09/ui-check-after-user-open.json)、[手動操作](artifacts/full-pair-control-2026-09-09/manual-button-release-unlocked.json)
-- [ ] 完整配對下的原生回中仍待真正提交與觀察：前次USB offset timeout時未發FE08；解鎖後另次只有2筆基線、間隔1.417秒，`baselineStable=false/localSubmitted=false`，所以不是FE08再次發送後失敗。USB cleanup在12240保持確認；稍後status回0原因未知，不歸因FE08。native preset等待期間保留heartbeat／drain的新修正已寫入，尚未實測。[offset前置失敗](artifacts/full-pair-control-2026-09-09/native-recenter-faa6cbbb-c2d1-42a5-a7d5-284bc00329fe/result.json)、[未提交的回中](artifacts/full-pair-control-2026-09-09/native-recenter-unlocked-5427968d-0030-4be5-bfaf-544fe80c2071/native-recenter.stdout.json)
+- [ ] 完整配對下的原生回中仍待真正提交與觀察：前次USB offset timeout時未發FE08；解鎖後另次只有2筆基線、間隔1.417秒，`baselineStable=false/localSubmitted=false`，所以不是FE08再次發送後失敗。USB cleanup在12240保持確認；稍後status回0原因未知，不歸因FE08。native preset保留heartbeat／drain後的收樣結果另記於build16–17段落；仍未取得這個完整配對條件下已提交FE08的有效結果。[offset前置失敗](artifacts/full-pair-control-2026-09-09/native-recenter-faa6cbbb-c2d1-42a5-a7d5-284bc00329fe/result.json)、[未提交的回中](artifacts/full-pair-control-2026-09-09/native-recenter-unlocked-5427968d-0030-4be5-bfaf-544fe80c2071/native-recenter.stdout.json)
 
 ## 相機重新開啟後的新證據
 
