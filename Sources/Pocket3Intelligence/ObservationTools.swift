@@ -3,7 +3,7 @@ import FoundationModels
 import Pocket3Core
 import Vision
 
-@Generable enum StepDirection: String, Sendable { case left, right, up, down, home, front, back }
+@Generable enum StepDirection: String, Sendable, Codable { case left, right, up, down, home, front, back }
 public struct ObservationAction: Codable, Sendable {
     public let tool: String
     public let detail: String
@@ -26,8 +26,11 @@ public struct ObservationResult: Sendable {
     public let profile: String
     public let engine: String
     public let elapsedSeconds: Double
+    public var planning: JSONValue? = nil
     public func metadata() throws -> JSONValue {
-        .object(["answer": .string(answer.answer), "evidence": .array(answer.evidence.map(JSONValue.string)), "uncertainties": .array(answer.uncertainties.map(JSONValue.string)), "frame": try .encode(frame), "actions": try .encode(actions), "profile": .string(profile), "engine": .string(engine), "elapsedSeconds": .number(elapsedSeconds)])
+        var fields: [String: JSONValue] = ["answer": .string(answer.answer), "evidence": .array(answer.evidence.map(JSONValue.string)), "uncertainties": .array(answer.uncertainties.map(JSONValue.string)), "frame": try .encode(frame), "actions": try .encode(actions), "profile": .string(profile), "engine": .string(engine), "elapsedSeconds": .number(elapsedSeconds)]
+        if let planning { fields["planning"] = planning }
+        return .object(fields)
     }
 }
 
@@ -83,11 +86,11 @@ actor ObservationContext {
             try await check()
         } catch { releaseTool(); throw error }
     }
-    func capture() async throws -> Prompt {
+    func capture(after: TimeInterval = 0) async throws -> Prompt {
         try await admit()
         defer { releaseTool() }
         try checkLocal()
-        let frame = try await service.frame(origin: origin)
+        let frame = try await service.frame(origin: origin, after: after)
         try await check(); latest = frame
         actions.append(.init(tool: "capture_frame", detail: "Fresh camera frame", motion: nil, frameID: frame.info.id))
         return try Prompt { "Fresh frame metadata: \(try JSONValue.encode(frame.info).pretty)"; Attachment(frame.pixelBuffer) }
@@ -201,7 +204,37 @@ actor ObservationContext {
         if moving || zooming { _ = try? await service.stopIfInteractionCurrent(stamp) }
     }
     func actionEvidence() -> [ObservationAction] { actions }
-    func result(answer: ObservationAnswer, engine: String, elapsed: Double) async throws -> ObservationResult {
+    func currentFrame() async throws -> FramePacket { try await check(); return latest }
+
+    /// Apple separates the operator's text-only action plan from visual
+    /// answering. These are App-executed plan steps, not model ToolCall events.
+    /// Validate the complete plan before the first read or write; later failure
+    /// never advances to another requested action or retries a submitted one.
+    func executeApplePlan(_ plan: AppleObservationPlan, zoomCapabilities: USBZoomCapabilities?) async throws {
+        try plan.validate(canMove: canMove, canZoom: canZoom, zoomCapabilities: zoomCapabilities)
+        try await check()
+        _ = try await capture(after: latest.info.receivedUptime)
+        guard !plan.steps.isEmpty else { return }
+        for step in plan.steps {
+            try await check()
+            switch step.kind {
+            case .zoom:
+                guard let rawValue = step.rawValue else { throw BridgeFailure("request_not_fulfilled", "縮放計畫缺少原始目標值") }
+                _ = try await readZoomStatus()
+                _ = try await zoom(rawValue)
+            case .move:
+                guard let direction = step.direction else { throw BridgeFailure("request_not_fulfilled", "移動計畫缺少方向") }
+                _ = try await move(direction)
+                guard let motion = actions.last?.motion, motion.accepted, motion.completed, motion.verified else {
+                    _ = try? await service.stopIfInteractionCurrent(stamp)
+                    throw BridgeFailure("movement_unconfirmed", "計畫中的移動未確認，已停止後續操作")
+                }
+            }
+        }
+        _ = try await capture(after: latest.info.receivedUptime)
+    }
+
+    func result(answer: ObservationAnswer, engine: String, elapsed: Double, planning: JSONValue? = nil) async throws -> ObservationResult {
         try await check()
         try AnswerQuality.validateExecution(answer: ([answer.answer] + answer.evidence + answer.uncertainties).joined(separator: "\n"),
             hasVerifiedMovement: actions.contains { $0.motion?.verified == true && $0.motion?.completed == true },
@@ -210,7 +243,7 @@ actor ObservationContext {
         let (metadata, jpeg) = try await Task.detached(priority: .userInitiated) { try frame.jpegWithInfo(maxDimension: 1280) }.value
         try await check()
         return ObservationResult(answer: answer, frame: metadata, imageJPEG: jpeg, actions: actions,
-            profile: canMove || canZoom ? "observe-and-adjust" : "observe", engine: engine, elapsedSeconds: elapsed)
+            profile: canMove || canZoom ? "observe-and-adjust" : "observe", engine: engine, elapsedSeconds: elapsed, planning: planning)
     }
 }
 

@@ -5,7 +5,7 @@ import Testing
 @testable import Pocket3Intelligence
 
 private actor ZoomObservationFixture: ObservationCamera {
-    enum Behavior: Sendable { case verified, unconfirmed, throwing, staleFrame, wrongFrameSession, delayed }
+    enum Behavior: Sendable { case verified, unconfirmed, throwing, staleFrame, wrongFrameSession, delayed, delayedBegin, delayedInitialFrame }
     private let pixels: CVPixelBuffer
     private let behavior: Behavior
     private var access: AccessMode
@@ -31,11 +31,13 @@ private actor ZoomObservationFixture: ObservationCamera {
         pixels = buffer; self.behavior = behavior; self.access = access
         self.moveValidated = moveValidated; self.capabilities = capabilities
     }
-    func beginObservation(origin: RequestOrigin) throws -> ObservationStart {
-        .init(stamp: .init(sessionID: sessionID, epoch: epoch), canMove: access == .control && moveValidated,
+    func beginObservation(origin: RequestOrigin) async throws -> ObservationStart {
+        if behavior == .delayedBegin { await withCheckedContinuation { pending = $0 } }
+        return .init(stamp: .init(sessionID: sessionID, epoch: epoch), canMove: access == .control && moveValidated,
             canZoom: access == .control, zoomCapabilities: capabilities)
     }
-    func frame(origin: RequestOrigin, after: Double) throws -> FramePacket {
+    func frame(origin: RequestOrigin, after: Double) async throws -> FramePacket {
+        if behavior == .delayedInitialFrame && frameCount == 0 { await withCheckedContinuation { pending = $0 } }
         frameCount += 1; frameAfter.append(after)
         let time = behavior == .staleFrame && after > 0 ? after - 0.1 : ProcessInfo.processInfo.systemUptime
         let frameSession = behavior == .wrongFrameSession && after > 0 ? "different-session" : sessionID
@@ -217,4 +219,86 @@ private func waitForZoom(_ camera: ZoomObservationFixture) async throws {
     let old = Data(#"{"tool":"capture_frame","detail":"old frame","motion":null,"frameID":"old-id"}"#.utf8)
     let action = try JSONDecoder().decode(ObservationAction.self, from: old)
     #expect(action.zoom == nil && action.postActionFrame == nil && action.failureCode == nil)
+}
+
+@Test func applePlanExecutesValidatedZoomAndReturnsOnlyRealActionEvidence() async throws {
+    let camera = try ZoomObservationFixture()
+    let (context, start) = try await zoomContext(camera)
+    let plan = AppleObservationPlan(adjustmentRequested: true,
+        steps: [.init(kind: .zoom, direction: nil, rawValue: 200)], clarification: nil)
+    try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
+    let actions = await context.actionEvidence()
+    #expect(actions.map(\.tool) == ["capture_frame", "camera_zoom_status", "camera_set_zoom", "capture_frame"])
+    #expect(await camera.writes == [200])
+    let postZoom = try #require(actions[2].postActionFrame)
+    let finalFrame = try await context.currentFrame()
+    #expect(finalFrame.info.sessionID == start.stamp.sessionID)
+    #expect(finalFrame.info.receivedUptime > postZoom.receivedUptime && finalFrame.info.id != postZoom.id)
+    let readOnlyTools = ObservationToolSet.make(context: context, canMove: false, canZoom: false)
+    #expect(!readOnlyTools.contains { $0.name == "camera_set_zoom" || $0.name == "move_gimbal" })
+}
+
+@Test func applePlanValidatesAllStepsBeforeSendingAndStopsAtFirstUnconfirmedWrite() async throws {
+    let camera = try ZoomObservationFixture()
+    let (context, start) = try await zoomContext(camera)
+    let invalid = AppleObservationPlan(adjustmentRequested: true, steps: [
+        .init(kind: .zoom, direction: nil, rawValue: 200),
+        .init(kind: .zoom, direction: nil, rawValue: 401)], clarification: nil)
+    do { try await context.executeApplePlan(invalid, zoomCapabilities: start.zoomCapabilities); Issue.record("Invalid complete plan ran") } catch {}
+    #expect(await camera.zoomAttempts == 0)
+    #expect(await context.actionEvidence().isEmpty)
+
+    let uncertain = try ZoomObservationFixture(behavior: .unconfirmed)
+    let (other, otherStart) = try await zoomContext(uncertain)
+    let valid = AppleObservationPlan(adjustmentRequested: true, steps: [
+        .init(kind: .zoom, direction: nil, rawValue: 200),
+        .init(kind: .zoom, direction: nil, rawValue: 150)], clarification: nil)
+    do { try await other.executeApplePlan(valid, zoomCapabilities: otherStart.zoomCapabilities); Issue.record("Unconfirmed first step completed a plan") } catch {}
+    #expect(await uncertain.writes == [200])
+    #expect(await uncertain.zoomAttempts == 1)
+    #expect(await uncertain.stopCount == 1)
+    #expect(await other.actionEvidence().last?.failureCode == "zoom_unconfirmed")
+}
+
+@Test func applePlanCancellationWhileAwaitingZoomNeverAdvancesToNextStep() async throws {
+    let camera = try ZoomObservationFixture(behavior: .delayed)
+    let (context, start) = try await zoomContext(camera)
+    let plan = AppleObservationPlan(adjustmentRequested: true, steps: [
+        .init(kind: .zoom, direction: nil, rawValue: 200),
+        .init(kind: .zoom, direction: nil, rawValue: 150)], clarification: nil)
+    let task = Task { try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities) }
+    try await waitForZoom(camera)
+    await context.cancel(); await camera.release()
+    do { try await task.value; Issue.record("Cancelled plan completed") } catch {}
+    #expect(await camera.zoomAttempts == 1)
+    #expect(await camera.writes.isEmpty)
+    #expect(await camera.stopCount == 1)
+}
+
+@Test func cancellingObservationDuringPreparationPreventsPlanningAndCameraWrites() async throws {
+    for behavior in [ZoomObservationFixture.Behavior.delayedBegin, .delayedInitialFrame] {
+        let camera = try ZoomObservationFixture(behavior: behavior)
+        let engine = IntelligenceEngine()
+        let work = Task { try await engine.observe(service: camera, question: "Set raw zoom to 200", engine: "apple") }
+        try await waitForZoom(camera)
+        await engine.cancelObservation()
+        await camera.release()
+        do { _ = try await work.value; Issue.record("Cancelled preparation proceeded to planning") }
+        catch is CancellationError {} catch { Issue.record("Expected cancellation before any model call, received \(error)") }
+        #expect(await camera.zoomAttempts == 0)
+        #expect(await camera.writes.isEmpty)
+        if behavior == .delayedBegin { #expect(await camera.frameAfter.isEmpty) }
+    }
+}
+
+@Test func observationOnlyApplePlanRefreshesTheFrameAfterPlanningWithoutWriting() async throws {
+    let camera = try ZoomObservationFixture()
+    let (context, start) = try await zoomContext(camera)
+    let initial = try await context.currentFrame()
+    let plan = AppleObservationPlan(adjustmentRequested: false, steps: [], clarification: nil)
+    try await context.executeApplePlan(plan, zoomCapabilities: start.zoomCapabilities)
+    let refreshed = try await context.currentFrame()
+    #expect(refreshed.info.id != initial.info.id && refreshed.info.receivedUptime > initial.info.receivedUptime)
+    #expect(await context.actionEvidence().map(\.tool) == ["capture_frame"])
+    #expect(await camera.writes.isEmpty)
 }

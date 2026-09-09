@@ -47,6 +47,7 @@ enum AppErrorMessageKey: String, CaseIterable {
     case appleModel = "The on-device model is unavailable. Check Apple Intelligence in System Settings."
     case localModel = "The local model needs attention. Check its files and download status."
     case modelAnswer = "The model could not produce a verified answer. Check the scene and rephrase the request."
+    case requestedAdjustment = "The requested camera adjustment was not completed. Rephrase the request or check camera control access."
     case question = "Enter a shorter question and choose an available AI engine."
     case timedOut = "The operation timed out. Check the camera before trying again."
     case bridge = "The local camera service is unavailable. Reopen Pocket 3 Controller and try again."
@@ -99,7 +100,8 @@ enum AppErrorPresentation {
         case "access_denied": return .observationPermission
         case "movement_denied", "zoom_denied": return .controlPermission
         case "motion_not_validated": return .validation
-        case "motion_timeout", "motion_not_progressing", "control_unconfirmed", "uvc_write_failed", "uvc_request_timeout": return .controlUnconfirmed
+        case "motion_timeout", "motion_not_progressing", "control_unconfirmed", "movement_unconfirmed", "uvc_write_failed", "uvc_request_timeout": return .controlUnconfirmed
+        case "request_not_fulfilled", "invalid_observation_plan": return .requestedAdjustment
         case "stop_unverified", "usb_stop_failed", "usb_stop_unverified", "usb_stop_feedback_stale", "native_neutral_failed", "zoom_stop_failed", "zoom_stop_unverified", "zoom_stop_feedback_stale": return .stopUnconfirmed
         case "zoom_unavailable", "uvc_zoom_unavailable", "uvc_zoom_not_readable", "uvc_zoom_read_only", "uvc_zoom_limits_unavailable": return .zoomUnavailable
         case "zoom_unconfirmed", "zoom_timing", "zoom_feedback_stale", "zoom_capabilities_changed", "uvc_zoom_read_failed", "uvc_zoom_write_failed": return .zoomUnconfirmed

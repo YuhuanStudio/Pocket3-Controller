@@ -1371,3 +1371,5 @@
 "Preview hidden for this screenshot" = "Preview hidden for this screenshot";
 
 "Updates are paused for this validation session." = "Updates are paused for this validation session.";
+
+"The requested camera adjustment was not completed. Rephrase the request or check camera control access." = "The requested camera adjustment was not completed. Rephrase the request or check camera control access.";
