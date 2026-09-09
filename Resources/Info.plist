@@ -7,7 +7,7 @@
 <key>CFBundleExecutable</key><string>Pocket3MCP</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.0.1</string>
-<key>CFBundleVersion</key><string>11</string>
+<key>CFBundleVersion</key><string>12</string>
 <key>Pocket3ReleaseChannel</key><string>beta</string>
 <key>Pocket3PrereleaseNumber</key><integer>2</integer>
 <key>CFBundleIconFile</key><string>Pocket3MCP.icns</string>
