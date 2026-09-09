@@ -978,9 +978,10 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         if recentHeaders.count > 16 { recentHeaders.removeLast(recentHeaders.count - 16) }
     }
     fileprivate func drainWrites() {
-        // A lens-point recording excludes other explicit operations, but is
-        // passive after its one synchronous subscription write. Keepalive stays live.
-        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, pairer != nil, let peripheral = selectedPeripheral, let fff5,
+        // Lens recordings and single native presets keep session housekeeping
+        // alive while collecting telemetry. The preset's one final write still
+        // checks an empty queue, credit, MTU and its permit synchronously.
+        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, pairer != nil, let peripheral = selectedPeripheral, let fff5,
               state.accepts(peripheral: peripheral.identifier, session: state.generation),
               peripheral.state == .connected else { return }
         do {
@@ -1035,9 +1036,9 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
                 while !Task.isCancelled {
                     do { try await Task.sleep(for: .seconds(1)) } catch { return }
                     guard let self, self.state.generation == session else { return }
-                    // lensPointOperation deliberately does not suppress the
-                    // existing heartbeat during its longer passive window.
-                    if self.settingWriteOperation == nil, self.tapFocusOperation == nil, self.probeOperation == nil, self.nativePresetOperation == nil, self.lensStateOperation == nil, self.cameraPropertyOperation == nil, let frame = self.pairer?.keepalive() { self.enqueue(frame) }
+                    // Passive lens/native-preset windows keep the established
+                    // session heartbeat; timing-critical pulses stay exclusive.
+                    if self.settingWriteOperation == nil, self.tapFocusOperation == nil, self.probeOperation == nil, self.lensStateOperation == nil, self.cameraPropertyOperation == nil, let frame = self.pairer?.keepalive() { self.enqueue(frame) }
                 }
             }
             publish()
