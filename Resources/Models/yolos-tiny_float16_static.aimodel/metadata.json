@@ -1,0 +1,8 @@
+{
+  "license" : "Apache-2.0",
+  "description" : "YOLOS (You Only Look at One Sequence) applies a plain Vision Transformer directly to image patches and predicts object queries as bounding boxes and class logits. Source: https:\/\/huggingface.co\/hustvl\/yolos-tiny",
+  "author" : "Y. Fang et al.",
+  "producer" : "coreai-core 1.0.0b2",
+  "assetVersion" : "2.0",
+  "creationDate" : "20260907T130127Z"
+}

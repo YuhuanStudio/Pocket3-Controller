@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Pocket 3 Controller";
+"NSCameraUsageDescription" = "Display the selected Pocket 3 and provide an image when you ask.";
+"NSMicrophoneUsageDescription" = "Use the Pocket 3 microphone only for an audio test or a voice task.";
+"NSBluetoothAlwaysUsageDescription" = "Find and pair the Pocket 3 you select for wireless gimbal control.";
+"NSLocalNetworkUsageDescription" = "Connect to your selected Pocket 3 Wi-Fi for continuous gimbal control and camera status.";

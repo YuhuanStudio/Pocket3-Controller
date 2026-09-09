@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-07",
+  "authorization": "User explicitly requested verbatim reuse of YunAudio/YunUI design",
+  "files": [
+    {
+      "source": "Sources/YunDesign/UIBenchmarkProbe.swift",
+      "target": "Sources/YunDesign/UIBenchmarkProbe.swift",
+      "sha256": "11e9ca6332b820e1eff2665335fe42289c7c787f740db7354c44193ae68f07a7"
+    },
+    {
+      "source": "Sources/YunDesign/MainThreadDirectly.swift",
+      "target": "Sources/YunDesign/MainThreadDirectly.swift",
+      "sha256": "1d28aa6d4215b8008a3dcf0c8ecd93c57e9e71fc9a2ab1d3440c06ddead9ed4a"
+    },
+    {
+      "source": "Sources/YunDesign/Tokens.swift",
+      "target": "Sources/YunDesign/Tokens.swift",
+      "sha256": "aa998c6f48315156ff1d0014408d38abd7a4f5f90010f33802a47c6d01f497d3"
+    },
+    {
+      "source": "Sources/YunDesign/Localization.swift",
+      "target": "Sources/YunDesign/Localization.swift",
+      "sha256": "e46402b7fab1b8d2d098fd3f57bff34c832349d2e93b03363d43438576a934ed"
+    },
+    {
+      "source": "Sources/YunDesign/Controls.swift",
+      "target": "Sources/YunDesign/Controls.swift",
+      "sha256": "9eb1ef92494a19800f0944f3b974b04e5786c829383de4bad2f69c061126a165"
+    },
+    {
+      "source": "Sources/YunDesign/Theme.swift",
+      "target": "Sources/YunDesign/Theme.swift",
+      "sha256": "14d55a55871b8476772b535b27ecb757ef84a74c1e62605fcfd3bb29cc08a0b5"
+    },
+    {
+      "source": "Sources/YunDesign/Components.swift",
+      "target": "Sources/YunDesign/Components.swift",
+      "sha256": "ce8b4411b42822c7a75de37d4d31385191f1435ece7917dbb54e8fd2b5026321"
+    }
+  ],
+  "sourceRepository": "https://github.com/YuhuanStudio/YunAudio"
+}

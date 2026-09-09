@@ -1,0 +1,4 @@
+# Markdown hard breaks and imported UVC formatting are intentional.
+*.md whitespace=-blank-at-eol
+Sources/Pocket3UVC/UVC* whitespace=-blank-at-eol
+*.mlirb binary

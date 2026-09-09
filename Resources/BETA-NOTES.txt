@@ -1,0 +1,23 @@
+Pocket 3 Controller — 0.0.1 beta 1
+Yuhuan Studio
+
+需要 Apple Silicon 與 macOS 27。以 USB 接上 Pocket 3，並在機身選擇 Webcam 模式。
+App 內提供相機預覽、單張擷取、手動雲台、縮放、本機 AI、MCP 與 CLI。
+不需要讓 Mac 加入相機 Wi-Fi。
+
+本版限制
+• 原生快速回中、前後翻轉及 App 點按對焦仍在開發。
+• USB Roll 是實驗功能，物理角度與移動中停止仍待驗證。
+• 藍牙電池、姿態及 AF／白平衡／曝光讀值為只讀，不表示設定可寫。
+• 並非所有裝置宣告的解析度、編碼與高幀率均已通過實測。
+• 縮放顯示控制行程，不代表已校準的光學倍率。
+
+本版使用固定開發憑證，尚未 Apple 公證。
+版本下載與回報：https://github.com/YuhuanStudio/Pocket3-Controller
+內建 Sparkle 檢查本專案獨立簽署的 Beta 更新來源；自動檢查依你的選擇啟用。
+從網路下載的未公證版本可能需要在「系統設定 → 隱私權與安全性」明確允許開啟。
+請只對你確認來源的下載檔進行此操作；也可依儲存庫說明自行建置。
+
+關閉視窗後 App 仍留在選單列；「隱私暫停」釋放影音，退出 App 結束服務。
+MCP／CLI 可透過 App 設定查看接入方法。命令列位於：
+Pocket 3 Controller.app/Contents/MacOS/pocket3

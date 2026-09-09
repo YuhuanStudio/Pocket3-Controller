@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Pocket 3 Controller";
+"NSCameraUsageDescription" = "顯示你選定的 Pocket 3 畫面，並在你要求時提供觀察圖片。";
+"NSMicrophoneUsageDescription" = "只在你啟用音訊測試或語音功能時，使用 Pocket 3 麥克風。";
+"NSBluetoothAlwaysUsageDescription" = "尋找並配對你選定的 Pocket 3，建立無線雲台控制連線。";
+"NSLocalNetworkUsageDescription" = "透過你選定的 Pocket 3 Wi-Fi 傳送連續雲台控制並讀取相機狀態。";

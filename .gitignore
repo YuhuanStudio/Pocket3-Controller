@@ -1,0 +1,39 @@
+.DS_Store
+.build/
+/.build.*/
+.swiftpm/
+dist/
+.research/
+artifacts/
+*.xcuserstate
+xcuserdata/
+.env
+__pycache__/
+artifacts-*.log
+.local-signing/
+
+# Local hardware evidence and third-party research checkouts are not public
+# source. Required reference licences live in ThirdParty/ instead.
+/research/
+/artifacts-*
+
+# Per-machine release configuration and signing material. The checked-in
+# ReleaseSettings.example.json contains public placeholders only.
+/release-settings.json
+/Resources/ReleaseSettings.local.json
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keychain
+*.keychain-db
+*.mobileprovision
+*.provisionprofile
+
+# Captured traffic and crash reports are never implicit release-source assets.
+*.pcap
+*.pcapng
+*.har
+*.ips

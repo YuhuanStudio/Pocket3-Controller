@@ -1,0 +1,20 @@
+{
+  "upstream": "https://github.com/apple/coreai-models",
+  "revision": "df8119879f125ad1e2e4c6249c2cddded75c190a",
+  "licence": "BSD-3-Clause",
+  "adaptations": [
+    "Swift 6.4 actor-preserving async calls",
+    "Compute preferences and debug-only raw numerical probe",
+    "Exporter pinned to hustvl/yolos-tiny revision 95a90f3c189fbfca3bcfc6d7315b9e84d95dc2de"
+  ],
+  "files": [
+    {
+      "path": "Scripts/export-coreai.py",
+      "sha256": "0f6dbb8ce7916d899ca9b49096bf857dc47323fa7f17fce224d4ec0b2f0345eb"
+    },
+    {
+      "path": "Sources/CoreAIObjectDetector/ObjectDetector.swift",
+      "sha256": "2fceade73e03e23d1a1c3145e15f0380c12619951062084855384a8c3cd467a8"
+    }
+  ]
+}

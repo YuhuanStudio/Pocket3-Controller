@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleName</key><string>Pocket 3 Controller</string>
+<key>CFBundleDisplayName</key><string>Pocket 3 Controller</string>
+<key>CFBundleIdentifier</key><string>studio.yuhuan.Pocket3Bridge</string>
+<key>CFBundleExecutable</key><string>Pocket3MCP</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>0.0.1</string>
+<key>CFBundleVersion</key><string>9</string>
+<key>Pocket3ReleaseChannel</key><string>beta</string>
+<key>Pocket3PrereleaseNumber</key><integer>1</integer>
+<key>CFBundleIconFile</key><string>Pocket3MCP.icns</string>
+<key>LSUIElement</key><true/>
+<key>SUEnableAutomaticChecks</key><false/>
+<key>SUEnableSystemProfiling</key><false/>
+<key>SURequireSignedFeed</key><true/>
+<key>SUVerifyUpdateBeforeExtraction</key><true/>
+<key>SUScheduledCheckInterval</key><integer>86400</integer>
+<key>LSMinimumSystemVersion</key><string>27.0</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>LSApplicationCategoryType</key><string>public.app-category.photography</string>
+<key>NSCameraUsageDescription</key><string>顯示你選定的 Pocket 3 畫面，並在你要求時提供觀察圖片。</string>
+<key>NSMicrophoneUsageDescription</key><string>只在你啟用音訊測試或語音功能時，使用 Pocket 3 麥克風。</string>
+<key>NSBluetoothAlwaysUsageDescription</key><string>在你連接無線控制時，尋找並配對選定的 Pocket 3，取得雲台控制連線。</string>
+<key>NSLocalNetworkUsageDescription</key><string>透過區域網路與你選定的相機通訊。</string>
+<key>NSPrincipalClass</key><string>NSApplication</string>
+</dict></plist>

@@ -1,0 +1,10 @@
+{
+  "image": "coco-sample.png",
+  "download": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/coco_sample.png",
+  "purpose": "Local numerical and performance evaluation; not bundled in the app",
+  "modelCard": "https://huggingface.co/hustvl/yolos-tiny",
+  "originalCOCOExample": "http://images.cocodataset.org/val2017/000000039769.jpg",
+  "modelRevision": "95a90f3c189fbfca3bcfc6d7315b9e84d95dc2de",
+  "appleExporterRevision": "df8119879f125ad1e2e4c6249c2cddded75c190a",
+  "sha256": "cf6f3c4befa148732c7453e0de5afab00f682427435fead2d88b07a9615cdac2"
+}

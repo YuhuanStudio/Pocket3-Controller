@@ -1,0 +1,5 @@
+{
+  "repositoryURL": "https://github.com/OWNER/REPOSITORY",
+  "feedURL": "https://example.org/pocket3/appcast.xml",
+  "publicEDKey": "REPLACE_WITH_YOUR_32_BYTE_PUBLIC_KEY_IN_BASE64"
+}
