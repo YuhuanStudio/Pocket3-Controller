@@ -1,6 +1,6 @@
 # Interface screenshots
 
-These nine images show the current beta 2 development interface (build 11).
+These nine images show the current beta 2 development interface (build 16).
 The published beta 1 download is build 9. The gallery is labelled separately
 from release verification and is not evidence that beta 1 contains later fixes.
 

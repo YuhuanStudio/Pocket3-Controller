@@ -14,7 +14,7 @@ English · [繁體中文](README.zh-Hant.md) · [简体中文](README.zh-Hans.md
 
 <img src="docs/images/window.png" alt="Pocket 3 Controller: camera workspace, manual controls and local AI, with the sensor preview omitted" width="100%">
 
-*Current development UI · beta 2 build 11 · camera preview omitted. Published downloads are beta 1 build 9.*
+*Current development UI · beta 2 build 16 · camera preview omitted. Published downloads are beta 1 build 9.*
 
 ## Overview
 
@@ -30,7 +30,7 @@ USB control keeps the Mac on its existing network; no camera Wi-Fi join is neede
 | | |
 |---|---|
 | **Published release** | [0.0.1 beta 1 · build 9](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) |
-| **Development branch** | `main` is preparing 0.0.1 beta 2 · build 11, with UI alignment fixes under test; it is not the published beta 1 binary |
+| **Development branch** | `main` is preparing 0.0.1 beta 2 · build 17; it is not the published beta 1 binary |
 | **Platform** | macOS 27, Apple Silicon, Pocket 3 in USB Webcam mode |
 | **Interfaces** | Main window, menu bar panel, CLI and MCP over stdio |
 | **Languages** | English, Traditional Chinese and Simplified Chinese |
@@ -108,6 +108,25 @@ questions, OCR and barcode reading. Apple features depend on system-model
 availability; the optional MLX model is downloaded only when requested. Core AI model evaluation has a measured GPU path;
 this project does not claim that every AI workload runs on the Neural Engine.
 
+**Build 16 development branch — model responsibilities.**
+When **Apple** is selected and AI movement or zoom is available, the already-downloaded
+MLX model runs the complete camera tool loop; the app refreshes the final frame,
+and Apple answers from that new image. This is not Apple independently calling
+camera tools. Apple observation-only use does not require MLX; selecting **MLX**
+still lets MLX handle its own camera tools and answer.
+
+The app does not download MLX automatically. If this control workflow needs a
+missing model, the UI explains that requirement; choose the download explicitly,
+or use Apple with observation-only access. Development responses expose
+`metadata.executionRoles`: `controllerEngine=mlx`, `answerEngine=apple`,
+`finalFrameRefresh=app` for the combined route. These roles are separate from
+actual action evidence. A bounded live-camera run passed all 11 checks in 38.039 seconds:
+MLX made four model tool calls, with one raw-200 zoom; the app then obtained a
+frame newer than the final model capture, and Apple answered it. That host refresh
+is not an extra SDK tool call. Raw 100 and manual access were restored afterward.
+This proves that case, not Apple-only camera control, every MCP scenario, or a
+capability of the published beta 1 binary. See the [hardware record](docs/HARDWARE_ACCEPTANCE.md).
+
 AI access starts off. Manual controls take priority over AI; movement and zoom
 require the corresponding access and verification conditions. A model's
 text is not proof that a camera action completed; callers receive tool results
@@ -123,7 +142,7 @@ the window leaves the menu bar service running; quitting ends it.
 </tr>
 </table>
 
-These screenshots show the current beta 2 development interface (build 11), with the sensor preview omitted. They contain no Pocket 3 photographs. Each README uses its own language; the published beta 1 download remains build 9.
+These screenshots show the current beta 2 development interface (build 16), with the sensor preview omitted. They contain no Pocket 3 photographs. Each README uses its own language; the published beta 1 download remains build 9.
 
 ## MCP and CLI
 

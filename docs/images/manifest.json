@@ -1,9 +1,9 @@
 {
   "appVersion": "0.0.1-beta.2",
-  "buildVersion": "11",
+  "buildVersion": "16",
   "releaseStatus": "development preview; beta 1 build 9 remains the published download",
-  "appExecutableSHA256": "42a63b9c47d624483218769444dacf7453889ff65bbbf5a7ad8c17adc076a004",
-  "capturedAt": "2026-09-09T07:08:32.704551+00:00",
+  "appExecutableSHA256": "e761d52f9d3b46ad059aa14cc927fd74ba70cd7671004f9702bbb3b4c9719ee3",
+  "capturedAt": "2026-09-09T10:49:42.556251+00:00",
   "method": "Actual AppKit UI with scroll positions normalised; live preview detached and sensor JPEG encoding disabled",
   "images": [
     {
@@ -12,10 +12,10 @@
       "surface": "main",
       "page": "camera",
       "width": 2880,
-      "height": 1800,
-      "sha256": "e01c670d3330f9b58ac81a25c24e29e25402eb405c80fbfe0ff182aa0892c058",
+      "height": 1750,
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "03af15917631e991e071ab530758f38e4542a03d51bce87b795d7e36633da0de"
     },
     {
       "file": "docs/images/engines.png",
@@ -24,9 +24,9 @@
       "page": "engines",
       "width": 2360,
       "height": 1440,
-      "sha256": "ace8532ab70f9241d5414da97d59fcfcf81b41f7d77e1ba968876df5a810eccc",
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "06f34fc46a1b48390d278f3455cc8dd4d1a554cc06c5271e4e388141087ea0c4"
     },
     {
       "file": "docs/images/appearance.png",
@@ -35,9 +35,9 @@
       "page": "appearance",
       "width": 1600,
       "height": 1300,
-      "sha256": "b1e404d611be9c04d9df725db5d5fdfea75397c6cde647a9d199a8297b6156ed",
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "ed6b40769a9f18362792bc04917d406bd2a38c6fd185dd6aae29a6dd68f5846b"
     },
     {
       "file": "docs/images/window-zh-Hant.png",
@@ -45,10 +45,10 @@
       "surface": "main",
       "page": "camera",
       "width": 2880,
-      "height": 1800,
-      "sha256": "7b17e1a13aa401c8dd1386b2760f5b9a708f60f6fd3466699c82da022b4f69bf",
+      "height": 1750,
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "f44a309ab8bbb45c134ad51cca28d19b7612b7557c15f9d9253e38f6b56c7eaf"
     },
     {
       "file": "docs/images/engines-zh-Hant.png",
@@ -57,9 +57,9 @@
       "page": "engines",
       "width": 2360,
       "height": 1440,
-      "sha256": "1f46e082ad5d9e872f7a609eff42407b74991fde08b054f6ba8f61ee65be3ab2",
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "a056cadf4a7e12692e69b7a702a82e174e79dd62cedfe78dacaf20c429524ff6"
     },
     {
       "file": "docs/images/appearance-zh-Hant.png",
@@ -68,9 +68,9 @@
       "page": "appearance",
       "width": 1600,
       "height": 1300,
-      "sha256": "5bfc29c23d2d6b4ccf730453975ffee7a76b4c80d73e1bd38804ed68fab7a2d3",
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "7020c55836819c1199ace155baff4a65e7ff6b2ed37fd78cac4f1ce9cde53e52"
     },
     {
       "file": "docs/images/window-zh-Hans.png",
@@ -78,10 +78,10 @@
       "surface": "main",
       "page": "camera",
       "width": 2880,
-      "height": 1800,
-      "sha256": "2ccc0bbde8608a113058b1fb1f189fd77caaf08d453bc80554bc013f9995d327",
+      "height": 1750,
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "a50eb22863b5f74abcfea47c5b7674e564dd94b99f86eeb015b2b81c1f26972c"
     },
     {
       "file": "docs/images/engines-zh-Hans.png",
@@ -90,9 +90,9 @@
       "page": "engines",
       "width": 2360,
       "height": 1440,
-      "sha256": "89ab694ec80d468a59b530d495511ac9b3596b3618e1d7ff34c37ae8eda99118",
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "ccecbf82294b71b00dcf6184815bb95339bb38cafb55a46bf83905ff161ccdc6"
     },
     {
       "file": "docs/images/appearance-zh-Hans.png",
@@ -101,9 +101,9 @@
       "page": "appearance",
       "width": 1600,
       "height": 1300,
-      "sha256": "ae71e665caa6405534356d8bd7992caa9ec9691e188d63af13e0df34a7e82746",
       "cameraPreviewIncluded": false,
-      "uiPhase": "ready"
+      "uiPhase": "ready",
+      "sha256": "5e3740e8b70cad35cf50e9bc92c4862f6af97f25133b8b4b96a50a3b5cc7f4e9"
     }
   ]
 }

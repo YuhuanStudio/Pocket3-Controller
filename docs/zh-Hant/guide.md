@@ -4,7 +4,7 @@
 
 [文件入口](README.md) · [專案概觀](../../README.zh-Hant.md)
 
-本指南涵蓋已發布的 **0.0.1 beta 1，build 9**；`main` 是 beta 2、build 11 開發版本。停用或標為實驗性的控制，不表示對應機身功能已支援。
+本指南涵蓋已發布的 **0.0.1 beta 1，build 9**；`main` 是 beta 2、build 17 開發版本。停用或標為實驗性的控制，不表示對應機身功能已支援。
 
 ## 安裝與首次啟動
 
@@ -61,6 +61,18 @@ Roll 標為**實驗性**，數值是裝置控制單位，不是已校準的物�
 ## 本機 AI
 
 在「AI 引擎與接入」選擇引擎。Apple Foundation Models 需要相應系統模型可用。MLX Qwen 3.5 為選配，透過下載操作取得，預留約 3.1 GB 模型空間。下載需要網路，推論使用已在本機的模型。
+
+### build16開發版的模型路由
+
+| 選擇與使用權 | 相機工具 | 最後回答 |
+|---|---|---|
+| Apple，只允許觀察 | 不提供移動或縮放，不需要MLX | Apple |
+| Apple，AI移動或縮放能力可用 | 已下載的MLX執行完整工具流程，App取得最後的新影格 | Apple根據新圖回答 |
+| MLX | MLX自行執行已允許的工具 | MLX |
+
+混合路徑不表示Apple是相機工具執行者。App不會自動下載MLX；控制能力可用但缺少模型時，UI會說明需求。你可以明確下載模型，或切回「只允許觀察」使用不需MLX的Apple流程。原有權限、能力、取消及結果檢查仍然適用，角色名稱本身不證明發生過動作。
+
+開發版回覆的`metadata.executionRoles`會分別標明`controllerEngine=mlx`、`answerEngine=apple`、`finalFrameRefresh=app`。一次真機任務以38.039秒完成、全部11項檢查通過；MLX工具順序為`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`，僅一次raw200縮放且回讀verified。App另外更新最後影格，再交Apple回答，這不算第五次模型或SDK工具呼叫。其後恢復raw100及manual。此案例不等於所有MCP流程或Apple獨立控制已完成；公開beta1維持build9，截圖版本另行標註。[硬體紀錄](../HARDWARE_ACCEPTANCE.md)
 
 詢問圖片前先選擇「只允許觀察」。OCR 和條碼工具也在本機運行。需要相機動作時才授予控制權；程式會獨立檢查權限和工具結果，不把模型措辭當作依據。不確定的回答需要核對，尤其是物件數量及「動作已完成」的宣稱。
 

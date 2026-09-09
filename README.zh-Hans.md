@@ -16,7 +16,7 @@
 
 <img src="docs/images/window-zh-Hans.png" alt="Pocket 3 Controller 主窗口：相机连接、预览区域、控制与状态栏；不含真实相机影像" width="100%">
 
-*当前开发界面：beta 2 build 11，已隐藏取景；公开下载为 beta 1 build 9。*
+*当前开发界面：beta 2 build 16，已隐藏取景；公开下载为 beta 1 build 9。*
 
 ## 概览
 
@@ -27,7 +27,7 @@ Pocket 3 Controller 让 Mac 成为 Pocket 3 的操作界面：看预览、按住
 | | |
 |---|---|
 | **目前下载** | **0.0.1 beta 1，build 9**，tag `v0.0.1-beta.1` |
-| **开发分支** | `main` 正在开发 **beta 2，build 11**；不是已发布版本 |
+| **开发分支** | `main` 正在开发 **beta 2，build 17**；不是已发布版本 |
 | **平台** | Apple Silicon、macOS 27 或更新 |
 | **界面** | 原生 App、菜单栏、CLI、MCP stdio |
 | **控制路径** | USB 预览及手动 pan／tilt；BLE 提供另行配对的只读报告 |
@@ -86,6 +86,10 @@ Apple Foundation Models 在系统模型可用时提供图片问答；MLX 路径�
 
 模型可加载、取消与卸载。结果带有来源帧及工具执行记录，不能只靠模型说「完成了」就认定相机真的移动。MLX 不是 ANE 路径；Core AI 的计算偏好也不是实际使用 Neural Engine 的证据。模型仍可能误认或算错对象。[AI 验证](docs/AI_VALIDATION.md)
 
+**build16开发分支：模型分工。** 选择 **Apple** 且AI移动或缩放能力可用时，由已下载的MLX模型执行完整相机工具流程，App更新最后一帧，再由Apple根据这张新图回答；不能描述成Apple独立调用了相机工具。纯Apple“只允许观察”不需要MLX；选择 **MLX** 时仍由MLX自行执行相机工具并回答。
+
+App不会自动下载MLX。需要这条控制流程却尚未下载模型时，UI会提示；你可明确下载，或先改用Apple的仅观察模式。开发版回复的`metadata.executionRoles`会标明混合路径的`controllerEngine=mlx`、`answerEngine=apple`及`finalFrameRefresh=app`，角色分工不代替实际动作证据。一次有界真机任务已在38.039秒内通过全部11项检查：MLX调用四次模型工具、仅一次raw200缩放，App再取得比最后一次模型取像更新的帧，由Apple回答。这次host更新不算额外SDK工具调用；之后恢复raw100及manual。此结果只证明该案例，不表示Apple单独控制、所有MCP情境或公开beta1已支持。[硬件记录](docs/HARDWARE_ACCEPTANCE.md)
+
 ### 权限与日常使用
 
 AI 访问默认关闭。选择「只允许观察」后，外部 MCP／CLI 才能取像；允许移动还需要控制权及当次连接的验证。MCP 取到的帧会交给你选择的客户端，后续使用依该客户端设置。
@@ -94,7 +98,7 @@ AI 访问默认关闭。选择「只允许观察」后，外部 MCP／CLI 才能
 
 ## 界面
 
-以下截图为当前 beta 2 开发界面（build 11），取景画面已隐藏，不含 Pocket 3 实拍照片；公开 beta 1 安装包仍为 build 9。
+以下截图为当前 beta 2 开发界面（build 16），取景画面已隐藏，不含 Pocket 3 实拍照片；公开 beta 1 安装包仍为 build 9。
 
 <table>
 <tr>

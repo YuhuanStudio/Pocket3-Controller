@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 11, with UI alignment fixes under test.
+This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 17. The build 16 model routing below is a development addition, not a published beta 1 feature.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
@@ -106,6 +106,30 @@ Choose an engine on **AI engines and integration**. Apple Foundation Models need
 the corresponding system model available. MLX Qwen 3.5 is optional: select its
 download action and allow space for roughly 3.1 GB of model files. The download
 requires a network connection; inference uses the locally available model.
+
+### Build 16 development model routing
+
+| Selection and access | Camera tools | Final answer |
+|---|---|---|
+| Apple, observation only | No movement or zoom; MLX is not required | Apple |
+| Apple, eligible AI movement or zoom | Already-downloaded MLX runs the complete tool loop; the app obtains a fresh final frame | Apple answers the new frame |
+| MLX | MLX runs its own permitted tools | MLX |
+
+The combined route does not make Apple the camera tool executor. The app never
+automatically downloads MLX: if the model is missing when control is available,
+the UI explains what is needed. Download it explicitly, or switch to **Observe only**
+to use Apple without MLX. Existing access, capability, cancellation and result
+checks still apply; a controller role does not prove that an action happened.
+
+Development response `metadata.executionRoles` identifies `controllerEngine=mlx`,
+`answerEngine=apple` and `finalFrameRefresh=app` for this route. One live-camera
+run completed in 38.039 seconds with all 11 checks passing. The MLX tool order was
+`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`, with one
+raw-200 zoom and verified readback. The app refreshed the final frame again before
+Apple answered; this host refresh is not a fifth model or SDK tool call. Raw 100
+and manual access were restored. This validates that bounded case, not every MCP
+workflow or Apple independently controlling the camera. Published beta 1 remains
+build 9; screenshots are versioned separately. See the [hardware record](HARDWARE_ACCEPTANCE.md).
 
 Choose **Observe only** before asking about an image. OCR and barcode tools also
 operate locally. Grant camera control only when that workflow is wanted; code
