@@ -100,10 +100,10 @@ final class WirelessGimbalModel {
         selectionOperationID = UUID()
         credentials = nil; networkName = nil; hasCredentials = false; issue = nil
     }
-    func pair() throws {
+    func pair(pairOnly: Bool = true) throws {
         guard !joiningNetwork, !connecting else { throw BridgeFailure("wireless_busy", loc("Control connection is not ready.")) }
         issue = nil
-        try bluetooth.beginPairing(clientIdentifier: clientIdentifier)
+        try bluetooth.beginPairing(clientIdentifier: clientIdentifier, pairOnly: pairOnly)
     }
     /// The button names the network change; developer RPC requires a separate
     /// explicit --join-network argument. Discovery/pairing never calls this.

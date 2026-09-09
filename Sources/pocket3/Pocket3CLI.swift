@@ -93,6 +93,9 @@ import MCP
             }
             let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
+                if command == "validation-wireless-pair", args.contains("--read-connection-details") {
+                    arguments["pairOnly"] = .bool(false)
+                }
                 if let property = option("--property") { arguments["property"] = .string(property) }
                 if args.contains("--join-network") { arguments["joinNetwork"] = .bool(true) }
                 if let id = option("--peripheral") { arguments["peripheralID"] = .string(id) }
@@ -205,6 +208,8 @@ import MCP
           Developer only: fixed 1.2-second USB retarget and hold experiment.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
+        pocket3 validation-wireless-pair [--read-connection-details]
+          Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON

@@ -15,7 +15,13 @@ extension AppModel {
             }
             wireless.selectedPeripheral = selected
             try wireless.connectBluetooth()
-        case "validation-wireless-pair": try wireless.pair()
+        case "validation-wireless-pair":
+            guard case .object(let fields) = request.arguments,
+                  Set(fields.keys).isSubset(of: ["pairOnly"]),
+                  fields["pairOnly"] == nil || fields["pairOnly"]?.bool != nil else {
+                throw BridgeFailure("invalid_pairing_options", "Pairing accepts only an optional pairOnly Boolean; it never joins a network")
+            }
+            try wireless.pair(pairOnly: fields["pairOnly"]?.bool ?? true)
         case "validation-wireless-probe": return try await performBluetoothGimbalProbe(request)
         case "validation-wireless-recenter": return try await performBluetoothNativeRecenter(request)
         case "validation-wireless-tap-focus": return try await performBluetoothTapFocus(request)
