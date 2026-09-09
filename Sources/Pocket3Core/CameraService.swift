@@ -88,6 +88,7 @@ public actor CameraService {
         let binding: ContinuousGimbalBinding
         let readStatus: @Sendable () async -> NativeControlStatus
         let stop: @Sendable () async throws -> MotionResult
+        let writePermit: OperationPermit?
     }
     public nonisolated let capture = CaptureEngine()
     private var selected: CameraDevice?
@@ -146,6 +147,7 @@ public actor CameraService {
     /// position writes remain fenced until this exact connection is released.
     public func reserveNativeControl(binding: ContinuousGimbalBinding,
         readStatus: @escaping @Sendable () async -> NativeControlStatus = { .disconnected },
+        writePermit: OperationPermit? = nil,
         stop: @escaping @Sendable () async throws -> MotionResult) async throws {
         guard nativeControl == nil, !nativeControlPending else { throw BridgeFailure("motion_busy", "已有雲台控制連線") }
         nativeControlPending = true
@@ -157,11 +159,27 @@ public actor CameraService {
         guard generation == lifecycleGeneration, motionGeneration == expectedMotionGeneration else { throw BridgeFailure("session_changed", "相機連線或停止狀態已改變") }
         guard stopped.verified else { throw BridgeFailure("stop_unverified", "尚未確認前一個操作停止，未切換控制通道") }
         access = .manual; interactionEpoch += 1
-        nativeControl = NativeControlReservation(binding: binding, readStatus: readStatus, stop: stop)
+        try writePermit?.perform {}
+        nativeControl = NativeControlReservation(binding: binding, readStatus: readStatus, stop: stop, writePermit: writePermit)
     }
     public func releaseNativeControl(binding: ContinuousGimbalBinding) {
         guard nativeControl?.binding == binding else { return }
+        nativeControl?.writePermit?.invalidate()
         nativeControl = nil; interactionEpoch += 1; access = .manual
+    }
+    /// No I/O: the BLE focus probe checks this exact owner before each burst.
+    /// The same permit is synchronously revoked at Stop/lifecycle changes and
+    /// checked again under its lock at the final CoreBluetooth write.
+    public func validateNativeControlReservation(binding: ContinuousGimbalBinding,
+        expectedCaptureSessionID: String, writePermit: OperationPermit) throws {
+        try writePermit.perform {
+            guard validationEnabled, nativeControl?.binding == binding,
+                  nativeControl?.writePermit === writePermit, !nativeControlPending, !connectionInProgress,
+                  phase == "ready", motionID == nil, !zoomNeedsHold, !rollNeedsHold,
+                  try capture.store.latest(maxAge: 1).info.sessionID == expectedCaptureSessionID else {
+                throw BridgeFailure("bluetooth_focus_capture_changed", "The exclusive control owner or fresh USB capture changed")
+            }
+        }
     }
     /// Atomically releases this research/native reservation before entering
     /// USB hold cleanup. An obsolete callback cannot stop a newer owner.
@@ -170,6 +188,7 @@ public actor CameraService {
             return MotionResult(accepted: false, completed: false, verified: false,
                 verification: "stale_control_reservation", target: nil, observed: nil, message: "控制連線已改變")
         }
+        nativeControl?.writePermit?.invalidate()
         nativeControl = nil; interactionEpoch += 1; access = .manual
         return try await stop()
     }
@@ -288,6 +307,7 @@ public actor CameraService {
         }
         guard !connectionInProgress else { throw BridgeFailure("connection_busy", "正在處理另一個連接請求") }
         connectionInProgress = true
+        nativeControl?.writePermit?.invalidate()
         defer { connectionInProgress = false }
         let captureMode = mode ?? (resolution == 2160 ? CaptureMode(width: 3840, height: 2160, frameRate: 30) : .default1080p30)
         guard (mode != nil || [1080, 2160].contains(resolution)), CaptureMode.available(deviceID: id).contains(captureMode) else { throw BridgeFailure("invalid_format", "請選擇相機實際列出的影像格式") }
@@ -352,6 +372,7 @@ public actor CameraService {
         }
     }
     public func pause() async {
+        nativeControl?.writePermit?.invalidate()
         lifecycleGeneration += 1; let generation = lifecycleGeneration; access = .manual
         _ = try? await stop()
         guard generation == lifecycleGeneration else { return }
@@ -410,6 +431,7 @@ public actor CameraService {
         return result
     }
     private func invalidateAttachment() async {
+        nativeControl?.writePermit?.invalidate()
         resetZoomHoldForConnectionChange()
         resetRollHoldForConnectionChange()
         validationTask?.cancel(); streamValidationTask?.cancel(); activeMotionPermit?.invalidate(); activeMotionPermit = nil; interactionEpoch += 1
@@ -867,6 +889,7 @@ public actor CameraService {
         return USBTrajectoryProbeReport(direction: direction, origin: before.position, samples: samples, failure: failure, stop: held)
     }
     public func stop() async throws -> MotionResult {
+        nativeControl?.writePermit?.invalidate()
         if access == .control { access = .observe }
         interactionEpoch += 1
         activeMotionPermit?.invalidate(); activeMotionPermit = nil
