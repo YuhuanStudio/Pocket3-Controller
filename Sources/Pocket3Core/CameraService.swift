@@ -1222,8 +1222,12 @@ public actor CameraService {
             case "stop": return ServiceReply(id: request.id, result: try .encode(try await stop()))
             default: throw BridgeFailure("unknown_operation", "不支持此操作")
             }
+        } catch let failure as BridgeFailure {
+            return ServiceReply(id: request.id, error: failure)
+        } catch is CancellationError {
+            return ServiceReply(id: request.id, error: BridgeFailure("cancelled", "操作已取消"))
         } catch {
-            return ServiceReply(id: request.id, error: error as? BridgeFailure ?? BridgeFailure("operation_failed", error.localizedDescription))
+            return ServiceReply(id: request.id, error: BridgeFailure("operation_failed", error.localizedDescription))
         }
     }
     private func beginStreamValidation(seconds: Int, audio: Bool) throws {
