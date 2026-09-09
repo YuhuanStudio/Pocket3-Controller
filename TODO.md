@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前推進 beta 2 開發 build 11；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
+更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 13；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
 
 ## beta 1 發布與整理
 
@@ -25,6 +25,9 @@
 - [x] 一般面板的只讀設定／讀取按鈕及5秒過期處理已完成，build 7 軟體 gate 和三項實機讀值通過。
 - [x] BLE lens 只讀連續觀察已取得基線31筆／12.009秒，以及兩輪機身操作期間的37／35筆候選座標；未發送相機設定寫入或保存照片。[基線](artifacts/focus-live-2026-09-09/baseline-summary.json)、[本輪紀錄](docs/HARDWARE_ACCEPTANCE.md#2026-09-09-ble-lens-連續讀回與機身操作)
 - [ ] 完成機身實際點按順序與 lens 座標的關聯驗證。第一輪使用者回報只點左上／右下、但誤觸鏡頭轉向，屬 confounded，不能解讀中途返回中心的原因；第二輪35筆、USB pan／tilt span均0，但實際操作順序仍待使用者確認。這些讀回不表示完整座標校準、App tap AF或光學合焦已完成。[第一輪條件](artifacts/focus-live-2026-09-09/body-tap/context.json)、[第二輪摘要](artifacts/focus-live-2026-09-09/axis-taps-7a14c2a3-c7fa-4c8f-b70e-e7c21c8b7c60/summary.json)
+- [x] build13開發用BLE點選序列、每步800ms ACK／傳送額度等待與取消已實作；429項Release回歸通過，7個共用設計檔及三語檢查通過。[測試](artifacts/tap-focus-build13/release-tests.log)、[設計契約](artifacts/tap-focus-build13/design-contract.json)
+- [x] 傳送額度等待已在真機生效：Prepare後等待10.472ms，再各一次提交Point；未重送Prepare。build12原先只送第一步便中止的結果保留。[build13結果](artifacts/focus-live-2026-09-09/tap-write-c80067c8-c513-4025-9545-332ba1ea889e/summary.json)
+- [ ] BLE Tap AF仍未確認生效：本次Point 800ms內無ACK，Hint／Commit未送；期間2筆及稍後獨立12秒的30筆座標仍約中心，AF-C／Auto EV0保持。一般GUI不據此開啟；不以相同條件盲重送，下一步需查明Camera命令路由或可用的其他傳輸。
 - [x] 公開beta1的橫幅NV12補驗：720p30、1080p24、4K30均取得新影格；1080p30另有本版smoke。這是已完成的子矩陣，不覆蓋所有格式、方向／黑邊或後續candidate。[矩陣](artifacts/public-beta1/nv12-landscape-matrix/b765fe71-749f-4261-a966-126179c87fea/result.json)、[build9 smoke](artifacts/public-beta1/hardware-smoke/result.json)
 - [ ] 當前直幅輸出含機內影像的上下黑邊，方向／完整直幅內容仍待核對，不能僅憑1920高metadata算完成。
 

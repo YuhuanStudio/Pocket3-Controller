@@ -193,3 +193,13 @@ far的此次位移約為near的3.83倍，支持拖曳距離已影響實際USB回
 當時程式要求Prepare和Point連續同步寫入，缺少暫時無CoreBluetooth傳送額度時等待下一個**未送步驟**的排程。後續修正須保留每步僅提交一次、獨立有時限的額度等待、ACK時限與最終連線／取消檢查，不能重播已送出的Prepare來掩蓋問題。
 
 中止後重新只讀，AF-C與Auto／EV0維持，lens候選座標前後均約`(0.499992, 0.499992)`；沒有已解碼的完整spot-AE狀態，故不宣稱所有測光副作用均已排除，也未猜測恢復命令。[前後對照](../artifacts/focus-live-2026-09-09/tap-write-a4667799-97d3-475b-828b-708fc569592f/summary.json)
+
+## 2026-09-09 build13 BLE 點選對焦：額度恢復、Point未確認
+
+修正後429項Release回歸通過（Core352／App55／Intelligence21／Evaluation1），另有9項縮放驗證器離線案例；共用Yun設計檔7個未改、357個三語字串檢查通過。App由乾淨來源`8036129`打包，保留原本本機簽署身分，重新連接同一台Pocket3的USB與BLE。[測試](../artifacts/tap-focus-build13/release-tests.log)、[建置身分](../artifacts/tap-focus-build13/build-metadata.json)
+
+新實驗仍請求`(0.3, 0.3)`，先取得當次session的AF-C／Auto EV0。Prepare提交後，確實出現CoreBluetooth傳送額度不足；等待`0.010471958`秒恢復，再單次提交Point，證明上一輪的傳送排程問題已解決。但Point在800ms內沒有相符ACK，`end=ackTimeout/failure=point`；兩個已提交步驟均未收到ACK，Hint及Commit均未送出。這不是相機回NACK，也不是Point已確認生效。[原始結果](../artifacts/focus-live-2026-09-09/tap-write-c80067c8-c513-4025-9545-332ba1ea889e/probe.stdout.json)
+
+請求期間2筆lens回報仍約中心。其後另開單次只讀觀察：從Point提交後約37.656秒開始，持續12.031秒，30筆均約`(0.499992, 0.499992)`、無無效候選值。**兩個窗口之間並非連續觀察**，不據此聲稱中間每一刻都未改變。最後AF-C、曝光Auto／EV0保持，USB 4K預覽約29.96fps、pan／tilt讀回0、服務ready且無動作。[摘要](../artifacts/focus-live-2026-09-09/tap-write-c80067c8-c513-4025-9545-332ba1ea889e/summary.json)、[後續完整序列](../artifacts/focus-live-2026-09-09/tap-write-c80067c8-c513-4025-9545-332ba1ea889e/post-lens-series.json)
+
+本輪無照片、無Mac網路切換、無自動重試或猜測恢復。一般預覽Tap AF維持未確認；後續需取得Camera寫入路由／傳輸證據，不能只延長等待、改opcode或重新播放同一序列來宣稱完成。
