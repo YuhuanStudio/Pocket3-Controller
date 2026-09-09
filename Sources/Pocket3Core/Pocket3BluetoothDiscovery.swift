@@ -64,6 +64,8 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     private var lensStateTask: Task<BluetoothLensStateQueryResult, Never>?
     private var cameraPropertyOperation: BluetoothCameraPropertyOperation?
     private var cameraPropertyTask: Task<BluetoothCameraPropertyQueryResult, Never>?
+    private var settingWriteOperation: BluetoothSettingWriteOperation?
+    private var settingWriteTask: Task<BluetoothCameraSettingWriteResult, Never>?
     private var tapFocusOperation: BluetoothTapFocusOperation?
     private var tapFocusTask: Task<BluetoothTapFocusResult, Never>?
     private var lensPointOperation: BluetoothLensPointOperation?
@@ -87,7 +89,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             paired: pairer?.paired == true, nowUptime: ProcessInfo.processInfo.systemUptime)
         result.cameraSettingsObservations = cameraSettingsStore.snapshot(sessionID: state.generation, peripheralID: state.selected,
             paired: pairer?.paired == true, nowUptime: ProcessInfo.processInfo.systemUptime)
-        result.nativeProbeActive = tapFocusOperation != nil || probeOperation != nil || nativePresetOperation != nil || lensStateOperation != nil || cameraPropertyOperation != nil || lensPointOperation != nil
+        result.nativeProbeActive = settingWriteOperation != nil || tapFocusOperation != nil || probeOperation != nil || nativePresetOperation != nil || lensStateOperation != nil || cameraPropertyOperation != nil || lensPointOperation != nil
         result.authorization = switch CBManager.authorization {
         case .allowedAlways: "authorized"
         case .denied: "denied"
@@ -101,11 +103,12 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     /// A fresh explicit request creates a fresh manager. Old manager callbacks
     /// cannot be mistaken for a new scan or connection to the same UUID.
     public func startScan() throws {
+        cancelCameraSettingWrite()
         cancelTapFocusProbe()
         cancelLensPointRecording()
         cancelLensStateQuery(); cancelCameraPropertyQuery()
         cancelNativeRecenter()
-        guard tapFocusOperation == nil, probeOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "Stop the active BLE probe before scanning.") }
+        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "Stop the active BLE probe before scanning.") }
         disconnect()
         guard let usage = Bundle.main.object(forInfoDictionaryKey: "NSBluetoothAlwaysUsageDescription") as? String,
               !usage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -152,11 +155,12 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     /// Connects only a UUID discovered during the current explicit scan.
     /// The 8-second limit includes service discovery and notification setup.
     public func connect(peripheralID: UUID) throws {
+        cancelCameraSettingWrite()
         cancelTapFocusProbe()
         cancelLensPointRecording()
         cancelLensStateQuery(); cancelCameraPropertyQuery()
         cancelNativeRecenter()
-        guard tapFocusOperation == nil, probeOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "Stop the active BLE probe before connecting.") }
+        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "Stop the active BLE probe before connecting.") }
         guard let central, central.state == .poweredOn,
               let peripheral = peripherals[peripheralID],
               let session = state.select(peripheralID) else {
@@ -182,11 +186,12 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     /// The app supplies one persistent UUID32 identifier, also used by its
     /// wireless datalink. No shared/default vendor identifier is transmitted.
     public func beginPairing(clientIdentifier: String, pairOnly: Bool = true) throws {
+        cancelCameraSettingWrite()
         cancelTapFocusProbe()
         cancelLensPointRecording()
         cancelLensStateQuery(); cancelCameraPropertyQuery()
         cancelNativeRecenter()
-        guard tapFocusOperation == nil, probeOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "Stop the active BLE probe before pairing.") }
+        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "Stop the active BLE probe before pairing.") }
         guard state.phase == .gattConnectedUnauthenticated, pairer == nil,
               let peripheral = selectedPeripheral, let fff4, let fff5,
               fff4Notifying, fff5Notifying, peripheral.state == .connected,
@@ -215,7 +220,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         guard CommandLine.arguments.contains("--hardware-validation") else {
             throw BridgeFailure("validation_disabled", "BLE joystick probing requires a development launch.")
         }
-        guard tapFocusOperation == nil, probeOperation == nil, probeTask == nil, readinessOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensPointOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "A BLE probe or readiness query is already running.") }
+        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil, probeTask == nil, readinessOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensPointOperation == nil else { throw BridgeFailure("bluetooth_probe_busy", "A BLE probe or readiness query is already running.") }
         guard state.phase == .gattPaired, pairer?.paired == true,
               [.paired, .credentialsReady].contains(pairer?.phase ?? .idle),
               registrationAcknowledgmentSession == state.generation,
@@ -249,6 +254,8 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         let propertyQuery = cameraPropertyTask
         let lensPoints = lensPointTask
         let tapFocus = tapFocusTask
+        let settingWrite = settingWriteTask
+        cancelCameraSettingWrite()
         cancelTapFocusProbe()
         cancelLensPointRecording()
         cancelLensStateQuery(); cancelCameraPropertyQuery()
@@ -260,10 +267,11 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         if let propertyQuery { _ = await propertyQuery.value }
         if let lensPoints { _ = await lensPoints.value }
         if let tapFocus { _ = await tapFocus.value }
+        if let settingWrite { _ = await settingWrite.value }
         guard operation != nil, let work else { return nil }
         return await work.value
     }
-    public func cancelNativeProbe() { cancelTapFocusProbe(); cancelLensPointRecording(); cancelLensStateQuery(); cancelCameraPropertyQuery(); cancelNativeRecenter(); probeOperation?.permit.invalidate(); probeTask?.cancel() }
+    public func cancelNativeProbe() { cancelCameraSettingWrite(); cancelTapFocusProbe(); cancelLensPointRecording(); cancelLensStateQuery(); cancelCameraPropertyQuery(); cancelNativeRecenter(); probeOperation?.permit.invalidate(); probeTask?.cancel() }
 
     /// Development-only, one FE08 command, no retry or fallback. The App must
     /// own USB/motion exclusion and independent cleanup throughout this call.
@@ -273,7 +281,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         guard CommandLine.arguments.contains("--hardware-validation") else {
             throw BridgeFailure("validation_disabled", "BLE recenter probing requires a development launch.")
         }
-        guard tapFocusOperation == nil, nativePresetOperation == nil, nativePresetTask == nil, probeOperation == nil,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, nativePresetOperation == nil, nativePresetTask == nil, probeOperation == nil,
               probeTask == nil, readinessOperation == nil, readinessTask == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensPointOperation == nil else {
             throw BridgeFailure("bluetooth_probe_busy", "Another BLE probe is already running.")
         }
@@ -367,7 +375,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         }
         let permit = OperationPermit()
         try permit.perform {}
-        guard tapFocusOperation == nil, readinessOperation == nil, probeOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensPointOperation == nil,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, readinessOperation == nil, probeOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensPointOperation == nil,
               state.phase == .gattPaired, pairer?.paired == true,
               [.paired, .credentialsReady].contains(pairer?.phase ?? .idle),
               registrationAcknowledgmentSession == state.generation,
@@ -420,7 +428,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         guard CommandLine.arguments.contains("--hardware-validation") else {
             throw BridgeFailure("validation_disabled", "BLE lens-state queries require a development launch.")
         }
-        guard tapFocusOperation == nil, lensPointOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensStateTask == nil, nativePresetOperation == nil,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, lensPointOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, lensStateTask == nil, nativePresetOperation == nil,
               nativePresetTask == nil, probeOperation == nil, probeTask == nil,
               readinessOperation == nil, readinessTask == nil else {
             throw BridgeFailure("bluetooth_probe_busy", "Another BLE query or probe is already running.")
@@ -490,7 +498,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     public func queryCameraProperty(property: CameraSettingsProperty, permit: OperationPermit = OperationPermit()) async throws -> BluetoothCameraPropertyQueryResult {
         try Task.checkCancellation()
         try permit.perform {}
-        guard tapFocusOperation == nil, lensPointOperation == nil, cameraPropertyOperation == nil, cameraPropertyTask == nil, lensStateOperation == nil, lensStateTask == nil, nativePresetOperation == nil,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, lensPointOperation == nil, cameraPropertyOperation == nil, cameraPropertyTask == nil, lensStateOperation == nil, lensStateTask == nil, nativePresetOperation == nil,
               nativePresetTask == nil, probeOperation == nil, probeTask == nil,
               readinessOperation == nil, readinessTask == nil else {
             throw BridgeFailure("bluetooth_probe_busy", "Another BLE query or probe is already running.")
@@ -575,7 +583,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         guard state.generation == expectedSessionID, state.selected == peripheralID else {
             throw BridgeFailure("bluetooth_lens_series_connection_changed", "The selected Bluetooth peer or session changed")
         }
-        guard tapFocusOperation == nil, lensPointOperation == nil, lensPointTask == nil, cameraPropertyOperation == nil, cameraPropertyTask == nil,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, lensPointOperation == nil, lensPointTask == nil, cameraPropertyOperation == nil, cameraPropertyTask == nil,
               lensStateOperation == nil, lensStateTask == nil, nativePresetOperation == nil, nativePresetTask == nil,
               probeOperation == nil, probeTask == nil, readinessOperation == nil, readinessTask == nil else {
             throw BridgeFailure("bluetooth_probe_busy", "Another Bluetooth query or probe is already running")
@@ -650,6 +658,103 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             && registrationAcknowledgmentSession == operation.session
     }
 
+    /// Developer-only, exactly one existing camera-setting command. No scan,
+    /// pairing, extra subscription, retry, restoration or image export occurs.
+    public func writeCameraSetting(request: BluetoothCameraSettingWriteRequest, permit: OperationPermit,
+        validateCapture: @escaping @MainActor @Sendable () async throws -> Void,
+        validateCaptureSynchronously: @escaping @MainActor @Sendable () throws -> Void) async throws -> BluetoothCameraSettingWriteResult {
+        guard CommandLine.arguments.contains("--hardware-validation") else {
+            throw BridgeFailure("validation_disabled", "BLE camera setting writes require a development launch")
+        }
+        try Task.checkCancellation(); try permit.perform {}
+        guard settingWriteOperation == nil, settingWriteTask == nil, tapFocusOperation == nil, tapFocusTask == nil,
+              lensPointOperation == nil, lensPointTask == nil, cameraPropertyOperation == nil, cameraPropertyTask == nil,
+              lensStateOperation == nil, lensStateTask == nil, nativePresetOperation == nil, nativePresetTask == nil,
+              probeOperation == nil, probeTask == nil, readinessOperation == nil, readinessTask == nil else {
+            throw BridgeFailure("bluetooth_probe_busy", "Another Bluetooth query or write is active")
+        }
+        guard state.generation == request.expectedSessionID, state.selected == request.peripheralID,
+              state.phase == .gattPaired, pairer?.paired == true,
+              registrationAcknowledgmentSession == request.expectedSessionID,
+              let central, central.state == .poweredOn, let peripheral = selectedPeripheral,
+              peripheral.identifier == request.peripheralID, peripheral.state == .connected,
+              fff4Notifying, fff5Notifying, let fff5, fff5.isNotifying,
+              fff5.properties.contains(.writeWithoutResponse), writeQueue.isEmpty,
+              let baseline = cameraSettingsStore.admissionSnapshot(for: request.property,
+                sessionID: request.expectedSessionID, peripheralID: request.peripheralID,
+                paired: true, nowUptime: ProcessInfo.processInfo.systemUptime),
+              let sequence = pairer?.reserveReadinessSequence() else {
+            throw BridgeFailure("bluetooth_setting_not_ready", "Use the exact paired/registered peer with a fresh setting baseline")
+        }
+        let operation = try BluetoothSettingWriteOperation(request: request, baseline: baseline, central: central,
+            peripheral: peripheral, characteristic: fff5, sequence: sequence, permit: permit)
+        if operation.writer.result.noOp { return operation.writer.result }
+        settingWriteOperation = operation
+        let work = Task<BluetoothCameraSettingWriteResult, Never>(priority: .userInitiated) { @MainActor [self, operation] in
+            do {
+                while operation.writer.result.end == nil {
+                    try Task.checkCancellation()
+                    try permit.perform {
+                        try validateCaptureSynchronously()
+                        guard settingWriteIsCurrent(operation) else { throw BridgeFailure("bluetooth_setting_connection_changed", "The paired camera connection changed") }
+                    }
+                    operation.writer.tick(at: ProcessInfo.processInfo.systemUptime)
+                    if operation.writer.result.end == nil, !operation.writer.result.localSubmitted {
+                        try await validateCapture()
+                        try permit.perform {
+                            try validateCaptureSynchronously()
+                            guard settingWriteIsCurrent(operation), writeQueue.isEmpty,
+                                  let current = cameraSettingsStore.admissionSnapshot(for: request.property,
+                                    sessionID: request.expectedSessionID, peripheralID: request.peripheralID,
+                                    paired: true, nowUptime: ProcessInfo.processInfo.systemUptime) else {
+                                throw BridgeFailure("bluetooth_setting_baseline_stale", "The final paired setting baseline is unavailable")
+                            }
+                            _ = try operation.writer.submitIfReady(currentBaseline: current,
+                                hasCredit: peripheral.canSendWriteWithoutResponse,
+                                maximumWriteBytes: peripheral.maximumWriteValueLength(for: .withoutResponse),
+                                at: ProcessInfo.processInfo.systemUptime) { frame, data in
+                                    peripheral.writeValue(data, for: operation.characteristic, type: .withoutResponse)
+                                    recordHeader(frame, direction: "submitted_tx", characteristic: "FFF5")
+                                }
+                        }
+                    }
+                    if operation.writer.result.end == nil { try await Task.sleep(for: .milliseconds(10), tolerance: .zero) }
+                }
+            } catch {
+                let code = (error as? BridgeFailure)?.code ?? (error is CancellationError ? "cancelled" : "bluetooth_setting_failed")
+                let changed = operation.connectionChanged || !settingWriteIsCurrent(operation) || code.contains("capture_changed")
+                let cancelled = Task.isCancelled || !permit.isValid
+                let baselineChanged = code.contains("baseline") || (error as? CameraSettingsError) == .baselineChanged
+                operation.writer.finish(at: ProcessInfo.processInfo.systemUptime,
+                    reason: changed ? .connectionChanged : cancelled ? .cancelled : baselineChanged ? .baselineChanged : .failed,
+                    failure: code)
+            }
+            if let observer = operation.focusObserver { NotificationCenter.default.removeObserver(observer) }
+            if settingWriteOperation === operation { settingWriteOperation = nil; settingWriteTask = nil; drainWrites(); publish() }
+            return operation.writer.result
+        }
+        settingWriteTask = work
+        operation.focusObserver = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
+            object: nil, queue: .main) { _ in permit.invalidate(); work.cancel() }
+        publish()
+        return await withTaskCancellationHandler { await work.value } onCancel: { permit.invalidate(); work.cancel() }
+    }
+    public func cancelCameraSettingWrite() { settingWriteOperation?.permit.invalidate(); settingWriteTask?.cancel() }
+    public func stopCameraSettingWrite(permit: OperationPermit) async -> BluetoothCameraSettingWriteResult? {
+        guard settingWriteOperation?.permit === permit else { return nil }
+        let work = settingWriteTask
+        permit.invalidate(); work?.cancel()
+        return await work?.value
+    }
+    private func settingWriteIsCurrent(_ operation: BluetoothSettingWriteOperation) -> Bool {
+        settingWriteOperation === operation && state.generation == operation.request.expectedSessionID
+            && state.selected == operation.request.peripheralID && selectedPeripheral === operation.peripheral
+            && central === operation.central && fff5 === operation.characteristic && state.phase == .gattPaired
+            && operation.central.state == .poweredOn && operation.peripheral.state == .connected
+            && operation.characteristic.isNotifying && fff4Notifying && fff5Notifying && pairer?.paired == true
+            && registrationAcknowledgmentSession == operation.request.expectedSessionID
+    }
+
     /// Four exact camera writes at most; no pairing, query, retry, neutral or
     /// restore is introduced. The App owns USB/control exclusion and freshness.
     public func probeTapFocus(request: BluetoothTapFocusRequest, permit: OperationPermit,
@@ -659,7 +764,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             throw BridgeFailure("validation_disabled", "BLE tap-focus requires a development launch")
         }
         try Task.checkCancellation(); try permit.perform {}
-        guard tapFocusOperation == nil, tapFocusTask == nil, lensPointOperation == nil, lensPointTask == nil,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, tapFocusTask == nil, lensPointOperation == nil, lensPointTask == nil,
               cameraPropertyOperation == nil, cameraPropertyTask == nil, lensStateOperation == nil, lensStateTask == nil,
               nativePresetOperation == nil, nativePresetTask == nil, probeOperation == nil, probeTask == nil,
               readinessOperation == nil, readinessTask == nil else {
@@ -875,7 +980,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     fileprivate func drainWrites() {
         // A lens-point recording excludes other explicit operations, but is
         // passive after its one synchronous subscription write. Keepalive stays live.
-        guard tapFocusOperation == nil, probeOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, pairer != nil, let peripheral = selectedPeripheral, let fff5,
+        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil, nativePresetOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, pairer != nil, let peripheral = selectedPeripheral, let fff5,
               state.accepts(peripheral: peripheral.identifier, session: state.generation),
               peripheral.state == .connected else { return }
         do {
@@ -932,7 +1037,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
                     guard let self, self.state.generation == session else { return }
                     // lensPointOperation deliberately does not suppress the
                     // existing heartbeat during its longer passive window.
-                    if self.tapFocusOperation == nil, self.probeOperation == nil, self.nativePresetOperation == nil, self.lensStateOperation == nil, self.cameraPropertyOperation == nil, let frame = self.pairer?.keepalive() { self.enqueue(frame) }
+                    if self.settingWriteOperation == nil, self.tapFocusOperation == nil, self.probeOperation == nil, self.nativePresetOperation == nil, self.lensStateOperation == nil, self.cameraPropertyOperation == nil, let frame = self.pairer?.keepalive() { self.enqueue(frame) }
                 }
             }
             publish()
@@ -949,7 +1054,9 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
 
     private func publish() { onStatus?(status) }
     private func close(phase: BluetoothDiscoveryPhase, issue: String?) {
+        settingWriteOperation?.connectionChanged = true
         tapFocusOperation?.connectionChanged = true
+        cancelCameraSettingWrite()
         cancelTapFocusProbe()
         lensPointOperation?.connectionChanged = true
         cancelLensPointRecording()
@@ -1164,8 +1271,14 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
                 }
                 poseStore.receive(packet, sessionID: session, peripheralID: peripheral.identifier,
                     paired: pairer?.paired == true, receivedAt: Date(), uptime: ProcessInfo.processInfo.systemUptime)
-                cameraSettingsStore.receive(packet, sessionID: session, peripheralID: peripheral.identifier,
-                    paired: pairer?.paired == true, uptime: ProcessInfo.processInfo.systemUptime)
+                let settingAdmitted = cameraSettingsStore.receive(packet, sessionID: session, peripheralID: peripheral.identifier,
+                    paired: pairer?.paired == true, uptime: receivedUptime)
+                if let operation = settingWriteOperation, settingWriteIsCurrent(operation) {
+                    _ = try? operation.permit.perform {
+                        operation.writer.receive(packet, propertyAdmitted: settingAdmitted, characteristic: key,
+                            sessionID: session, peripheralID: peripheral.identifier, at: receivedUptime)
+                    }
+                }
                 // Pairing/Wi-Fi replies may contain credentials: they never go
                 // through the generic frame callback or serializable status.
                 if packet.frame.commandSet != 7 {
@@ -1177,6 +1290,26 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     }
     private func accepts(_ peripheral: CBPeripheral, session: UUID) -> Bool {
         peripheral === selectedPeripheral && state.accepts(peripheral: peripheral.identifier, session: session)
+    }
+}
+
+@MainActor
+private final class BluetoothSettingWriteOperation {
+    let request: BluetoothCameraSettingWriteRequest
+    let central: CBCentralManager
+    let peripheral: CBPeripheral
+    let characteristic: CBCharacteristic
+    let permit: OperationPermit
+    var writer: BluetoothCameraSettingWriter
+    var connectionChanged = false
+    var focusObserver: NSObjectProtocol?
+    init(request: BluetoothCameraSettingWriteRequest, baseline: BluetoothCameraSettingsStore.AdmissionSnapshot,
+         central: CBCentralManager, peripheral: CBPeripheral, characteristic: CBCharacteristic,
+         sequence: UInt16, permit: OperationPermit) throws {
+        self.request = request; self.central = central; self.peripheral = peripheral
+        self.characteristic = characteristic; self.permit = permit
+        writer = try BluetoothCameraSettingWriter(request: request, baseline: baseline, sequence: sequence,
+                                                  now: ProcessInfo.processInfo.systemUptime)
     }
 }
 

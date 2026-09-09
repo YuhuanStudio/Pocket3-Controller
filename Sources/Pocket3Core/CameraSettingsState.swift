@@ -100,21 +100,30 @@ public struct CameraSettingsState: Sendable {
     @discardableResult
     public mutating func apply(_ push: CameraPropertyPush, binding: ContinuousGimbalBinding,
                                receivedUptime: TimeInterval, now: TimeInterval) -> Bool {
-        guard binding == self.binding, now.isFinite, receivedUptime.isFinite, receivedUptime >= 0,
-              now >= receivedUptime,
-              now - receivedUptime <= Self.maximumObservationAge,
-              receivedUptime > (observations[push.property]?.receivedUptime ?? -1),
-              let observation = CameraSettingsObservation.decode(push, binding: binding, receivedUptime: receivedUptime) else { return false }
+        guard let observation = CameraSettingsObservation.decode(push, binding: binding, receivedUptime: receivedUptime) else { return false }
+        return apply(observation, now: now)
+    }
+
+    /// Seed/update from the transport's already-decoded, session-bound store.
+    /// This avoids fabricating a wire payload from a displayed baseline value.
+    @discardableResult
+    public mutating func apply(_ observation: CameraSettingsObservation, now: TimeInterval) -> Bool {
+        let receivedUptime = observation.receivedUptime
+        if let value = observation.value, (try? CameraSettingCommand(value)) == nil { return false }
+        guard observation.binding == binding,
+              observation.value == nil || observation.value?.property == observation.property,
+              observation.isFresh(now: now, maximumAge: Self.maximumObservationAge),
+              receivedUptime > (observations[observation.property]?.receivedUptime ?? -1) else { return false }
         expire(at: now)
-        observations[push.property] = observation // Update freshness even when the value is unchanged.
+        observations[observation.property] = observation // Update freshness even when the value is unchanged.
         guard var operation, operation.phase == .pending,
               let submitted = operation.submittedUptime, receivedUptime > submitted,
-              operation.request.command.value.property == push.property,
+              operation.request.command.value.property == observation.property,
               observation.value == operation.request.command.value else { return true }
         if case .autoEV = operation.request.command.value, observation.exposureMode != .automatic { return true }
         operation.phase = .confirmed
         operation.confirmation = CameraSettingConfirmation(observed: operation.request.command.value,
-            property: push.property, transactionID: push.transactionID, receivedUptime: receivedUptime,
+            property: observation.property, transactionID: observation.transactionID, receivedUptime: receivedUptime,
             basis: "fresh_matching_property_after_submission")
         operation.failureCode = nil
         self.operation = operation

@@ -5,6 +5,11 @@ import CryptoKit
 /// "Fresh" means received by this host within five seconds, not cryptographic
 /// freshness, a setter acknowledgment, or association with the USB camera.
 struct BluetoothCameraSettingsStore: Sendable {
+    struct AdmissionSnapshot: Sendable {
+        let observation: CameraSettingsObservation
+        let sequence: UInt16
+        let fingerprints: [Data]
+    }
     static let maximumAge: TimeInterval = 5
     static let maximumFingerprintsPerProperty = 16
     private static let properties: [CameraSettingsProperty] = [.lensState, .imageEffect, .exposure]
@@ -90,6 +95,16 @@ struct BluetoothCameraSettingsStore: Sendable {
                   value.isFresh(now: nowUptime, maximumAge: Self.maximumAge) else { return nil }
             return value
         }
+    }
+
+    /// Internal write-observation seed. No raw payload is retained or exposed;
+    /// a setter cannot use an old replay to manufacture a fresh confirmation.
+    func admissionSnapshot(for property: CameraSettingsProperty, sessionID: UUID,
+                           peripheralID: UUID, paired: Bool, nowUptime: TimeInterval) -> AdmissionSnapshot? {
+        guard self.sessionID == sessionID, self.peripheralID == peripheralID, paired,
+              let entry = entries[property], entry.observation.isFresh(now: nowUptime, maximumAge: Self.maximumAge) else { return nil }
+        return AdmissionSnapshot(observation: entry.observation, sequence: entry.sequence,
+                                 fingerprints: fingerprints[property] ?? [])
     }
 
     /// Bounded scalar diagnostic for pure tests; not a payload/history export.

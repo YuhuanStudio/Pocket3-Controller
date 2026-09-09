@@ -19,6 +19,9 @@ extension AppModel {
         case "validation-wireless-probe": return try await performBluetoothGimbalProbe(request)
         case "validation-wireless-recenter": return try await performBluetoothNativeRecenter(request)
         case "validation-wireless-tap-focus": return try await performBluetoothTapFocus(request)
+        case "validation-wireless-setting":
+            let arguments = try BluetoothCameraSettingWriteRequest(arguments: request.arguments)
+            return ServiceReply(id: request.id, result: try .encode(try await writeCameraSetting(arguments)))
         case "validation-wireless-lens":
             return ServiceReply(id: request.id, result: try .encode(try await wireless.bluetooth.queryLensState()))
         case "validation-wireless-lens-series":
@@ -43,22 +46,52 @@ extension AppModel {
         return ServiceReply(id: request.id, result: try wireless.validationStatus())
     }
 
+    /// Shared by the developer RPC and the App's explicit setting action.
+    /// The Discovery layer still requires the development launch independently.
+    func writeCameraSetting(_ request: BluetoothCameraSettingWriteRequest) async throws -> BluetoothCameraSettingWriteResult {
+        let bluetooth = wireless.bluetooth
+        let execution = try await withBluetoothCameraWriteReservation(sessionID: request.expectedSessionID,
+            peripheralID: request.peripheralID, captureSessionID: request.expectedCaptureSessionID,
+            cancel: { permit in _ = await bluetooth.stopCameraSettingWrite(permit: permit) }) { context in
+                try await bluetooth.writeCameraSetting(request: request, permit: context.permit,
+                    validateCapture: context.validateCapture, validateCaptureSynchronously: context.validateCaptureSynchronously)
+            }
+        return execution.output
+    }
+
     private func performBluetoothTapFocus(_ request: ServiceRequest) async throws -> ServiceReply {
         let arguments = try BluetoothTapFocusRequest(arguments: request.arguments)
-        guard bluetoothProbePermit == nil else { throw BridgeFailure("probe_busy", "A Bluetooth probe is already active") }
         let bluetooth = wireless.bluetooth
-        guard bluetooth.status.sessionID == arguments.expectedSessionID,
-              bluetooth.status.selectedPeripheralID == arguments.peripheralID,
+        let execution = try await withBluetoothCameraWriteReservation(sessionID: arguments.expectedSessionID,
+            peripheralID: arguments.peripheralID, captureSessionID: arguments.expectedCaptureSessionID,
+            cancel: { permit in _ = await bluetooth.stopTapFocusProbe(permit: permit) }) { context in
+                try await bluetooth.probeTapFocus(request: arguments, permit: context.permit,
+                    validateCapture: context.validateCapture, validateCaptureSynchronously: context.validateCaptureSynchronously)
+            }
+        var output: [String: JSONValue] = ["probe": try .encode(execution.output), "beforeFrame": try .encode(execution.before),
+            "cameraImagesIncluded": .bool(false), "usbBluetoothIdentityAssociated": .bool(false)]
+        if let after = execution.after { output["afterFrame"] = try .encode(after) }
+        return ServiceReply(id: request.id, result: .object(output))
+    }
+
+    private func withBluetoothCameraWriteReservation<Output: Sendable>(sessionID: UUID, peripheralID: UUID,
+        captureSessionID: String, cancel: @escaping @MainActor @Sendable (OperationPermit) async -> Void,
+        operation: @MainActor @Sendable (BluetoothCameraWriteContext) async throws -> Output
+    ) async throws -> (output: Output, before: FrameInfo, after: FrameInfo?) {
+        guard CommandLine.arguments.contains("--hardware-validation") else {
+            throw BridgeFailure("validation_disabled", "BLE camera setting writes require a development launch")
+        }
+        guard bluetoothProbePermit == nil else { throw BridgeFailure("probe_busy", "A Bluetooth camera operation is already active") }
+        let bluetooth = wireless.bluetooth
+        guard bluetooth.status.sessionID == sessionID, bluetooth.status.selectedPeripheralID == peripheralID,
               !bluetooth.status.nativeProbeActive else {
-            throw BridgeFailure("bluetooth_focus_connection_changed", "Choose the exact idle paired Bluetooth session")
+            throw BridgeFailure("bluetooth_camera_write_connection_changed", "Choose the exact idle paired Bluetooth session")
         }
         let before = try service.capture.store.latest(maxAge: 1).info
-        guard before.sessionID == arguments.expectedCaptureSessionID else {
-            throw BridgeFailure("bluetooth_focus_capture_changed", "The requested USB capture session is no longer current")
+        guard before.sessionID == captureSessionID else {
+            throw BridgeFailure("bluetooth_camera_write_capture_changed", "The requested USB capture session is no longer current")
         }
-        // Every attempt has its own service identity: a late old cleanup cannot
-        // release/cancel a later attempt using the same BLE/USB connections.
-        let binding = ContinuousGimbalBinding(sessionID: "ble-tap-focus:\(arguments.expectedSessionID.uuidString):\(UUID().uuidString)", generation: 0)
+        let binding = ContinuousGimbalBinding(sessionID: "ble-camera-write:\(sessionID.uuidString):\(UUID().uuidString)", generation: 0)
         let permit = OperationPermit(), service = self.service
         bluetoothProbePermit = permit
         defer { if bluetoothProbePermit === permit { bluetoothProbePermit = nil } }
@@ -69,35 +102,32 @@ extension AppModel {
         try permit.perform {}
         try await service.reserveNativeControl(binding: binding, readStatus: { NativeControlStatus(starting: true) }, writePermit: permit) {
             permit.invalidate()
-            _ = await bluetooth.stopTapFocusProbe(permit: permit)
+            await cancel(permit)
             await service.releaseNativeControl(binding: binding)
-            // This cancels future steps only. It neither claims to halt optical
-            // AF nor sends an invented camera AE/focus restore command.
+            // Cancelling host work cannot undo an already-submitted camera
+            // setting. No neutral, optical-stop or invented restore is sent.
             return MotionResult(accepted: true, completed: true, verified: false,
-                verification: "ble_focus_steps_cancelled_camera_state_unconfirmed", target: nil, observed: nil,
-                message: "Pending BLE focus steps cancelled; previously submitted camera-side effects are unconfirmed")
+                verification: "ble_camera_write_cancelled_state_unconfirmed", target: nil, observed: nil,
+                message: "Pending BLE camera writes cancelled; already submitted camera-side effects are unconfirmed")
         }
+        let started = ProcessInfo.processInfo.systemUptime
         do {
             try permit.perform {}
-            let result = try await bluetooth.probeTapFocus(request: arguments, permit: permit, validateCapture: {
+            let context = BluetoothCameraWriteContext(permit: permit, validateCapture: {
                 try await service.validateNativeControlReservation(binding: binding,
-                    expectedCaptureSessionID: arguments.expectedCaptureSessionID, writePermit: permit)
+                    expectedCaptureSessionID: captureSessionID, writePermit: permit)
             }, validateCaptureSynchronously: {
-                guard try service.capture.store.latest(maxAge: 1).info.sessionID == arguments.expectedCaptureSessionID else {
-                    throw BridgeFailure("bluetooth_focus_capture_changed", "The final USB capture identity changed")
+                guard try service.capture.store.latest(maxAge: 1).info.sessionID == captureSessionID else {
+                    throw BridgeFailure("bluetooth_camera_write_capture_changed", "The final USB capture identity changed")
                 }
             })
+            let output = try await operation(context)
             await service.releaseNativeControl(binding: binding)
-            var output: [String: JSONValue] = ["probe": try .encode(result), "beforeFrame": try .encode(before),
-                "cameraImagesIncluded": .bool(false), "usbBluetoothIdentityAssociated": .bool(false)]
-            if let after = try? service.capture.store.latest(maxAge: 1, after: result.startedUptime).info,
-               after.sessionID == arguments.expectedCaptureSessionID {
-                output["afterFrame"] = try .encode(after)
-            }
-            return ServiceReply(id: request.id, result: .object(output))
+            let candidate = try? service.capture.store.latest(maxAge: 1, after: started).info
+            return (output, before, candidate?.sessionID == captureSessionID ? candidate : nil)
         } catch {
             permit.invalidate()
-            _ = await bluetooth.stopTapFocusProbe(permit: permit)
+            await cancel(permit)
             await service.releaseNativeControl(binding: binding)
             throw error
         }
@@ -189,4 +219,10 @@ extension AppModel {
             throw error
         }
     }
+}
+
+private struct BluetoothCameraWriteContext: Sendable {
+    let permit: OperationPermit
+    let validateCapture: @MainActor @Sendable () async throws -> Void
+    let validateCaptureSynchronously: @MainActor @Sendable () throws -> Void
 }

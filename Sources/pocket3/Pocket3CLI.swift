@@ -55,6 +55,11 @@ import MCP
                 arguments["expectedSessionID"] = .string(session)
             }
             if ["zoom-status", "roll-status"].contains(command), let session = option("--session") { arguments["expectedSessionID"] = .string(session) }
+            if command == BluetoothCameraSettingWriteRequest.operation {
+                let request = try BluetoothCameraSettingWriteRequest(cliArguments: Array(args.dropFirst()))
+                let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}"); return
+            }
             if command == BluetoothTapFocusRequest.operation {
                 let request = try BluetoothTapFocusRequest(cliArguments: Array(args.dropFirst()))
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
@@ -202,6 +207,8 @@ import MCP
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
+        pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON
+          Developer only: one WB/AF-mode/Auto-EV write; expected fresh baseline; no retry or restore.
         pocket3 snapshot [--output image.jpg] [--max-dimension 1920]
         pocket3 move --direction left|right|up|down|home|front|back [--output image.jpg]
         pocket3 move --pan DEGREES [--tilt DEGREES] [--output image.jpg]
