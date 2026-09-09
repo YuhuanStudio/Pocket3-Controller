@@ -47,12 +47,20 @@ enum NativeStopReceiveIdentity: Hashable, Sendable {
 /// strictly increasing host receive times prevent repeated snapshot polling
 /// from manufacturing the duration needed for a stable window.
 struct NativeStopTelemetryVerifier {
-    static let maximumDuration: TimeInterval = 1.5
+    enum Purpose: Sendable {
+        case stopConfirmation, preCommandBaseline
+        var maximumDuration: TimeInterval {
+            switch self { case .stopConfirmation: 1.5; case .preCommandBaseline: 3 }
+        }
+    }
+    // Existing Stop callers and their outer deadlines retain the original bound.
+    static let maximumDuration: TimeInterval = Purpose.stopConfirmation.maximumDuration
     static let minimumStableDuration: TimeInterval = 0.2
     static let maximumSpanDegrees = 0.25
     static let minimumSamples = 3
     static let maximumSampleAge: TimeInterval = 0.35
-    private let neutralSentUptime: TimeInterval
+    private let referenceUptime: TimeInterval
+    private let purpose: Purpose
     private var identities: Set<NativeStopReceiveIdentity> = []
     private var identityDomain: NativeStopReceiveIdentity.Domain?
     private var lastUptime: TimeInterval?
@@ -72,7 +80,14 @@ struct NativeStopTelemetryVerifier {
         guard windowCount > 0 else { return nil }
         return zip(minimum, maximum).map { $1 - $0 }.max()
     }
-    init(neutralSentUptime: TimeInterval) { self.neutralSentUptime = neutralSentUptime }
+    init(neutralSentUptime: TimeInterval) {
+        self.init(referenceUptime: neutralSentUptime, purpose: .stopConfirmation)
+    }
+    /// The baseline purpose only extends pre-command acquisition time. Sample
+    /// count, freshness/gap and angular stability requirements are unchanged.
+    init(referenceUptime: TimeInterval, purpose: Purpose) {
+        self.referenceUptime = referenceUptime; self.purpose = purpose
+    }
 
     mutating func receive(_ telemetry: Pocket3DatalinkTelemetry, receivedUptime: TimeInterval,
                           packetSequence: UInt16, messageSequence: UInt16, now: TimeInterval) {
@@ -83,10 +98,10 @@ struct NativeStopTelemetryVerifier {
     mutating func receive(_ telemetry: Pocket3DatalinkTelemetry, receivedUptime: TimeInterval,
                           identity: NativeStopReceiveIdentity, now: TimeInterval) {
         let values = [telemetry.pitchDegrees, telemetry.rollDegrees, telemetry.yawDegrees]
-        guard neutralSentUptime.isFinite, now.isFinite, receivedUptime.isFinite,
-              receivedUptime > neutralSentUptime, receivedUptime <= now,
+        guard referenceUptime.isFinite, now.isFinite, receivedUptime.isFinite,
+              receivedUptime > referenceUptime, receivedUptime <= now,
               now - receivedUptime <= Self.maximumSampleAge,
-              receivedUptime - neutralSentUptime <= Self.maximumDuration,
+              receivedUptime - referenceUptime <= purpose.maximumDuration,
               telemetry.receivedAt.timeIntervalSinceReferenceDate.isFinite,
               lastReceiveDate == nil || telemetry.receivedAt > lastReceiveDate!,
               values.allSatisfy({ $0.isFinite && abs($0) <= 360 }),

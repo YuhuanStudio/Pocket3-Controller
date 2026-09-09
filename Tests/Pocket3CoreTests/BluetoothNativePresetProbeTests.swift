@@ -53,6 +53,47 @@ import Testing
         #expect(throws: BridgeFailure.self) { try stale.submitted(at: 0.91) }
         #expect(!absent.result.localSubmitted && !stale.result.localSubmitted)
     }
+    @Test func laterStableBaselineCanAuthorizeTheSameSingleCommand() throws {
+        var probe = BluetoothNativePresetProbe(sequence: 0x9123, startedUptime: 0, registrationAcknowledgmentSubmitted: true)
+        for (index, time) in [1.4, 1.65, 1.9].enumerated() {
+            feed(&probe, data: try telemetry(sequence: UInt16(index + 1)), at: time)
+        }
+        #expect(probe.baselineIsReady(at: 1.91))
+        try probe.submitted(at: 1.91)
+        #expect(probe.result.baselineSampleCount == 3 && abs(probe.result.baselineDurationSeconds - 0.5) < 0.000001)
+        #expect(probe.request.payload == Data([0xfe, 0x08]) && probe.request.commandID == 0x4c)
+        #expect(throws: BridgeFailure.self) { try probe.submitted(at: 1.92) }
+        feed(&probe, data: try ack(), at: 2)
+        let result = probe.finish(at: 4.90, cancelled: false, connectionChanged: false, failure: nil)
+        #expect(!result.observationWindowCompleted) // Still requires 3 seconds after the actual submission.
+    }
+    @Test func longerAcquisitionDoesNotRelaxBaselineDurationGapOrSpan() throws {
+        let cases: [([Double], [Double])] = [
+            ([1.4, 1.5185, 1.637, 1.7555, 1.874], [0,0,0,0,0]), // 5 samples, only .474 seconds.
+            ([1.4, 1.76, 2.0], [0,0,0]), // A .36-second gap resets the candidate window.
+            ([1.4, 1.65, 1.9], [0,0.2,0.4]), // Cumulative span exceeds .25 degrees.
+        ]
+        for (times, yaw) in cases {
+            var probe = BluetoothNativePresetProbe(sequence: 1, startedUptime: 0, registrationAcknowledgmentSubmitted: true)
+            for index in times.indices {
+                feed(&probe, data: try telemetry(sequence: UInt16(index + 1), yaw: yaw[index]), at: times[index])
+            }
+            #expect(!probe.baselineIsReady(at: times.last!))
+            #expect(throws: BridgeFailure.self) { try probe.submitted(at: times.last!) }
+            #expect(!probe.result.localSubmitted)
+        }
+    }
+    @Test func preCommandSamplesAndSubmissionStayBoundedToThreeSeconds() throws {
+        var probe = BluetoothNativePresetProbe(sequence: 1, startedUptime: 0, registrationAcknowledgmentSubmitted: true)
+        for (index, time) in [2.4, 2.65, 2.9].enumerated() {
+            feed(&probe, data: try telemetry(sequence: UInt16(index + 1)), at: time)
+        }
+        #expect(probe.baselineIsReady(at: 2.91))
+        feed(&probe, data: try telemetry(sequence: 4), at: 3.001)
+        #expect(probe.result.baselineSampleUptimes == [2.4, 2.65, 2.9])
+        #expect(!probe.baselineIsReady(at: 3.001))
+        #expect(throws: BridgeFailure.self) { try probe.submitted(at: 3.001) }
+    }
 
     @Test func acknowledgmentsRequireExactRouteSequenceOpcodeFlagsAndValidCRC() throws {
         let invalid = try [ack(sequence: 0x9124), ack(source: 5), ack(destination: 0x22),

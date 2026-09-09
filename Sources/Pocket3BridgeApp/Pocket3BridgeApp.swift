@@ -479,7 +479,7 @@ final class AppModel {
     }
     func prepareLocalModel() {
         Task {
-            do { if localStatus?.available != true { try await intelligence.localModel.download() }; _ = try await intelligence.localModel.load(); selectedEngine = "mlx"; await refresh() }
+            do { if localStatus?.available != true { try await intelligence.localModel.download() }; _ = try await intelligence.localModel.load(); await refresh() }
             catch { message = AppErrorPresentation.message(error); await refresh() }
         }
     }

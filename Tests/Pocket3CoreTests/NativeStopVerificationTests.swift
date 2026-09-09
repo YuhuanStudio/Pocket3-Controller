@@ -29,6 +29,28 @@ import Testing
         #expect(verifier.sampleCount == 1)
         #expect(!verifier.isStable(now: 1000.31))
     }
+    @Test func explicitPreCommandPurposeAcceptsLaterBaselineButDefaultStopDoesNot() {
+        var baseline = NativeStopTelemetryVerifier(referenceUptime: 1000, purpose: .preCommandBaseline)
+        var stop = NativeStopTelemetryVerifier(neutralSentUptime: 1000)
+        for (index, time) in [1001.4, 1001.65, 1001.9].enumerated() {
+            let identity = NativeStopReceiveIdentity.bluetooth(source: 4, messageSequence: UInt16(index + 1))
+            baseline.receive(sample(time), receivedUptime: time, identity: identity, now: time)
+            stop.receive(sample(time), receivedUptime: time, identity: identity, now: time)
+        }
+        #expect(baseline.sampleCount == 3 && baseline.stableDurationSeconds >= 0.5)
+        #expect(baseline.isStable(now: 1001.9))
+        #expect(stop.sampleCount == 1 && !stop.isStable(now: 1001.9))
+        #expect(NativeStopTelemetryVerifier.maximumDuration == 1.5)
+    }
+    @Test func preCommandPurposeStillRejectsSamplesAfterThreeSeconds() {
+        var baseline = NativeStopTelemetryVerifier(referenceUptime: 1000, purpose: .preCommandBaseline)
+        for (index, time) in [1002.5, 1002.75, 1003.001].enumerated() {
+            baseline.receive(sample(time), receivedUptime: time,
+                identity: .bluetooth(source: 4, messageSequence: UInt16(index + 1)), now: time)
+        }
+        #expect(baseline.sampleCount == 2 && baseline.finalTelemetry?.receivedAt == sample(1002.75).receivedAt)
+        #expect(!baseline.isStable(now: 1003.001))
+    }
     @Test func allAxisTotalSpanRejectsSmallCumulativeStepsThenAcceptsSettling() {
         for axis in 0..<3 {
             var verifier = NativeStopTelemetryVerifier(neutralSentUptime: 1000)

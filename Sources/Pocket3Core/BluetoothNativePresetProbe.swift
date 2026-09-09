@@ -47,7 +47,7 @@ public struct BluetoothNativeRecenterResult: Codable, Sendable {
 struct BluetoothNativePresetProbe {
     static let frameBytes = 15
     static let minimumBaselineDuration: TimeInterval = 0.5
-    static let baselineTimeout: TimeInterval = 1.5
+    static let baselineTimeout: TimeInterval = NativeStopTelemetryVerifier.Purpose.preCommandBaseline.maximumDuration
     static let observationDuration: TimeInterval = 3
     static let maximumRecordedTimes = 128
     private var admission = NativeBLETelemetrySequenceAdmission()
@@ -64,7 +64,7 @@ struct BluetoothNativePresetProbe {
     init(sequence: UInt16, startedUptime: TimeInterval, registrationAcknowledgmentSubmitted: Bool) {
         result = BluetoothNativeRecenterResult(sequence: sequence, startedUptime: startedUptime)
         result.registrationAcknowledgmentSubmitted = registrationAcknowledgmentSubmitted
-        baselineVerifier = NativeStopTelemetryVerifier(neutralSentUptime: startedUptime)
+        baselineVerifier = NativeStopTelemetryVerifier(referenceUptime: startedUptime, purpose: .preCommandBaseline)
     }
 
     func baselineIsReady(at now: TimeInterval) -> Bool {
