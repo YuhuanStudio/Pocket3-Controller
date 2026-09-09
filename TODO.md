@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 13；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
+更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，本段記錄時已安裝 beta 2 開發 build 15，candidate build 16 正在編譯／測試；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
 
 ## beta 1 發布與整理
 
@@ -15,6 +15,17 @@
 - [x] 三語 README／文件索引／使用指南與九張排除取景照片的 UI 圖已完成，圖片與公開下載版本分別標明。[公開呈現清單](docs/RELEASE_PRESENTATION_CHECKLIST.md)
 - [x] beta 2 build 11 版面修正：AI卡等高與控制列齊、MCP長路徑、設定長標籤與更新列、權限圖示、診斷卡、音訊動態本地化；三語、兩種視窗尺寸已逐張視覺檢查，完整回歸測試另記。
 - [ ] 新版真正下載、更新安裝、重新啟動驗收；未公證可明示發布 beta，不把它描述成 Apple 已驗證。
+
+## 本輪 build13–15 真機 AI、設定與完整配對
+
+- [x] **MLX真機觀察／縮放任務通過**：34.111秒，實際工具順序`capture_frame → camera_zoom_status → camera_set_zoom(raw200) → capture_frame`；只有一次縮放，回讀verified、動作後及最終影格來自真實裝置／同session。之後恢復raw100及manual，cleanup確認。[結果](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/result.json)、[工具與影格](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/observation.stdout.json)
+- [x] 該次MLX卸載後cache為0、active為4036 bytes；只描述MLX配置器，不寫成記憶體完全歸零或App RSS歸零。[卸載後](artifacts/live-ai-2026-09-09/mlx-d5612d23-b713-489d-a189-acade9b63f66/after-model-unload.json)
+- [ ] **Apple真機動作流程仍未完成**：build13回答有內容但`actions=[]`、raw仍100；build14文字計畫錯誤拒絕合法raw200，build15明確raw150也被拒絕，均未移動縮放。三份失敗保留；build16的新混合流程／roles修正尚未實測，不先標通過。[build13](artifacts/live-ai-2026-09-09/apple-6a154bec-4fd6-410d-b486-25a41b7abb21/result.json)、[build14](artifacts/live-ai-2026-09-09/apple-plan-15eb7103-ea06-41b9-8672-a8ef120d59a3/result.json)、[build15](artifacts/live-ai-2026-09-09/apple-build15-explicit-7d730d99-86c1-40b4-a1df-3da430989fbc/result.json)
+- [x] 三份獨立Apple計畫提取結果與來源／instructions hash已保存；此為模型提取診斷，不是額外硬體成功。[來源紀錄](artifacts/apple-plan-extraction-2026-09-09/source-provenance.json)、[自然語句](artifacts/apple-plan-extraction-2026-09-09/current-natural.json)、[明確raw150](artifacts/apple-plan-extraction-2026-09-09/current-raw150.json)、[另一schema對照](artifacts/apple-plan-extraction-2026-09-09/associated-raw150.json)
+- [x] 完整配對已到`credentialsReady`，且`samePrimaryRoute=true`、沒有呼叫Mac Wi-Fi join；只記錄狀態，不輸出密碼。[配對](artifacts/full-pair-control-2026-09-09/paired.json)、[網路核對](artifacts/full-pair-control-2026-09-09/network-check.json)
+- [ ] **WB writer仍未生效**：pairOnly/build14與完整配對/build15各只送一次5600K，分別7／6筆回報仍Auto、都無ACK及matching readback，`applied=false`。原Auto未變，沒有restore寫入，也沒有盲重試。[pairOnly](artifacts/camera-settings-live-2026-09-09/white-balance-129a5c24-0e92-4fd2-acce-9596ce96fb68/result.json)、[full pair](artifacts/full-pair-control-2026-09-09/white-balance-43db759b-752c-4983-be27-ebbd04da92ae/result.json)
+- [x] 使用者開啟視窗後，UI檢查`animationVerified=true`，可見manual button放開流程通過，pan由0到11880；不把先前screenUnavailable下的offset timeout當控制功能成功。[解鎖UI](artifacts/full-pair-control-2026-09-09/ui-check-after-user-open.json)、[手動操作](artifacts/full-pair-control-2026-09-09/manual-button-release-unlocked.json)
+- [ ] 完整配對下的原生回中仍待真正提交與觀察：前次USB offset timeout時未發FE08；解鎖後另次只有2筆基線、間隔1.417秒，`baselineStable=false/localSubmitted=false`，所以不是FE08再次發送後失敗。USB cleanup在12240保持確認；稍後status回0原因未知，不歸因FE08。native preset等待期間保留heartbeat／drain的新修正已寫入，尚未實測。[offset前置失敗](artifacts/full-pair-control-2026-09-09/native-recenter-faa6cbbb-c2d1-42a5-a7d5-284bc00329fe/result.json)、[未提交的回中](artifacts/full-pair-control-2026-09-09/native-recenter-unlocked-5427968d-0030-4be5-bfaf-544fe80c2071/native-recenter.stdout.json)
 
 ## 相機重新開啟後的新證據
 
@@ -105,7 +116,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 - [ ] 完成最新candidate的直幅方向／完整內容、黑邊、視窗縮放與切換重連，以及尚未覆蓋的格式組合。公開beta1的NV12橫幅子矩陣已通過；早期五種直幅的通過受當次機身方向限制，不涵蓋全部模式。未充分暖機的FPS失敗保留，不當作已證明不相容。
 - [ ] UYVY 選項對應的 H.264 路徑與4K高幀率：多種 AVF output policy、延長20秒及解鎖環境仍無 sample callback；繼續核對 OBS 的實際影像及其他路徑，不能把選單宣告當可用。[解鎖對照](artifacts/hardware-resumed/uyvy-unlocked-20s.json)、[協議／格式證據](docs/HARDWARE_ACCEPTANCE.md)
 - [ ] BLE 原生持續馬達控制。有效時序的200 ms低速脈衝沒有位移；04/50 readiness 查詢無回覆。已配對／可讀姿態不等於可控制馬達。[脈衝](artifacts/hardware-resumed/ble-native-probe-2/result.json)、[readiness](artifacts/hardware-resumed/ble-readiness-result.json)
-- [ ] 真實相機下 App 內 Apple／MLX 與 MCP「先看→移動／縮放→新影格→回答」，包含拒絕、取消與錯誤恢復；目前真模型 zoom 的通過證據使用模擬相機。
+- [ ] 完成真實相機下Apple及外部MCP的「先看→移動／縮放→新影格→回答」，以及拒絕、取消與錯誤恢復的完整流程。MLX的單次raw200真機任務已由上節補足，不再把全部真模型zoom證據寫成simulation；它仍不代替Apple、外部MCP或全視角驗收。
 - [ ] USB 供電／未知充電提示的最新 UI 與實機回歸；不把配置電力當實際充電功率或電池回報。
 
 ## 其他本輪功能與外部發布條件
