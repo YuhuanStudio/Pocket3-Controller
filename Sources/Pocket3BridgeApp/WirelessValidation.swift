@@ -20,6 +20,10 @@ extension AppModel {
         case "validation-wireless-recenter": return try await performBluetoothNativeRecenter(request)
         case "validation-wireless-lens":
             return ServiceReply(id: request.id, result: try .encode(try await wireless.bluetooth.queryLensState()))
+        case "validation-wireless-lens-series":
+            let arguments = try BluetoothLensSeriesRequest(arguments: request.arguments)
+            return ServiceReply(id: request.id, result: try .encode(try await wireless.bluetooth.recordLensPoints(
+                expectedSessionID: arguments.expectedSessionID, peripheralID: arguments.peripheralID)))
         case "validation-wireless-property":
             guard let name = request.arguments["property"].string,
                   let property = CameraSettingsProperty(rawValue: name) else {

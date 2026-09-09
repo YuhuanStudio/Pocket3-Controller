@@ -1,4 +1,4 @@
-Pocket 3 Controller — 0.0.1 beta 1
+Pocket 3 Controller — 0.0.1 beta 2（開發中，尚未發布）
 Yuhuan Studio
 
 需要 Apple Silicon 與 macOS 27。以 USB 接上 Pocket 3，並在機身選擇 Webcam 模式。
