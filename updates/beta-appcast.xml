@@ -1,0 +1,61 @@
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Pocket 3 Controller</title>
+        <item>
+            <title>0.0.1</title>
+            <pubDate>Wed, 09 Sep 2026 13:19:29 +0800</pubDate>
+            <link>https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1</link>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>0.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# Pocket 3 Controller 0.0.1 beta 1
+
+Pocket 3 Controller 是 Yuhuan Studio 的 macOS Pocket 3 桌面控制 App，內建本機 AI、CLI 與 MCP 接入。這是早期 Beta，供實際試用與回報問題；不是 DJI 官方軟體，也不是全部機身設定已支援的版本。
+
+## 可以使用的流程
+
+- 透過 USB Webcam 模式預覽、選擇已驗證影像格式與擷取單張畫面。
+- 使用方向按鈕或拖曳控制 pan／tilt，放開或按 Stop 結束操作；保留 Mac 原本的網路連線。
+- 調整裝置宣告的 USB 縮放，使用 App 的原始控制值，不把它說成已校準的光學倍率。
+- 透過本機 AI、OCR、CLI／MCP 取得畫面觀察；動作遵守 App 的權限及可用性條件。
+- 明確連接 BLE 後查看相機回報的電量、姿態及可讀設定狀態；低電量或持續下降時提示。BLE 不自動視為同一 USB 裝置，也不把 USB 配置電流當成實際充電量。
+- 沿用 Yun 的介面、外觀、語言、選單列及設定操作方式。
+
+## 仍在開發
+
+- 尚未提供等同機身搖桿雙擊／三擊的原生快速回中及正反面翻轉；慢速移動不當作等價替代。
+- App 內點按對焦未完成。只讀 AF／WB／EV 回報不代表可以寫入機身設定。
+- USB Roll 為實驗功能；讀回可用值不等於物理角度、方向或移動中停止全部驗收。
+- H.264、所有高解析度／高幀率組合、原生直幅、完整物理範圍與速度校準尚未全數驗收。本版基本實測使用 1920×1080 NV12／30 fps；裝置宣告其他格式不代表已驗證可用。
+- 不能由 Mac 直接取代 Pocket 3 的所有拍攝、錄影、音訊、色彩、追蹤或韌體設定；未支援項保留於後續計劃。
+- BLE 姿態尚未與 USB 座標校準。停止後穩定讀回是軟體／遙測證據，不是機械急停認證。
+
+## 安裝與升級
+
+發布前的 build 8 候選包已通過完整軟體 gate（397 項測試、59 張 UI、ZIP／DMG 包內核對），以及有界真機基本流程：1920×1080 NV12 新影格、手動移動後放開與復位、縮放後復位、隱私暫停／重連及最後停止。這些結果不擴大為完整物理範圍、縮放移動中停止、原生快速 preset 或 App 點按 AF 已完成。
+
+需要 Apple Silicon 與 macOS 27。下載 ZIP 或 DMG，把 **Pocket 3 Controller.app** 放入 Applications 後開啟；連接相機並在機身選擇 Webcam 模式。相機／麥克風／Bluetooth 權限只在相應操作需要時請求。
+
+此 Beta 預設採固定本機開發簽署，**尚未公證**；它不是 Developer ID 公開發行簽署，其他 Mac 的首次啟動、隔離與權限體驗仍需驗證。macOS 可能阻擋首次開啟，請依系統提示及實際信任判斷處理，不需要停用 SIP 或 Gatekeeper。
+
+公開 build 9 已配置本專案獨立的簽署 Beta 更新來源；自動檢查依你的選擇啟用。保留既有 bundle identifier、偏好與本機模型資料；執行檔／MCP helper 的內部名稱沒有因 App 更名而改變。關閉視窗會留在選單列，使用隱私暫停釋放影音，退出 App 結束服務。
+
+本版發行頁為 [v0.0.1-beta.1](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)。回報時請附 App 版本、macOS 版本及重現步驟；影像、裝置序號或完整診斷只在你決定分享時附上。
+
+## 本次套件驗證
+
+- Build：9
+- 簽署：`local_development`；manifest 公證標記：`false`。
+- App SHA-256：`5aa5587910e63c7e47d50d75fc9d14e9f07e3bcd8085573a37c8175ebf031cee`
+- 原始碼 commit：`21778c0e6ddec9ec9da017683f74c62177443985`；建置來源與版本 tag 一致且乾淨。
+- 完整本機軟體 gate 與 ZIP／DMG payload 驗證通過；不代表所有機身功能已驗收。
+]]></description>
+            <enclosure url="https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/Pocket3Controller-0.0.1-beta.1.zip" length="38878491" type="application/octet-stream" sparkle:edSignature="/K9tV4sNZoV7z+b7swyG3wLwjCQKfIilOeS0c+a9IU0BZAnXm4EWBA6mW5A/OtTEJ0AeNc1e3VNvjvACuQD2Ag=="></enclosure>
+        </item>
+    </channel>
+</rss><!-- sparkle-signatures:
+edSignature: acdWU/pOS/Eo0zem+eOc4LjmKwlohIHf+xd9WRoXycOR0eNVdGlKb7NBj0WU2Svh0PKcYdOQYqyAGd7cArf4DA==
+length: 5037
+-->
