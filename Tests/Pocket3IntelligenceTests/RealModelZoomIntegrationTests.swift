@@ -141,7 +141,7 @@ private enum ModelZoomCheck {
             try write(report, at: directory)
             // Exactly one real-model observe call, through the same production
             // Apple/MLX tool factory and tool/response deadlines as the App.
-            let result = try await intelligence.observe(service: simulation, question: question, engine: engine, origin: .manual)
+            let result = try await intelligence.observe(service: simulation, question: question, engine: engine, intent: .assistFraming, origin: .manual)
             report["result"] = try result.metadata()
             let simulationReport = await simulation.report()
             report["simulationReport"] = simulationReport

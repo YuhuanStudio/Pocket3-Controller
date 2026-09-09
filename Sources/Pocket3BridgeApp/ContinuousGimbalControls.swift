@@ -7,6 +7,7 @@ import YunDesign
 /// one-degree repetitions. The handle displays user input, not measured pose.
 @MainActor struct ContinuousGimbalControls: View {
     @Bindable var controller: ContinuousGimbalGestureController
+    var interactionEnabled = true
     @State private var surfaceID = UUID()
 
     var body: some View {
@@ -21,7 +22,7 @@ import YunDesign
                 direction(x: 0, y: 1, symbol: "arrow.down", title: loc("Hold to move down"))
             }
             .frame(maxWidth: .infinity)
-            .opacity(controller.canInteract ? 1 : 0.5)
+            .opacity(controller.canInteract && interactionEnabled ? 1 : 0.5)
 
             Button {
                 Task { await controller.stop(reason: .cancelled) }
@@ -64,7 +65,7 @@ import YunDesign
         .accessibilityHidden(true)
         .overlay {
             ContinuousGimbalInputSurface(controller: controller, surfaceID: surfaceID,
-                fixedInput: input, label: title, enabled: controller.canInteract)
+                fixedInput: input, label: title, enabled: controller.canInteract && interactionEnabled)
         }
         .help(title)
     }
@@ -84,7 +85,7 @@ import YunDesign
         .transaction { $0.animation = nil }
         .overlay {
             ContinuousGimbalInputSurface(controller: controller, surfaceID: surfaceID,
-                fixedInput: nil, label: loc("Drag to move the camera"), enabled: controller.canInteract)
+                fixedInput: nil, label: loc("Drag to move the camera"), enabled: controller.canInteract && interactionEnabled)
         }
         .help(loc("Drag to move. Arrow keys also work while focused."))
     }

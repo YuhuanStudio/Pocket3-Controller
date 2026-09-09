@@ -25,6 +25,7 @@ final class AppModel {
         if let zoomStorage { return zoomStorage }
         let value = CameraZoomModel(service: service, prepare: { [weak self] in
             guard let self else { throw CancellationError() }
+            guard self.isCameraSource else { throw BridgeFailure("file_source_active", "Return to the live camera before adjusting zoom") }
             self.rollStorage?.cancel()
             self.aiTask?.cancel()
             await self.continuousGimbal.stop(reason: .cancelled)
@@ -42,6 +43,7 @@ final class AppModel {
         if let rollStorage { return rollStorage }
         let value = CameraRollModel(service: service, prepare: { [weak self] in
             guard let self else { throw CancellationError() }
+            guard self.isCameraSource else { throw BridgeFailure("file_source_active", "Return to the live camera before adjusting roll") }
             self.zoomStorage?.cancel()
             self.aiTask?.cancel()
             await self.continuousGimbal.stop(reason: .cancelled)
@@ -63,6 +65,7 @@ final class AppModel {
         if let wirelessStorage { return wirelessStorage }
         let value = WirelessGimbalModel(service: service, controls: continuousGimbal) { [weak self] in
             guard let self else { throw CancellationError() }
+            guard self.isCameraSource else { throw BridgeFailure("file_source_active", "Return to the live camera before wireless control") }
             self.zoomStorage?.cancel(); self.rollStorage?.cancel()
             self.aiTask?.cancel()
             await self.intelligence.cancelObservation()
@@ -76,6 +79,17 @@ final class AppModel {
     var modelStatus: IntelligenceStatus?
     var localStatus: LocalModelStatus?
     var selectedEngine = "apple"
+    var observationSource: ObservationSourceMode = .camera
+    var observationIntent: ObservationIntent = .observe
+    var switchingObservationSource = false
+    var observationRevision = 0
+    @ObservationIgnored private var imageWorkspaceStorage: ImageObservationWorkspace?
+    var imageWorkspace: ImageObservationWorkspace {
+        if let imageWorkspaceStorage { return imageWorkspaceStorage }
+        let workspace = ImageObservationWorkspace(intelligence: intelligence)
+        imageWorkspaceStorage = workspace
+        return workspace
+    }
     var confirmDeleteModel = false
     var perceptionResult: PerceptionResult?
     @ObservationIgnored var layoutBounds: [String: CGRect] = [:]
@@ -131,7 +145,8 @@ final class AppModel {
     var bridgeConnectionCheckedAt: Date?
     var bridgeConnectionError: String?
     var remoteTaskCount = 0
-    var aiWorking: Bool { busy || remoteTaskCount > 0 || modelStatus?.isBusy == true }
+    var aiWorking: Bool { busy || imageWorkspace.isWorking || remoteTaskCount > 0 || modelStatus?.isBusy == true }
+    init(imageWorkspace: ImageObservationWorkspace? = nil) { imageWorkspaceStorage = imageWorkspace }
 
     func launch() async {
         guard !started else { return }; started = true
@@ -160,6 +175,7 @@ final class AppModel {
                     return reply
                 case "ui-capture": return try await AppModel.shared.captureWindow(request)
                 case "ui-check": return try await AppModel.shared.checkInterface(request)
+                case "image-workspace": return try await AppModel.shared.handleImageWorkspace(request)
                 case "validation-manual-control": return try await AppModel.shared.handleManualControlValidation(request)
                 case "validation-focus-status", "validation-focus-point":
                     guard CommandLine.arguments.contains("--hardware-validation") else { throw BridgeFailure("validation_disabled", "Focus validation requires a development launch") }
@@ -204,7 +220,8 @@ final class AppModel {
                         let afterFrame = try await Task.detached { try after.map(FramePacket.fixture(data:)) ?? frame }.value
                         let simulated = SimulatedObservationCamera(before: frame, after: afterFrame, access: request.arguments["allowMove"].bool == true ? .control : .observe)
                         do {
-                            let result = try await intelligence.observe(service: simulated, question: request.arguments["question"].string ?? "", engine: engine)
+                            let result = try await intelligence.observe(service: simulated, question: request.arguments["question"].string ?? "", engine: engine,
+                                intent: try Self.requestedObservationIntent(request.arguments))
                             return ServiceReply(id: request.id, result: .object(["simulation": await simulated.report(), "result": try result.metadata()]))
                         } catch {
                             return ServiceReply(id: request.id, result: .object(["simulation": await simulated.report(), "failure": .string(error.localizedDescription), "error": try .encode(error as? BridgeFailure ?? BridgeFailure("evaluation_failed", error.localizedDescription))]))
@@ -259,7 +276,8 @@ final class AppModel {
             try await service.validateInteraction(stamp, origin: .automation)
             return ServiceReply(id: request.id, result: try .encode(result))
         }
-        let result = try await intelligence.observe(service: service, question: request.arguments["question"].string ?? "", engine: request.arguments["engine"].string ?? "apple", origin: .automation)
+        let result = try await intelligence.observe(service: service, question: request.arguments["question"].string ?? "", engine: request.arguments["engine"].string ?? "apple",
+            intent: Self.requestedObservationIntent(request.arguments), origin: .automation)
         return ServiceReply(id: request.id, result: try result.metadata())
     }
     func refresh() async {
@@ -299,6 +317,7 @@ final class AppModel {
                 authorize: { [service] in try await service.prepareUSBContinuousControl(binding: endpoint.binding) },
                 prepare: { [weak self] in
                     guard let self else { throw CancellationError() }
+                    guard self.isCameraSource else { throw BridgeFailure("file_source_active", "Return to the live camera before camera movement") }
                     self.zoomStorage?.cancel(); self.rollStorage?.cancel()
                     self.aiTask?.cancel()
                     await self.intelligence.cancelObservation()
@@ -331,6 +350,7 @@ final class AppModel {
         message = loc("Report copied to clipboard.")
     }
     func connect() async {
+        guard isCameraSource else { return }
         zoomStorage?.cancel(); rollStorage?.cancel()
         focusStorage?.cancel()
         connecting = true; message = nil
@@ -350,15 +370,17 @@ final class AppModel {
         connecting = false; await refresh()
     }
     var isConnecting: Bool { connecting || status?.phase == "connecting" }
-    var canConnect: Bool { !isConnecting && capturePixelFormatSupported && status?.devices.contains(where: { $0.id == selectedID }) == true }
+    var canConnect: Bool { isCameraSource && !isConnecting && capturePixelFormatSupported && status?.devices.contains(where: { $0.id == selectedID }) == true }
     var cameraSelectionPlaceholder: String { loc(status?.devices.isEmpty != false ? "No camera detected" : "Select a camera") }
-    func setAccess(_ mode: AccessMode) async { zoomStorage?.cancel(); rollStorage?.cancel(); await service.setAccess(mode); await refresh() }
+    func setAccess(_ mode: AccessMode) async { guard isCameraSource else { return }; zoomStorage?.cancel(); rollStorage?.cancel(); await service.setAccess(mode); await refresh() }
     func move(_ direction: String) async {
+        guard isCameraSource else { return }
         zoomStorage?.cancel(); rollStorage?.cancel()
         do { await service.setAccess(.manual); _ = try await service.move(direction: direction); await refresh() }
         catch { message = AppErrorPresentation.message(error) }
     }
     func point(panDegrees: Double?, tiltDegrees: Double?) async {
+        guard isCameraSource else { return }
         zoomStorage?.cancel(); rollStorage?.cancel()
         do {
             _ = try await service.point(panDegrees: panDegrees, tiltDegrees: tiltDegrees, expectedSessionID: status?.capture.sessionID)
@@ -366,7 +388,7 @@ final class AppModel {
         } catch { message = AppErrorPresentation.message(error) }
     }
     var canManualGimbalPreset: Bool {
-        ready && !isConnecting && !isManualPresetBusy
+        cameraActionReady && !isConnecting && !isManualPresetBusy
             && wireless.nativeConnected
     }
     func manualGimbalPreset(flip: Bool) async {
@@ -392,6 +414,7 @@ final class AppModel {
         zoomStorage?.cancel(); rollStorage?.cancel(); focusStorage?.cancel()
     }
     func stop() async {
+        imageWorkspace.cancel()
         zoomStorage?.cancel(); rollStorage?.cancel()
         focusStorage?.cancel()
         bluetoothProbePermit?.invalidate()
@@ -403,6 +426,7 @@ final class AppModel {
         await refresh()
     }
     func pause() async {
+        imageWorkspace.cancel()
         zoomStorage?.cancel(); rollStorage?.cancel()
         focusStorage?.cancel()
         bluetoothProbePermit?.invalidate()
@@ -412,6 +436,7 @@ final class AppModel {
         aiTask?.cancel(); await intelligence.cancelObservation(); await service.pause(); evidenceImage = nil; await refresh()
     }
     func snapshot() async {
+        guard cameraActionReady else { return }
         do {
             let (_, data) = try await service.snapshot()
             let panel = NSSavePanel(); panel.allowedContentTypes = [.jpeg]; panel.nameFieldStringValue = "Pocket3-\(Int(Date().timeIntervalSince1970)).jpg"
@@ -419,37 +444,50 @@ final class AppModel {
         } catch { message = AppErrorPresentation.message(error) }
     }
     func ask() {
-        guard !busy else { return }
-        busy = true; answer = ""; evidence = []; uncertainties = []; message = nil
-        observationActions = []; observationRoles = nil; evidenceImage = nil; evidenceFrameID = ""
-        let q = question
+        guard observationReady, canAsk, !aiWorking else { return }
+        if !isCameraSource { imageWorkspace.begin(engine: selectedEngine); return }
+        busy = true; clearObservationPresentation()
+        observationRevision += 1
+        let revision = observationRevision, q = question, engine = selectedEngine, intent = observationIntent
         aiTask = Task { [self] in
+            defer { busy = false; aiTask = nil }
             do {
-                let result = try await intelligence.observe(service: service, question: q, engine: selectedEngine)
+                let result = try await intelligence.observe(service: service, question: q, engine: engine, intent: intent)
                 try Task.checkCancellation()
+                guard observationRevision == revision, isCameraSource else { return }
                 observationActions = result.actions
                 observationRoles = result.executionRoles
                 evidenceImage = NSImage(data: result.imageJPEG); evidenceFrameID = result.frame.id
                 answer = result.answer.answer; evidence = result.answer.evidence; uncertainties = result.answer.uncertainties
 
-            } catch is CancellationError { message = loc("Observation cancelled") }
-            catch { message = AppErrorPresentation.message(error) }
-            busy = false
+            } catch is CancellationError { if observationRevision == revision { message = loc("Observation cancelled") } }
+            catch { if observationRevision == revision { message = AppErrorPresentation.message(error) } }
         }
     }
     func ocr() async {
         guard !aiWorking else { return }
-        busy = true; defer { busy = false }
+        if !isCameraSource { imageWorkspace.begin(engine: selectedEngine, action: .ocr); return }
+        busy = true
+        observationRevision += 1; let revision = observationRevision
         answer = ""; evidence = []; uncertainties = []; observationActions = []; observationRoles = nil; evidenceImage = nil; evidenceFrameID = ""; message = nil
+        let task = Task { [self] in
+        defer { busy = false; aiTask = nil }
         do {
+            try Task.checkCancellation()
             let stamp = try await service.interactionStamp(origin: .manual)
             let frame = try await service.frame()
+            try Task.checkCancellation()
             let lines = try await intelligence.recognizeText(frame: frame)
+            try Task.checkCancellation()
             let (metadata, jpeg) = try await Task.detached { try frame.jpegWithInfo(maxDimension: 1280) }.value
             try await service.validateInteraction(stamp, origin: .manual)
+            guard observationRevision == revision, isCameraSource else { return }
             answer = lines.isEmpty ? loc("No clear text was recognised.") : lines.joined(separator: "\n")
             evidenceImage = NSImage(data: jpeg); evidenceFrameID = metadata.id
-        } catch { message = AppErrorPresentation.message(error) }
+        } catch { if observationRevision == revision { message = AppErrorPresentation.message(error) } }
+        }
+        aiTask = task
+        await task.value
     }
     var localPhaseTitle: String {
         loc(["notDownloaded": "Not downloaded", "downloaded": "Downloaded", "loading": "Loading", "loaded": "Loaded", "downloading": "Downloading", "cancelled": "Download cancelled", "unloading": "Unloading", "error": "Needs attention"][localStatus?.phase ?? "notDownloaded"] ?? "Not ready")
@@ -467,7 +505,7 @@ final class AppModel {
         }
     }
     var appleUsesMLXControl: Bool {
-        selectedEngine == "apple" && status?.access == .control &&
+        isCameraSource && observationIntent == .assistFraming && selectedEngine == "apple" && status?.access == .control &&
             (status?.stopValidated == true || zoomStorage?.capabilities.map(ObservationZoomPolicy.isAvailable) == true)
     }
     var canAsk: Bool {
@@ -475,7 +513,9 @@ final class AppModel {
             modelStatus?.available == true && (!appleUsesMLXControl || localStatus?.available == true)
     }
     var engineRoleMessage: String {
-        selectedEngine == "apple"
+        if !isCameraSource { return loc("The selected model analyses this image file. Camera controls are not used.") }
+        if observationIntent == .observe { return loc("Only the selected model observes. Camera adjustments are not part of this task.") }
+        return selectedEngine == "apple"
             ? loc("Apple answers from images. AI control also uses the downloaded MLX model.")
             : loc("MLX handles camera control and visual answers locally.")
     }
@@ -492,7 +532,7 @@ final class AppModel {
         }
     }
     func detectObjects() async {
-        guard !aiWorking else { return }
+        guard isCameraSource, !aiWorking else { return }
         busy = true; perceptionResult = nil; defer { busy = false }
         do {
             let stamp = try await service.interactionStamp(origin: .manual)
@@ -503,11 +543,12 @@ final class AppModel {
         catch { message = AppErrorPresentation.message(error) }
     }
     func validateControl() async {
-        guard !aiWorking else { return }
+        guard isCameraSource, !aiWorking else { return }
         do { try await service.startUserValidation(); await refresh() }
         catch { message = AppErrorPresentation.message(error) }
     }
     func audioTest() async {
+        guard isCameraSource else { return }
         audioState = .testing
         do { audioState = .completed(try await service.audioTest()) }
         catch {
@@ -596,7 +637,7 @@ final class AppModel {
                 Button(loc("Check for Updates…")) { SettingsWindow.open(model: model, initialSection: .about); AppUpdateController.shared.checkForUpdates() }
             }
             CommandMenu(loc("Camera")) {
-                Button(loc("Capture image")) { Task { await model.snapshot() } }.keyboardShortcut("s", modifiers: [.command, .shift]).disabled(!model.ready)
+                Button(loc("Capture image")) { Task { await model.snapshot() } }.keyboardShortcut("s", modifiers: [.command, .shift]).disabled(!model.cameraActionReady)
                 Button(loc("Stop operation")) { Task { await model.stop() } }.keyboardShortcut(".", modifiers: .command)
                 Button(loc("Privacy pause")) { Task { await model.pause() } }.keyboardShortcut("p", modifiers: [.command, .shift])
             }
@@ -661,9 +702,14 @@ struct RootView: View {
         HStack(alignment: .top, spacing: Yun.Space.lg) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Yun.Space.md) {
-                    heading(loc("Camera"), loc("Select a camera and adjust its view"))
+                    heading(loc("Source"), loc("Choose a camera or an image file"))
                     YunCard {
                         VStack(alignment: .leading, spacing: Yun.Space.md) {
+                            YunSegmented(selection: Binding(get: { model.observationSource }, set: { source in
+                                Task { await model.changeObservationSource(source) }
+                            }), options: [(.camera, loc("Live camera")), (.image, loc("Image file"))])
+                                .disabled(!model.canChangeObservationSource)
+                            if model.isCameraSource {
                             HStack {
                                 Label("Pocket 3", systemImage: "cable.connector").font(Yun.Text.title)
                                 Spacer(minLength: 0)
@@ -695,6 +741,7 @@ struct RootView: View {
                             YunDivider()
                             YunSelect(selection: Binding(get: { model.access }, set: { value in Task { await model.setAccess(value) } }), options: AccessMode.allCases.map { .init(value: $0, title: loc($0.title)) })
                                 .accessibilityLabel(loc("AI access"))
+                            } else { ImageObservationSourceControls(model: model) }
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }
                     YunCard {
@@ -705,7 +752,7 @@ struct RootView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }.buttonStyle(YunButtonStyle(.secondary, small: true))
                                 .popover(isPresented: $showWireless, arrowEdge: .trailing) { WirelessGimbalConnectionView(model: model.wireless) }
-                            ContinuousGimbalControls(controller: model.continuousGimbal)
+                            ContinuousGimbalControls(controller: model.continuousGimbal, interactionEnabled: model.isCameraSource)
                             HStack(spacing: Yun.Space.sm) {
                                 Button { Task { await model.manualGimbalPreset(flip: false) } } label: { Image(systemName: "scope").frame(maxWidth: .infinity) }
                                     .help(loc("Center view")).accessibilityLabel(loc("Center view"))
@@ -720,21 +767,26 @@ struct RootView: View {
                             CameraZoomControls(model: model.zoom)
                             YunDivider()
                             CameraRollControls(model: model.roll)
-                            Button { Task { await model.snapshot() } } label: { Label(loc("Capture image"), systemImage: "camera") }.buttonStyle(YunButtonStyle(.secondary)).disabled(!model.ready)
+                            Button { Task { await model.snapshot() } } label: { Label(loc("Capture image"), systemImage: "camera") }.buttonStyle(YunButtonStyle(.secondary)).disabled(!model.cameraActionReady)
                         }
-                    }
+                    }.disabled(!model.isCameraSource)
                 }.padding(.bottom, Yun.Space.md)
             }.scrollIndicators(.automatic).yunScrollFade().frame(width: MainWindowLayout.sourceWidth).measuredForLayout("source")
             VStack(alignment: .leading, spacing: Yun.Space.md) {
-                heading(loc("Live view"), loc("Live preview · images shared with AI on request"))
+                heading(loc(model.isCameraSource ? "Live view" : "Image file"), loc(model.isCameraSource ? "Live preview · images shared with AI on request" : "Local image · analysis does not control the camera"))
                 YunCard(padding: 0) {
                     ZStack {
                         let previewIsActive = ["ready", "moving", "stopping", "validating", "soaking"].contains(model.status?.phase ?? "")
                         Yun.Palette.elevated
-                        if let image = model.capturePreview { Image(nsImage: image).resizable().scaledToFit() }
+                        if !model.isCameraSource {
+                            ImportedImagePreview(image: model.imageWorkspace.preview,
+                                imageSize: CGSize(width: model.imageWorkspace.asset?.frame.info.width ?? 1,
+                                    height: model.imageWorkspace.asset?.frame.info.height ?? 1),
+                                point: model.imageWorkspace.marker, redacted: model.capturingUI)
+                        } else if let image = model.capturePreview { Image(nsImage: image).resizable().scaledToFit() }
                         else if !model.capturingUI { Preview(session: model.service.capture.session, frame: model.status?.capture.frame, focus: model.focus) }
                         else if previewIsActive { YunEmptyState(symbol: "eye.slash", message: loc("Preview hidden for this screenshot")) }
-                        if !previewIsActive {
+                        if model.isCameraSource && !previewIsActive {
                             YunEmptyState(symbol: model.status?.phase == "paused" ? "eye.slash" : "camera", message: model.status?.phase == "paused" ? loc("Observation paused\nReconnect to continue") : model.status?.phase == "stalled" ? loc("Camera stream interrupted\nReconnect or check other camera apps") : loc("Connect Pocket 3\nGive AI a view of your workspace"))
                         }
                     }.frame(maxWidth: .infinity, minHeight: 265, maxHeight: .infinity).clipShape(.rect(cornerRadius: Yun.Radius.card))
@@ -751,49 +803,66 @@ struct RootView: View {
         YunCard {
             VStack(alignment: .leading, spacing: Yun.Space.md) {
                 YunSelect(selection: $model.selectedEngine, options: [.init(value: "apple", title: loc("Apple on-device AI"), detail: loc("System")), .init(value: "mlx", title: "Qwen 3.5 · 4B", detail: "MLX")])
+                    .disabled(model.aiWorking)
+                if model.isCameraSource {
+                    YunSegmented(selection: $model.observationIntent,
+                        options: [(.observe, loc("Observe only")), (.assistFraming, loc("Assist framing"))])
+                        .disabled(model.aiWorking)
+                } else {
+                    YunSelect(selection: Binding(get: { model.imageWorkspace.action }, set: { model.imageWorkspace.action = $0 }), options: [
+                        .init(value: .ask, title: loc("Ask about image")),
+                        .init(value: .count, title: loc("Count objects")),
+                        .init(value: .locate, title: loc("Locate a target"))])
+                        .disabled(model.aiWorking)
+                }
                 Text(model.engineRoleMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
-                TextEditor(text: $model.question)
+                TextEditor(text: Binding(get: { model.capturingUI ? "" : model.observationQuestion },
+                    set: { if !model.capturingUI { model.observationQuestion = $0 } }))
                     .font(Yun.Text.body)
                     .scrollContentBackground(.hidden)
                     .frame(height: 68)
                     .padding(Yun.Space.xs)
                     .background(Yun.Palette.elevated, in: .rect(cornerRadius: Yun.Radius.control))
                     .overlay(alignment: .topLeading) {
-                        if model.question.isEmpty {
-                            Text(loc("Ask about this scene"))
+                        if model.capturingUI || model.observationQuestion.isEmpty {
+                            Text(loc(model.isCameraSource ? "Ask about this scene" : "Ask about the image or name the target"))
                                 .font(Yun.Text.body).foregroundStyle(Yun.Palette.textMuted)
                                 .padding(.horizontal, 9).padding(.vertical, 8)
                                 .allowsHitTesting(false).accessibilityHidden(true)
                         }
                     }
-                    .accessibilityLabel(loc("Ask about this scene")).measuredForLayout("question")
+                    .accessibilityLabel(loc(model.isCameraSource ? "Ask about this scene" : "Ask about the image or name the target")).measuredForLayout("question")
                 HStack {
-                    Button(model.busy ? loc("Observing…") : loc("Observe and answer")) { model.ask() }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(!model.ready || model.busy || model.question.isEmpty || !model.canAsk)
-                    if model.busy { Button(loc("Cancel")) { model.aiTask?.cancel() }.buttonStyle(YunButtonStyle(.ghost, small: true)) }
+                    Button(model.observationBusy ? loc("Observing…") : loc("Observe and answer")) { model.ask() }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(!model.observationReady || model.aiWorking || model.observationQuestion.isEmpty || !model.canAsk)
+                    if model.observationBusy { Button(loc("Cancel")) { model.cancelCurrentObservation() }.buttonStyle(YunButtonStyle(.ghost, small: true)) }
                     Spacer(minLength: 0)
-                    Button("OCR") { Task { await model.ocr() } }.buttonStyle(YunButtonStyle(.ghost, small: true)).disabled(!model.ready || model.busy)
+                    Button("OCR") { Task { await model.ocr() } }.buttonStyle(YunButtonStyle(.ghost, small: true)).disabled(!model.observationReady || model.aiWorking)
                 }
                 .measuredForLayout("answerActions")
                 if !model.canAsk { Text(model.engineMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }
                 YunDivider()
                 ScrollView {
                     VStack(alignment: .leading, spacing: Yun.Space.md) {
-                        if model.busy { HStack { ProgressView().controlSize(.mini); Text(loc("Understanding this frame")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary) } }
-                        if model.answer.isEmpty && !model.busy { YunEmptyState(symbol: "sparkles", message: loc("Start with a question about the scene.\nFor example: what does the label say?")).frame(maxWidth: .infinity) }
-                        ForEach(Array(model.observationActions.enumerated()), id: \.offset) { _, action in
+                        if model.observationBusy { HStack { ProgressView().controlSize(.mini); Text(loc(model.imageWorkspace.isCancelling ? "Finishing cancellation…" : "Understanding this frame")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary) } }
+                        if model.capturingUI {
+                            YunEmptyState(symbol: "eye.slash", message: loc("Analysis hidden for this screenshot")).frame(maxWidth: .infinity)
+                        } else {
+                        if model.observationAnswer.isEmpty && !model.observationBusy { YunEmptyState(symbol: "sparkles", message: loc("Start with a question about the scene.\nFor example: what does the label say?")).frame(maxWidth: .infinity) }
+                        ForEach(Array((model.isCameraSource ? model.observationActions : []).enumerated()), id: \.offset) { _, action in
                             Label(actionTitle(action), systemImage: actionSucceeded(action) ? "checkmark.circle" : "exclamationmark.circle")
                                 .font(Yun.Text.caption).foregroundStyle(actionSucceeded(action) ? Yun.Palette.textSecondary : Yun.Palette.warning)
                         }
-                        if model.observationRoles?.controllerEngine == "mlx", model.observationRoles?.answerEngine == "apple" {
+                        if model.isCameraSource, model.observationRoles?.controllerEngine == "mlx", model.observationRoles?.answerEngine == "apple" {
                             Text(loc("MLX control · Apple visual answer")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                         }
-                        if !model.answer.isEmpty { Text(model.answer).font(Yun.Text.body).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
-                        ForEach(model.evidence, id: \.self) { Text("· " + $0).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary) }
-                        ForEach(model.uncertainties, id: \.self) { Label($0, systemImage: "questionmark.circle").font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning) }
-                        if let image = model.evidenceImage {
+                        if !model.observationAnswer.isEmpty { ObservationPrivateText(text: model.observationAnswer, redacted: model.capturingUI).font(Yun.Text.body).frame(maxWidth: .infinity, alignment: .leading) }
+                        ForEach(model.observationEvidence, id: \.self) { Text("· " + $0).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary) }
+                        ForEach(model.observationUncertainties, id: \.self) { Label($0, systemImage: "questionmark.circle").font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning) }
+                        if model.isCameraSource, let image = model.evidenceImage {
                             Text(loc("Evidence for this answer")).font(Yun.Text.label).foregroundStyle(Yun.Palette.textSecondary)
                             Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 180, alignment: .leading).clipShape(.rect(cornerRadius: Yun.Radius.control))
+                        }
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }.scrollIndicators(.never).yunScrollFade().frame(maxHeight: .infinity)
@@ -972,7 +1041,7 @@ struct RootView: View {
                             detail(loc("Stopping behaviour"), loc("Hold the current position and verify readback"))
                             Text(model.status?.stopValidated == true ? loc("AI movement passed the local stopping test.") : loc("AI movement is unavailable until stopping is validated.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                             Button(loc("Validate camera control")) { Task { await model.validateControl() } }
-                                .buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.ready || model.aiWorking)
+                                .buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady || model.aiWorking)
                             Text(loc("Runs small round trips and stopping checks for about two minutes. Stop operation cancels the test."))
                                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
                         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -982,13 +1051,13 @@ struct RootView: View {
                             Text(loc("Local perception")).font(Yun.Text.title)
                             Text("YOLOS tiny · Core AI").font(Yun.Text.body)
                             Text(loc("Detect common objects on request. Core AI selects the compute device.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
-                            Button(loc("Detect objects")) { Task { await model.detectObjects() } }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(!model.ready || model.busy)
+                            Button(loc("Detect objects")) { Task { await model.detectObjects() } }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(!model.cameraActionReady || model.busy)
                             if let p = model.perceptionResult { detail(loc("Inference time"), String(format: "%.2f s", p.inferenceSeconds)); Text(p.objects.map { "\($0.label) \(Int($0.confidence*100))%" }.joined(separator: " · ")).font(Yun.Text.caption); if p.objects.isEmpty { Text(loc("No objects met the confidence threshold.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) } }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }.measuredForLayout("perceptionDiagnostics")
                 }.fixedSize(horizontal: false, vertical: true)
                 YunCard {
-                    HStack { VStack(alignment: .leading, spacing: 6) { Text(loc("USB audio")).font(Yun.Text.title); Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }; Spacer(); Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.ready) }
+                    HStack { VStack(alignment: .leading, spacing: 6) { Text(loc("USB audio")).font(Yun.Text.title); Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }; Spacer(); Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady) }
                 }
                 if let power = model.status?.power, power.present {
                     YunCard {

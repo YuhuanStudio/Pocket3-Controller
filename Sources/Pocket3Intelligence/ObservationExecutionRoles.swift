@@ -1,5 +1,14 @@
 import Foundation
 
+/// The task requested for this answer, independent of the camera's standing
+/// permissions. Selecting assistance never grants a missing hardware capability.
+public enum ObservationIntent: String, Codable, Sendable, CaseIterable {
+    case observe
+    case assistFraming
+
+    var permitsCameraAdjustment: Bool { self == .assistFraming }
+}
+
 /// Identifies the actual model responsibilities. A controller role does not
 /// itself prove a camera action; only the action ledger can establish that.
 public struct ObservationExecutionRoles: Codable, Sendable, Equatable {
@@ -13,8 +22,8 @@ public struct ObservationExecutionRoles: Codable, Sendable, Equatable {
         self.finalFrameRefresh = finalFrameRefresh
     }
 
-    static func route(selectedEngine: String, canMove: Bool, canZoom: Bool) -> Self {
-        let canAdjust = canMove || canZoom
+    static func route(selectedEngine: String, intent: ObservationIntent = .observe, canMove: Bool, canZoom: Bool) -> Self {
+        let canAdjust = intent.permitsCameraAdjustment && (canMove || canZoom)
         if selectedEngine == "apple", canAdjust {
             return .init(controllerEngine: "mlx", answerEngine: "apple", finalFrameRefresh: "app")
         }

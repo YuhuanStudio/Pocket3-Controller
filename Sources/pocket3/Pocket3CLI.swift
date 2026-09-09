@@ -128,6 +128,29 @@ import MCP
                 }
             }
             if ["ask", "evaluate-image", "evaluate-workflow", "evaluate-grounding"].contains(command) { arguments["question"] = .string(option("--question") ?? ""); arguments["engine"] = .string(option("--engine") ?? "apple") }
+            if args.contains("--intent") {
+                guard ["ask", "evaluate-workflow"].contains(command), args.filter({ $0 == "--intent" }).count == 1,
+                      let intent = option("--intent"), ["observe", "assistFraming"].contains(intent) else {
+                    throw BridgeFailure("invalid_intent", "Use --intent observe|assistFraming with ask or evaluate-workflow")
+                }
+                arguments["intent"] = .string(intent)
+            }
+            if command == "image-workspace" {
+                let action = option("--action") ?? "status"
+                guard ["import", "run", "ocr", "cancel", "clear", "camera", "status"].contains(action) else {
+                    throw BridgeFailure("usage", "Unknown image-workspace action")
+                }
+                arguments["action"] = .string(action)
+                if action == "import" {
+                    guard let path = option("--image") else { throw BridgeFailure("usage", "Import requires --image FILE") }
+                    arguments["imagePath"] = .string(URL(fileURLWithPath: path).standardizedFileURL.path)
+                }
+                if let kind = option("--kind") { arguments["kind"] = .string(kind) }
+                if let question = option("--question") { arguments["question"] = .string(question) }
+                if let engine = option("--engine") { arguments["engine"] = .string(engine) }
+                let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}"); return
+            }
             if command == "evaluate-grounding" {
                 guard let path = option("--image"), let kind = option("--kind"), ["count", "point", "absent"].contains(kind) else {
                     throw BridgeFailure("usage", "Use evaluate-grounding --image FILE --kind count|point|absent --question TEXT --engine apple|mlx")
@@ -238,6 +261,15 @@ import MCP
         pocket3 validation-zoom --raw INTEGER [--session CAPTURE-SESSION-ID]
           Developer only: manual zoom validation; requires --hardware-validation on the App.
         pocket3 stop
+        pocket3 ask --question TEXT [--engine apple|mlx] [--intent observe|assistFraming]
+          Defaults to observation only. assistFraming also requires the App's existing AI control permission.
+        pocket3 evaluate-image --image FILE --question TEXT [--engine apple|mlx]
+        pocket3 evaluate-grounding --image FILE --kind count|point|absent --question TEXT [--engine apple|mlx]
+          Imported-image developer evaluation; no camera control tools. Requires --hardware-validation on the App.
+        pocket3 image-workspace --action import --image FILE
+        pocket3 image-workspace --action run --kind ask|count|locate --question TEXT [--engine apple|mlx]
+        pocket3 image-workspace --action status|ocr|cancel|clear|camera
+          Exercises the actual image workspace in a development App. Requires --hardware-validation.
         pocket3 mcp
         """)
     }

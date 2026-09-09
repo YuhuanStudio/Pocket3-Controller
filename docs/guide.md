@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 21. The build 16 model routing below is a development addition, not a published beta 1 feature.
+This guide covers published **0.0.1 beta 1, build 9** and separately labels upcoming build 22 source changes. Build 22's source, packaged-App and UI acceptance checks are pending; it is not a published download. The build 16 hardware result is historical evidence, not build 22 verification.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
@@ -22,7 +22,7 @@ Connect Pocket 3 by USB, choose **Webcam** on the camera, then select it and con
 
 ## Access and privacy
 
-The access selector controls what AI and external clients may do:
+The access selector controls what AI and external clients may do with the live camera:
 
 | Setting | Behaviour |
 |---|---|
@@ -122,34 +122,34 @@ the corresponding system model available. MLX Qwen 3.5 is optional: select its
 download action and allow space for roughly 3.1 GB of model files. The download
 requires a network connection; inference uses the locally available model.
 
-### Build 16 development model routing
+### Build 22 development: image file workspace
 
-| Selection and access | Camera tools | Final answer |
-|---|---|---|
-| Apple, observation only | No movement or zoom; MLX is not required | Apple |
-| Apple, eligible AI movement or zoom | Already-downloaded MLX runs the complete tool loop; the app obtains a fresh final frame | Apple answers the new frame |
-| MLX | MLX runs its own permitted tools | MLX |
+The following workflow is implemented in the upcoming build 22 source. Its source checks, packaged-App tests and three-language UI gate are still pending; it is not included in published beta 1 build 9.
 
-The combined route does not make Apple the camera tool executor. The app never
-automatically downloads MLX: if the model is missing when control is available,
-the UI explains what is needed. Download it explicitly, or switch to **Observe only**
-to use Apple without MLX. Existing access, capability, cancellation and result
-checks still apply; a controller role does not prove that an action happened.
+Choose **Image file** as the observation source, then **Open image** to select a local image of up to 8 MB. **Replace image** selects a different file and clears the previous result. Choose **Ask about image**, **Count objects**, or **Locate a target**, enter the question or target, then use the analysis button. **OCR** reads visible text without needing a question. A successful location result appears as a marker on the imported image.
 
-Development response `metadata.executionRoles` identifies `controllerEngine=mlx`,
-`answerEngine=apple` and `finalFrameRefresh=app` for this route. One live-camera
-run completed in 38.039 seconds with all 11 checks passing. The MLX tool order was
-`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`, with one
-raw-200 zoom and verified readback. The app refreshed the final frame again before
-Apple answered; this host refresh is not a fifth model or SDK tool call. Raw 100
-and manual access were restored. This validates that bounded case, not every MCP
-workflow or Apple independently controlling the camera. Published beta 1 remains
-build 9; screenshots are versioned separately. See the [hardware record](HARDWARE_ACCEPTANCE.md).
+File analysis works without Pocket 3 and uses only the selected Apple or MLX model; OCR uses local text recognition. It does not acquire camera-control rights or turn a marker into a gimbal or autofocus command. Switching the observation source leaves any existing camera connection and its access setting unchanged; use **Privacy pause** separately to release live capture.
 
-Choose **Observe only** before asking about an image. OCR and barcode tools also
-operate locally. Grant camera control only when that workflow is wanted; code
-checks permissions and tool results independently of the model's wording.
-Inspect uncertain answers, especially object counts or claims about completed actions.
+Counts, positions and answers are model estimates and can be wrong. Check the image, especially with several similar objects or partial occlusion. Cancel requests cancellation and waits for the current work to finish; replacing the file or changing source clears stale results. This first workspace accepts still images, not video playback or continuous subject tracking.
+
+### Build 22 development: choose the task separately from camera access
+
+For the **camera** source, select **Observe only** or **Assist framing** for the current question. This task choice is separate from the global camera-access selector and never grants permissions by itself.
+
+| Engine and task | Model behaviour |
+|---|---|
+| Apple + Observe only | Apple reads the frame with read-only tools. Existing camera-control permission does not start MLX. |
+| Apple + Assist framing, with eligible control permission and capability | An already-downloaded MLX model runs the permitted adjustment loop; the App obtains a fresh frame for Apple's answer. |
+| MLX + Observe only | MLX observes without movement or zoom tools. |
+| MLX + Assist framing | MLX receives only the adjustment tools allowed by the existing access and capability checks. |
+
+The initial task mode is observation. Models are not downloaded automatically. Assistance that needs an absent MLX model reports the requirement; observation with Apple does not require that download. An engine role never proves that an action occurred: check the actual action result and its readback. Build 22's full software and UI acceptance remains pending.
+
+### Historical build 16 hardware result
+
+The earlier mixed-model route selected control from available access rather than an explicit task mode. One build 16 live-camera run completed in 38.039 seconds with 11 checks passing: MLX used `capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`, submitted one raw-200 zoom, and received verified readback. The App then refreshed the frame for Apple; that refresh was not an extra model tool call. Raw 100 and manual access were restored.
+
+This is evidence for that bounded build 16 case, not build 22 acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
 
 ## MCP and CLI
 
@@ -163,6 +163,16 @@ It connects to the app through a private local Unix socket and respects the acce
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' snapshot --output "$PWD/pocket3-frame.jpg"
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --question 'Read the visible label.'
 ```
+
+In the upcoming build 22 CLI, `ask --intent observe|assistFraming` makes the task explicit and defaults to `observe` when omitted. For example:
+
+```sh
+'/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --intent observe --question 'What is visible?'
+```
+
+`assistFraming` still needs eligible camera-control permission and capabilities. Debug `evaluate-workflow` accepts the same intent for its simulated camera; it defaults to observation too, and a simulated action is not hardware evidence.
+
+MCP still exposes exactly six basic camera tools: `camera_status`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. CLI `ask`, image-file analysis and the evaluation endpoints are not new MCP wrapper tools.
 
 For MCP zoom, obtain `camera_status.capture.sessionID`, pass it as
 `expectedSessionID` to `camera_zoom_status`, and select an integer `rawValue`

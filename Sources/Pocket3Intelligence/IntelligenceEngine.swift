@@ -94,7 +94,8 @@ public actor IntelligenceEngine {
         guard epoch == jobEpoch else { throw CancellationError() }
     }
 
-    public func observe(service: any ObservationCamera, question: String, engine: String = "apple", origin: RequestOrigin = .manual) async throws -> ObservationResult {
+    public func observe(service: any ObservationCamera, question: String, engine: String = "apple",
+                        intent: ObservationIntent = .observe, origin: RequestOrigin = .manual) async throws -> ObservationResult {
         guard !observing else { throw BridgeFailure("ai_busy", "另一個 AI 觀察正在執行") }
         guard ["apple", "mlx"].contains(engine), !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, question.count <= 2000 else { throw BridgeFailure("invalid_question", "請選擇有效引擎並輸入 1–2000 字問題") }
         observing = true; jobEpoch += 1; let epoch = jobEpoch
@@ -104,10 +105,15 @@ public actor IntelligenceEngine {
         try validateJob(epoch)
         let frame = try await service.frame(origin: origin)
         try validateJob(epoch)
+        // Camera access describes what is available; task intent decides whether
+        // this answer may use it. Read-only work never inherits standing control.
         let context = ObservationContext(service: service, origin: origin, stamp: start.stamp, frame: frame,
-            canMove: start.canMove, canZoom: start.canZoom, zoomCapabilities: start.zoomCapabilities, deadline: started + 90)
+            canMove: intent.permitsCameraAdjustment && start.canMove,
+            canZoom: intent.permitsCameraAdjustment && start.canZoom,
+            zoomCapabilities: start.zoomCapabilities, deadline: started + 90)
         activeContext = context
-        let roles = ObservationExecutionRoles.route(selectedEngine: engine, canMove: start.canMove, canZoom: start.canZoom)
+        let roles = ObservationExecutionRoles.route(selectedEngine: engine, intent: intent,
+            canMove: context.canMove, canZoom: context.canZoom)
         return try await withTaskCancellationHandler {
             do {
                 try await context.check()
@@ -210,6 +216,7 @@ public actor IntelligenceEngine {
     }
 
     public func analyze(frame: FramePacket, question: String, engine: String = "apple") async throws -> ObservationAnswer {
+        try Task.checkCancellation()
         guard !observing else { throw BridgeFailure("ai_busy", "另一個 AI 觀察正在執行") }
         observing = true; jobEpoch += 1; let epoch = jobEpoch
         defer { observing = false }
@@ -220,7 +227,7 @@ public actor IntelligenceEngine {
         let session: LanguageModelSession
         if engine == "mlx" { session = LanguageModelSession(model: try await localModel.load(), instructions: instructions) }
         else { session = LanguageModelSession(instructions: instructions) }
-        guard epoch == jobEpoch else { throw CancellationError() }
+        try validateJob(epoch)
         return try await respond(session: session, prompt: Prompt { question; "Input: one still image, no audio or video."; Attachment(frame.pixelBuffer) }, seconds: 90)
     }
 

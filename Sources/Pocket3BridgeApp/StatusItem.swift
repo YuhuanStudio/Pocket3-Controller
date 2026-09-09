@@ -150,10 +150,11 @@ struct PanelView: View {
                     Text(model.status?.selected?.name ?? loc("No camera")).font(Yun.Text.body)
                     Text(loc(model.phaseTitle)).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
                     YunSelect(selection: Binding(get: { model.access }, set: { value in Task { await model.setAccess(value) } }), options: AccessMode.allCases.map { .init(value: $0, title: loc($0.title)) })
+                        .disabled(!model.isCameraSource)
                 }
             }
             HStack(spacing: Yun.Space.sm) {
-                Button(loc("Capture image")) { Task { await model.snapshot() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.ready)
+                Button(loc("Capture image")) { Task { await model.snapshot() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady)
                 Button(loc("Privacy pause")) { Task { await model.pause() } }.buttonStyle(YunButtonStyle(.primary, small: true))
             }
             YunDivider()

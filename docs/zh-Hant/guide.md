@@ -4,7 +4,7 @@
 
 [文件入口](README.md) · [專案概觀](../../README.zh-Hant.md)
 
-本指南涵蓋已發布的 **0.0.1 beta 1，build 9**；`main` 是 beta 2、build 21 開發版本。停用或標為實驗性的控制，不表示對應機身功能已支援。
+本指南涵蓋已發布的 **0.0.1 beta 1，build 9**，並另外標明即將推出的build22原始碼變更。build22的來源、打包App與UI驗收仍待完成，尚不是公開下載；build16硬體結果是歷史證據，不代表build22已驗收。停用或標為實驗性的控制，不表示對應機身功能已支援。
 
 ## 安裝與首次啟動
 
@@ -16,7 +16,7 @@
 
 ## 存取權與隱私
 
-存取選項決定 AI 與外部客戶端可以做什麼：
+存取選項決定 AI 與外部客戶端可以對即時相機做什麼：
 
 | 選項 | 行為 |
 |---|---|
@@ -68,19 +68,34 @@ Roll 標為**實驗性**，數值是裝置控制單位，不是已校準的物�
 
 在「AI 引擎與接入」選擇引擎。Apple Foundation Models 需要相應系統模型可用。MLX Qwen 3.5 為選配，透過下載操作取得，預留約 3.1 GB 模型空間。下載需要網路，推論使用已在本機的模型。
 
-### build16開發版的模型路由
+### build22開發中：圖片檔案工作區
 
-| 選擇與使用權 | 相機工具 | 最後回答 |
-|---|---|---|
-| Apple，只允許觀察 | 不提供移動或縮放，不需要MLX | Apple |
-| Apple，AI移動或縮放能力可用 | 已下載的MLX執行完整工具流程，App取得最後的新影格 | Apple根據新圖回答 |
-| MLX | MLX自行執行已允許的工具 | MLX |
+以下流程已加入即將推出的build22原始碼，來源檢查、打包App測試與三語UI gate仍待完成；已發布的beta1 build9不包含這些功能。
 
-混合路徑不表示Apple是相機工具執行者。App不會自動下載MLX；控制能力可用但缺少模型時，UI會說明需求。你可以明確下載模型，或切回「只允許觀察」使用不需MLX的Apple流程。原有權限、能力、取消及結果檢查仍然適用，角色名稱本身不證明發生過動作。
+把觀察來源切成 **Image file（圖片檔案）**，按 **Open image（開啟圖片）**，選取8 MB以下的本機圖片。**Replace image（替換圖片）**會更換檔案並清除上一份結果。選擇 **Ask about image（圖片問答）**、**Count objects（計算物件）**或 **Locate a target（定位目標）**，輸入問題或目標後開始分析；**OCR**可直接讀取可見文字，不需要先輸入問題。成功的定位結果會在匯入圖片上顯示標記。
 
-開發版回覆的`metadata.executionRoles`會分別標明`controllerEngine=mlx`、`answerEngine=apple`、`finalFrameRefresh=app`。一次真機任務以38.039秒完成、全部11項檢查通過；MLX工具順序為`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`，僅一次raw200縮放且回讀verified。App另外更新最後影格，再交Apple回答，這不算第五次模型或SDK工具呼叫。其後恢復raw100及manual。此案例不等於所有MCP流程或Apple獨立控制已完成；公開beta1維持build9，截圖版本另行標註。[硬體紀錄](../HARDWARE_ACCEPTANCE.md)
+圖片分析不需要Pocket3，只使用所選的Apple或MLX模型；OCR使用本機文字辨識。它不取得相機控制權，位置標記也不會變成雲台或對焦命令。切換觀察來源會保留既有相機連線與存取設定；要釋放正在進行的即時取像，另外使用「隱私暫停」。
 
-詢問圖片前先選擇「只允許觀察」。OCR 和條碼工具也在本機運行。需要相機動作時才授予控制權；程式會獨立檢查權限和工具結果，不把模型措辭當作依據。不確定的回答需要核對，尤其是物件數量及「動作已完成」的宣稱。
+物件數量、位置與回答都是模型估計，可能出錯；尤其是相似物件或部分遮擋，請對照原圖。「取消」會提出取消要求並等待目前工作結束，更換檔案或來源會清除過期結果。第一版工作區只接受靜態圖片，尚不包含影片播放或持續追蹤。
+
+### build22開發中：本次任務與相機權限分開
+
+使用**相機來源**時，可為本次問題選擇 **Observe only（只觀察）**或 **Assist framing（協助取景）**。這是任務模式，與全域相機存取選項分開，不會自行授予權限。
+
+| 引擎與任務 | 模型行為 |
+|---|---|
+| Apple＋只觀察 | Apple使用只讀工具觀察影格；即使已有相機控制權，也不啟動MLX。 |
+| Apple＋協助取景，且已有符合條件的控制權與能力 | 已下載的MLX執行允許的調整流程，App再取新影格給Apple回答。 |
+| MLX＋只觀察 | MLX只觀察，不取得移動或縮放工具。 |
+| MLX＋協助取景 | MLX只取得既有權限與能力檢查允許的調整工具。 |
+
+原始碼的初始任務模式為觀察，不會自動下載模型。協助取景若需要尚未下載的MLX，會說明需求；Apple純觀察不需要該下載。模型角色本身不表示做過動作，仍需核對實際結果與讀回。build22完整軟體及UI驗收仍待完成。
+
+### build16的歷史硬體結果
+
+較早的混合路由依可用控制權選擇流程，尚未區分本次任務模式。一次build16真機任務以38.039秒完成，11項檢查通過；MLX順序為`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`，只有一次raw200縮放並取得verified讀回。App再取新影格交給Apple，這不是額外的模型工具呼叫。其後恢復raw100及manual。
+
+這是build16單一有界案例的證據，不是build22已完成驗收，也不代表Apple曾獨立控制相機。公開beta1維持build9，詳見[硬體紀錄](../HARDWARE_ACCEPTANCE.md)。
 
 ## MCP 與 CLI
 
@@ -91,6 +106,16 @@ Roll 標為**實驗性**，數值是裝置控制單位，不是已校準的物�
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' snapshot --output "$PWD/pocket3-frame.jpg"
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --question '讀取畫面上可見的標籤。'
 ```
+
+即將推出的build22 CLI以 `ask --intent observe|assistFraming` 明確指定本次任務；省略時預設為 `observe`。例如：
+
+```sh
+'/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --intent observe --question '畫面中有什麼？'
+```
+
+`assistFraming`仍需要符合條件的相機控制權與能力。Debug版 `evaluate-workflow` 的模擬相機也接受相同intent，省略時同樣只觀察；模擬動作不是硬體證據。
+
+MCP維持六個基礎相機工具：`camera_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。CLI的`ask`、圖片檔案分析及評測入口沒有另包成新的MCP工具。
 
 MCP 縮放先取得 `camera_status.capture.sessionID`，以 `expectedSessionID` 傳給 `camera_zoom_status`，再選擇符合其 minimum／maximum／step 刻度的整數 `rawValue` 呼叫 `camera_set_zoom`。檢查 `completed` 與 `verified`，再取得新影格。取消或未確認的動作不能觸發自動連續重試。
 

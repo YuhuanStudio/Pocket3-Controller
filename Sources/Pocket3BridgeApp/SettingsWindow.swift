@@ -157,6 +157,7 @@ struct PreferencesWindow: View {
             heading("AI access")
             settingsCard { VStack(alignment: .leading, spacing: Yun.Space.md) {
                 YunSelect(selection: Binding(get: { model.access }, set: { value in Task { await model.setAccess(value) } }), options: AccessMode.allCases.map { .init(value: $0, title: loc($0.title)) })
+                    .disabled(!model.isCameraSource)
                 caption("Manual control takes over from AI. Reconnecting never resumes an old movement.")
             } }
         }
@@ -200,7 +201,7 @@ struct PreferencesWindow: View {
             settingsCard { VStack(alignment: .leading, spacing: Yun.Space.md) {
                 Text(loc("USB audio test")).font(Yun.Text.title)
                 Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
-                Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.ready)
+                Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady)
             } }
         }
     }

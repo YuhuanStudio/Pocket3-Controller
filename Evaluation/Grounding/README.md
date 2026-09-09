@@ -55,6 +55,29 @@ COCO is widely used in pretraining. This is a reproducible smoke/regression set,
 
 Timing includes the CLI, IPC, and model work. Cold loading is not automatically separated from warm inference. Keep repeated and cold/warm trials distinct when comparing models. A format failure is not automatically a perceptual error: free text may describe the correct count while violating the machine-readable contract.
 
+## Recorded baseline: build 21
+
+The first complete typed run issued 36 requests, 18 per engine, using this unchanged six-image dataset. [The metadata-only result](results/build21-typed.json) records source commit `35eded8dea943150cc755c21e9bd3a79c5e8992b`, the App executable hash, prompts, expected values, returned typed values, and individual scores. It contains no photographs or private filesystem paths.
+
+| Metric | Apple system model | MLX Qwen3.5-4B 4-bit |
+|---|---:|---:|
+| Complete tasks passed | 6 / 18 | 14 / 18 |
+| Count | 5 / 6 | 5 / 6 |
+| Point inside target bbox | 1 / 6 | 6 / 6 |
+| Valid absent-target abstention | 0 / 6 | 3 / 6 |
+| Returned schema-valid results | 12 / 18 | 15 / 18 |
+| Host output rejections | 6 / 18 | 3 / 18 |
+| Whole-request p50 | 1.043 s | 1.148 s |
+| Whole-request p95 | 1.210 s | 1.337 s |
+
+Each task ran Apple followed by MLX once, in a process where both engines had already been exercised by a pilot. These timings are not isolated cold-load or sustained-memory measurements. The six successful MLX points establish only this small inside-bbox check, not general grounding or camera-control reliability. Both models still made one count error each.
+
+All nine host rejections occurred on absent-target tasks. The API rejected those outputs before returning their contents, so their underlying visual judgments are unavailable. They count as end-to-end failures, but must not be relabeled as hallucinated objects without evidence. The exported records explicitly preserve that distinction.
+
+A subsequent standalone Apple diagnostic used the same image, prompt, type structure, and preprocessing for one absent-target case. Across three alternating trials per variant, default `@Generable` returned `found=false` with point `(0,0)`, while `representNilExplicitlyInGeneratedContent: true` returned `found=false` with a nil point, explicitly null in `generatedContent`. This motivated a source fix for the optional Location and Presence types plus a generated-content regression check. It is a single-case diagnostic, not proof that all failures share that cause or that a displayed schema JSON necessarily changes.
+
+**Build 22 full-dataset verification is pending.** Its 36 requests must be recorded separately before claiming the nil fix resolves absent-target behavior or preserves other task quality. The [AI research report](../../docs/AI_RESEARCH.md) distinguishes this baseline, the diagnostic, and the pending integration; historical results are not overwritten.
+
 ## Sources and licenses
 
 The [COCO Consortium's original Terms of Use](https://cocodataset.org/dataset/termsofuse.htm) license annotations under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode) and state that the Consortium does not own the photographs. Individual image licenses remain the historical Flickr records preserved in the manifest: [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) or [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/). Consult the recorded original Flickr photo page before redistributing an image; the COCO annotation file does not supply its author's name. This project distributes no photographs with this evaluation metadata.

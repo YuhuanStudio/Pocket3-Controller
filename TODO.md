@@ -9,9 +9,14 @@
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
 - [x] 新增只讀匯入圖片 typed 計數／定位／存在性評测 API；8項純回歸通過，不提供相機動作。合計492項Release測試通過、3項opt-in跳過。
 - [x] [公開資料評測](Evaluation/Grounding/README.md) 的6張照片／18題metadata、來源／授權／SHA與獨立評分器已可重現，照片不進repo或App。
-- [ ] 在同一批資料上完成 typed 真模型評測，區分格式、事實、定位與延遲；pilot不當成全面品質排名。
-- [ ] 完成新路徑下的完整軟體 gate、UI與安裝包驗證。
-- [ ] 離線照片／短片工作區、明示觀察／協助取景入口、主體定位 UI、構圖測量及時間軸依研究次序落地；不以評測 API 代替完整產品功能。
+- [x] build21完成同圖同題36次typed推論：Apple6/18、MLX14/18；這是小型契約／語意回歸集，非通用模型排名。[不含照片的結果](Evaluation/Grounding/results/build21-typed.json)
+- [x] build21新路徑完整軟體gate通過：492項Release、59張UI、三語與7個Yun共用設計檔、搬移App後實際MLX/CoreAI推論、ZIP/DMG簽署和payload。[本輪封存](artifacts/offline-build21/final/verification-gate.json)
+- [ ] build22修正模型nil表示、重跑固定題集；Apple獨立單圖3組交错診斷已確認原輸出found=false卻填(0,0)，顯式nil版本回空位置。不可將host拒絕一律解讀為模型看錯。
+- [ ] build22離線照片工作區：開啟／替換圖片、問答、計數、模型定位、OCR、取消／舊結果隔離與三語介面。原始碼已接線，等待真App流程及新版本gate。
+- [ ] build22觀察／協助取景分流：全域控制權不再自動觸發MLX控制階段；CLI顯式intent、image mode無硬體工具。等待整合測試。
+- [ ] 短片匯入、ROI、結果保存、構圖幾何、短期追蹤／場景事件時間軸。
+- [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
+- [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
 
 ## beta 1 發布與整理
 

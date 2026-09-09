@@ -183,7 +183,7 @@ public enum IPCClient {
             guard s >= 0 else { throw BridgeFailure("ipc_socket", "無法建立本機連接") }
             defer { socketState.remove(); close(s) }
             try socketState.install(s)
-            let longOperation = ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "validation-connect", "validation-manual-preset", "move"].contains(operation)
+            let longOperation = ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset", "move"].contains(operation)
             SocketIO.configure(s, timeout: ["cancel-request", "bridge-ping"].contains(operation) ? 2 : (longOperation ? 120 : 20))
             var addr = try SocketIO.address(address.socket)
             let result = withUnsafePointer(to: &addr) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.connect(s, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) } }

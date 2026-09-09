@@ -236,7 +236,7 @@ private func waitForZoom(_ camera: ZoomObservationFixture) async throws {
     for behavior in [ZoomObservationFixture.Behavior.delayedBegin, .delayedInitialFrame] {
         let camera = try ZoomObservationFixture(behavior: behavior)
         let engine = IntelligenceEngine()
-        let work = Task { try await engine.observe(service: camera, question: "Set raw zoom to 200", engine: "apple") }
+        let work = Task { try await engine.observe(service: camera, question: "Set raw zoom to 200", engine: "apple", intent: .assistFraming) }
         try await waitForZoom(camera)
         await engine.cancelObservation()
         await camera.release()

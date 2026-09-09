@@ -55,6 +55,9 @@ enum AppErrorMessageKey: String, CaseIterable {
     case audio = "Camera audio is unavailable. Check microphone access and reconnect."
     case preset = "This camera connection does not provide that preset."
     case fileAccess = "The file could not be accessed. Check its location and permissions."
+    case imageFile = "Choose a readable image file no larger than 8 MB."
+    case imageAnalysis = "The image analysis could not finish. Try another question or model."
+    case imageGrounding = "The model did not return a valid image location. No marker was placed."
     case validation = "Complete camera control validation in Diagnostics before allowing AI adjustments."
     case postActionImage = "The camera action finished, but a new image was unavailable. Capture a fresh image before another adjustment."
     case generic = "The operation could not be completed. Check the connection and diagnostics."
@@ -134,7 +137,9 @@ enum AppErrorPresentation {
         case "model_unavailable": return .appleModel
         case "local_model_error": return .localModel
         case "invalid_model_output", "unverified_action_claim", "unverified_zoom_claim", "tool_budget", "movement_budget", "zoom_budget": return .modelAnswer
-        case "invalid_question", "invalid_engine": return .question
+        case "invalid_question", "invalid_engine", "invalid_intent": return .question
+        case "fixture_size", "fixture_image", "fixture_memory", "grounding_input_invalid": return .imageFile
+        case "grounding_output_invalid": return .imageGrounding
         case "model_timeout", "native_action_timeout": return .timedOut
         case "already_running", "app_not_running", "ipc_auth", "ipc_bind", "ipc_disconnected", "ipc_identity", "ipc_lock", "ipc_path", "ipc_protocol", "ipc_size", "ipc_socket", "ipc_write", "invalid_probe", "invalid_probe_reply": return .bridge
         case "audio_ambiguous", "audio_start_timeout", "audio_unavailable": return .audio

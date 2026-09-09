@@ -21,7 +21,10 @@ public struct GroundedImageCount: Codable, Sendable {
     public var uncertain: Bool
 }
 
-@Generable
+// A missing target needs a generated JSON null, not a fabricated default point.
+// macOS 27 defaults to representing nil by omission; explicitly expose null to
+// both system and custom model generation for these optional target schemas.
+@Generable(representNilExplicitlyInGeneratedContent: true)
 public struct GroundedImageLocation: Codable, Sendable {
     @Guide(description: "Center of the one clearly identified target, in normalized top-left coordinates. Null when the target is missing, ambiguous or uncertain.")
     public var point: GroundedImagePoint?
@@ -29,7 +32,7 @@ public struct GroundedImageLocation: Codable, Sendable {
     public var uncertain: Bool
 }
 
-@Generable
+@Generable(representNilExplicitlyInGeneratedContent: true)
 public struct GroundedImagePresence: Codable, Sendable {
     @Guide(description: "Whether the queried target is visibly present in this image. Do not assume the question's premise is true.")
     public var found: Bool

@@ -30,7 +30,7 @@ USB control keeps the Mac on its existing network; no camera Wi-Fi join is neede
 | | |
 |---|---|
 | **Published release** | [0.0.1 beta 1 · build 9](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) |
-| **Development branch** | `main` is preparing 0.0.1 beta 2 · build 21; it is not the published beta 1 binary |
+| **Development branch** | `main` is preparing 0.0.1 beta 2 · build 22; it is not the published beta 1 binary |
 | **Platform** | macOS 27, Apple Silicon, Pocket 3 in USB Webcam mode |
 | **Interfaces** | Main window, menu bar panel, CLI and MCP over stdio |
 | **Languages** | English, Traditional Chinese and Simplified Chinese |

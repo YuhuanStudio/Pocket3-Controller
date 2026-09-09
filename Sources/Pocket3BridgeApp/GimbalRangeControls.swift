@@ -9,7 +9,7 @@ struct GimbalRangeControls: View {
 
     private var sessionID: String { model.status?.capture.sessionID ?? "" }
     private var canMove: Bool {
-        model.ready && !model.isConnecting && !model.isManualPresetBusy
+        model.cameraActionReady && !model.isConnecting && !model.isManualPresetBusy
             && model.status?.gimbal?.writable == true
             && model.status?.motionActive == false && !isSubmitting
     }

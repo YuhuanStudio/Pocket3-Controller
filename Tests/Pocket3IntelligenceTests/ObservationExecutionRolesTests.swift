@@ -97,7 +97,7 @@ private actor RoleResponder {
     let camera = try RoleCamera()
     let responder = RoleResponder(zoom: true)
     let engine = IntelligenceEngine(observationStage: { try await responder.answer($0) })
-    let result = try await engine.observe(service: camera, question: "模擬縮放後描述畫面", engine: "apple")
+    let result = try await engine.observe(service: camera, question: "模擬縮放後描述畫面", engine: "apple", intent: .assistFraming)
     let stages = await responder.stages
     #expect(stages.count == 2)
     let controller = try #require(stages.first), answer = try #require(stages.last)
@@ -128,7 +128,7 @@ private actor RoleResponder {
         let camera = try RoleCamera(canZoom: zoom)
         let responder = RoleResponder()
         let engine = IntelligenceEngine(observationStage: { try await responder.answer($0) })
-        let result = try await engine.observe(service: camera, question: "描述模擬畫面", engine: selected)
+        let result = try await engine.observe(service: camera, question: "描述模擬畫面", engine: selected, intent: zoom ? .assistFraming : .observe)
         let stages = await responder.stages
         #expect(stages.count == 1)
         let stage = try #require(stages.first)
@@ -138,7 +138,7 @@ private actor RoleResponder {
         #expect(result.actions.isEmpty)
         #expect(result.executionRoles == .init(controllerEngine: zoom ? "mlx" : nil, answerEngine: selected))
     }
-    #expect(ObservationExecutionRoles.route(selectedEngine: "apple", canMove: true, canZoom: false) ==
+    #expect(ObservationExecutionRoles.route(selectedEngine: "apple", intent: .assistFraming, canMove: true, canZoom: false) ==
         .init(controllerEngine: "mlx", answerEngine: "apple", finalFrameRefresh: "app"))
 }
 
@@ -146,7 +146,7 @@ private actor RoleResponder {
     let camera = try RoleCamera()
     let responder = RoleResponder(fail: "model_not_downloaded")
     let engine = IntelligenceEngine(observationStage: { try await responder.answer($0) })
-    do { _ = try await engine.observe(service: camera, question: "模擬縮放", engine: "apple"); Issue.record("Missing controller should fail") }
+    do { _ = try await engine.observe(service: camera, question: "模擬縮放", engine: "apple", intent: .assistFraming); Issue.record("Missing controller should fail") }
     catch let failure as BridgeFailure { #expect(failure.code == "model_not_downloaded") }
     #expect(await responder.stages.count == 1)
     #expect(await camera.frames.count == 1)
@@ -158,7 +158,7 @@ private actor RoleResponder {
         let camera = try RoleCamera()
         let responder = RoleResponder(pause: paused)
         let engine = IntelligenceEngine(observationStage: { try await responder.answer($0) })
-        let task = Task { try await engine.observe(service: camera, question: "描述模擬畫面", engine: "apple") }
+        let task = Task { try await engine.observe(service: camera, question: "描述模擬畫面", engine: "apple", intent: .assistFraming) }
         for _ in 0..<1000 {
             if await responder.waiting { break }
             try await Task.sleep(for: .milliseconds(1))
@@ -172,5 +172,87 @@ private actor RoleResponder {
         #expect(await responder.stages.count == (paused == .controller ? 1 : 2))
         #expect(await camera.frames.count == (paused == .controller ? 1 : 2))
         #expect(await camera.writes.isEmpty)
+    }
+}
+
+@Test func defaultObservationRemainsReadOnlyDespiteStandingCameraControl() async throws {
+    for selected in ["apple", "mlx"] {
+        let camera = try RoleCamera(canMove: true, canZoom: true)
+        let responder = RoleResponder()
+        let engine = IntelligenceEngine(observationStage: { try await responder.answer($0) })
+        // Intentionally omit intent: existing callers must default to observation.
+        let result = try await engine.observe(service: camera, question: "描述畫面", engine: selected)
+        let stages = await responder.stages
+        #expect(stages.count == 1)
+        let stage = try #require(stages.first)
+        #expect(stage.engine == selected && stage.role == .standard)
+        let canMove = await stage.context.canMove
+        let canZoom = await stage.context.canZoom
+        #expect(!canMove && !canZoom)
+        #expect(Set(stage.tools.map(\.name)) == ["capture_frame", "read_visible_text", "read_barcodes"])
+        #expect(result.executionRoles == .init(answerEngine: selected))
+        #expect(await camera.frames.count == 1) // No controller handoff capture.
+        #expect(await camera.writes.isEmpty)
+        #expect(result.actions.isEmpty)
+    }
+}
+
+@Test func explicitObservationRejectsWriteBypassEvenWhenQuestionAsksToAdjust() async throws {
+    for selected in ["apple", "mlx"] {
+        let camera = try RoleCamera(canMove: true, canZoom: true)
+        let engine = IntelligenceEngine(observationStage: { stage in
+            #expect(stage.engine == selected && stage.role == .standard)
+            let canMove = await stage.context.canMove
+            let canZoom = await stage.context.canZoom
+            #expect(!canMove && !canZoom)
+            #expect(Set(stage.tools.map(\.name)) == ["capture_frame", "read_visible_text", "read_barcodes"])
+            do { _ = try await stage.context.move(.right); Issue.record("Observe accepted a direct move") }
+            catch let failure as BridgeFailure { #expect(failure.code == "movement_budget") }
+            do { _ = try await stage.context.readZoomStatus(); Issue.record("Observe acquired writable zoom status") }
+            catch let failure as BridgeFailure { #expect(failure.code == "zoom_denied") }
+            do { _ = try await stage.context.zoom(200); Issue.record("Observe accepted a direct zoom") }
+            catch let failure as BridgeFailure { #expect(failure.code == "zoom_budget") }
+            return ObservationAnswer(answer: "這是唯讀的模擬畫面回答。", evidence: [], uncertainties: [])
+        })
+        let result = try await engine.observe(service: camera, question: "向右移動並縮放到 raw 200",
+            engine: selected, intent: .observe, origin: .automation)
+        #expect(result.executionRoles == .init(answerEngine: selected))
+        #expect(result.actions.isEmpty)
+        #expect(await camera.writes.isEmpty)
+        #expect(await camera.stopCount == 0)
+        #expect(await camera.frames.count == 1)
+    }
+}
+
+@Test func framingAssistancePreservesOnlyIndependentlyGrantedHardwareCapabilities() async throws {
+    for selected in ["apple", "mlx"] {
+        for (move, zoom) in [(false, false), (true, false), (false, true), (true, true)] {
+            let camera = try RoleCamera(canMove: move, canZoom: zoom)
+            let responder = RoleResponder()
+            let engine = IntelligenceEngine(observationStage: { try await responder.answer($0) })
+            let result = try await engine.observe(service: camera, question: "協助調整模擬構圖",
+                engine: selected, intent: .assistFraming)
+            let stages = await responder.stages
+            let mixed = selected == "apple" && (move || zoom)
+            #expect(stages.count == (mixed ? 2 : 1))
+            let stage = try #require(stages.first)
+            #expect(stage.engine == (mixed ? "mlx" : selected))
+            #expect(stage.role == (mixed ? .controller : .standard))
+            let canMove = await stage.context.canMove
+            let canZoom = await stage.context.canZoom
+            #expect(canMove == move && canZoom == zoom)
+            var expected: Set<String> = ["capture_frame", "read_visible_text", "read_barcodes"]
+            if move { expected.insert("move_gimbal") }
+            if zoom { expected.formUnion(["camera_zoom_status", "camera_set_zoom"]) }
+            #expect(Set(stage.tools.map(\.name)) == expected)
+            if mixed {
+                let final = try #require(stages.last)
+                #expect(final.engine == "apple" && final.role == .finalAnswer)
+                #expect(final.tools.isEmpty && final.toolCallingMode == .disallowed)
+            }
+            #expect(result.executionRoles == .init(controllerEngine: move || zoom ? (mixed ? "mlx" : selected) : nil,
+                answerEngine: selected, finalFrameRefresh: mixed ? "app" : nil))
+            #expect(await camera.writes.isEmpty) // A route/capability is not itself an action.
+        }
     }
 }

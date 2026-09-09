@@ -1,5 +1,6 @@
 import CoreVideo
 import Foundation
+import FoundationModels
 import Testing
 @testable import Pocket3Core
 @testable import Pocket3Intelligence
@@ -57,6 +58,17 @@ private func groundingFrame(imported: Bool = true) throws -> FramePacket {
     let presence = GroundedImageValue.absent(.init(found: false, point: nil))
     try presence.validate(kind: .absent)
     #expect(try presence.json() == .object(["found": .bool(false), "point": .null]))
+}
+
+@Test func groundingModelContentPreservesExplicitAbstention() throws {
+    // Exercise the macro's model-facing representation, not just our IPC JSON
+    // wrapper. Omission must not hide the abstention in generated content.
+    for content in [GroundedImageLocation(point: nil, uncertain: true).generatedContent,
+                    GroundedImagePresence(found: false, point: nil).generatedContent] {
+        let json = try JSONDecoder().decode(JSONValue.self, from: Data(content.jsonString.utf8))
+        guard case .object(let fields) = json else { Issue.record("Expected object"); return }
+        #expect(fields["point"] == .some(.null))
+    }
 }
 
 private actor GroundingResponder {
@@ -156,4 +168,18 @@ private actor GroundingResponder {
     do { _ = try await task.value; Issue.record("Cancelled parent received a result") }
     catch is CancellationError {}
     #expect(await engine.status().isBusy == false)
+}
+
+@Test func alreadyCancelledImageAnalysisNeverStartsModelLoading() async throws {
+    let frame = try groundingFrame(), engine = IntelligenceEngine()
+    let task = Task {
+        // Mark this same task cancelled deterministically before entering the
+        // engine, without depending on scheduling or model availability.
+        withUnsafeCurrentTask { $0?.cancel() }
+        return try await engine.analyze(frame: frame, question: "Describe", engine: "mlx")
+    }
+    do { _ = try await task.value; Issue.record("Cancelled analysis completed") }
+    catch is CancellationError {}
+    #expect(await engine.status().isBusy == false)
+    #expect(await engine.localModel.status().phase != "loaded")
 }

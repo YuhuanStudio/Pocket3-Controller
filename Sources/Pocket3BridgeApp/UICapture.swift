@@ -103,7 +103,7 @@ extension AppModel {
         }
         // Public UI captures omit sensor images unless the caller explicitly
         // requests one. The live preview view is also detached while capturing.
-        if request.arguments["includeCameraPreview"].bool == true,
+        if isCameraSource, request.arguments["includeCameraPreview"].bool == true,
            let frame = try? service.capture.store.latest(),
            let data = try? await Task.detached(operation: { try frame.jpeg(maxDimension: 1280) }).value,
            frame.info.sessionID == service.capture.store.stats().sessionID { capturePreview = NSImage(data: data) }
@@ -130,7 +130,7 @@ extension AppModel {
         guard let data = bitmap.representation(using: .png, properties: [:]) else { throw BridgeFailure("render_failed", "Unable to encode the window") }
         try FileManager.default.createDirectory(at: URL(fileURLWithPath: path).deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: URL(fileURLWithPath: path), options: .atomic)
-        return ServiceReply(id: request.id, result: .object(["saved": .string(path), "width": .number(Double(bitmap.pixelsWide)), "height": .number(Double(bitmap.pixelsHigh)), "chromeIntegrated": .bool(WindowChrome.isIntegrated(window)), "surface": .string(surface), "simulation": .bool(["telemetry-fixture", "roll-fixture", "settings-readback-fixture"].contains(surface)), "cameraPhase": .string(status?.phase ?? "unknown"), "cameraPreviewIncluded": .bool(capturePreview != nil), "layout": try .encode(layoutBounds), "method": .string("AppKit window rendering; sensor preview omitted by default")]))
+        return ServiceReply(id: request.id, result: .object(["saved": .string(path), "width": .number(Double(bitmap.pixelsWide)), "height": .number(Double(bitmap.pixelsHigh)), "chromeIntegrated": .bool(WindowChrome.isIntegrated(window)), "surface": .string(surface), "simulation": .bool(["telemetry-fixture", "roll-fixture", "settings-readback-fixture"].contains(surface)), "cameraPhase": .string(status?.phase ?? "unknown"), "cameraPreviewIncluded": .bool(capturePreview != nil), "importedImageIncluded": .bool(false), "privateObservationContentIncluded": .bool(false), "layout": try .encode(layoutBounds), "method": .string("AppKit window rendering; imported images and private observation content omitted; sensor preview omitted by default")]))
     }
 
     private func interfaceScrollViews(in view: NSView) -> [NSScrollView] {
