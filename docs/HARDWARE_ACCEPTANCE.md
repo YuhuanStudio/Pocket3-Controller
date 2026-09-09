@@ -257,3 +257,13 @@ build16保留session housekeeping後，一次原生回中前的基線有5筆、�
 之後用USB恢復pan目標0，回讀−360在既有容差內確認，tilt0；BLE在恢復前的yawRaw23與當時UVC pan8280分別記錄，不宣稱已完成跨座標校準。[恢復前](../artifacts/native-heartbeat-build16/before-restore-camera.json)、[USB恢復](../artifacts/native-heartbeat-build16/restore-usb.stdout.json)
 
 build17將**命令前取得基線的等待上限**設為3秒；半秒穩定、至少3筆、最大樣本間隔0.35秒及角度span0.25°不變。用途在型別上分開，所有既有Stop呼叫仍使用1.5秒；命令後觀察仍為3秒、單次提交而不重送。459項Release測試通過。安裝後新輪次回報螢幕不可用，manual offset未開始，pan／tilt保持0，因此FE08沒有送出。新基線實測與原生快速預設仍待完成。[測試](../artifacts/native-baseline-build17/release-tests.log)、[本輪未執行結果](../artifacts/native-baseline-build17/result.json)、[建置](../artifacts/native-baseline-build17/build-metadata.json)
+
+## 2026-09-09 build17：外部 MCP 縮放與權限拒絕
+
+使用安裝包內的`pocket3 mcp`啟動獨立stdio客戶端，握手MCP 2025-11-25並核對六個公開工具。相機／capture session／USB attachment／boot在客戶端檢查，兩次zoom RPC另外帶`expectedSessionID`。正常流程約2.968秒：讀取真實影格、查詢raw100及能力、單次SET200、確認穩定回讀200、取得新影格，之後單次恢復100及另一張新影格。三張影格的ID、host timestamp及PTS均前進，動作後影格晚於已確認的zoom回覆；兩次SET皆`accepted/completed/verified=true`。[結果](../artifacts/mcp-zoom-hardware/6c10d197-9e1e-4b4b-b518-348f56141472/result.json)
+
+獨立manual run使用合法raw200要求，確認MCP回`isError=true/access_denied`，前後raw100未變；沒有呼叫capture或發送恢復動作。[拒絕結果](../artifacts/mcp-zoom-hardware/cea79505-a683-4c99-9b54-f10aedd42c4e/result.json)。完成後root恢復manual、確認motion inactive及原capture session。JPEG僅於記憶體檢查格式、記錄hash與大小，沒有照片檔案。
+
+這次是真實外部MCP工具路徑，不含LLM回答、雲台移動、MCP取消／重連競爭或倍率校準。Global Stop沒有原子expected-session參數，失敗清理的限制保留在執行器；不能據單次成功擴大成所有競爭情況通過。
+
+使用者提出Mac Studio遠端桌面情境後，另檢查螢幕判定的用途：`screenUnavailable`只出現在popover介面驗證；相機服務沒有實體螢幕亮起的許可條件。早先螢幕不可用時取像仍更新，但這次操作前11:25:16Z的獨立讀值已為`displayAsleep=false/displayActive=true`，因此**不列為關螢幕／headless／遠端桌面成功**。顯示器關閉、登入工作階段鎖定和整台Mac睡眠須分開驗收；現有`willSleep`處理會停止操作並suspend相機。[版本與環境](../artifacts/mcp-zoom-hardware/build17-context.json)

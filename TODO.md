@@ -121,7 +121,10 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 - [ ] 完成最新candidate的直幅方向／完整內容、黑邊、視窗縮放與切換重連，以及尚未覆蓋的格式組合。公開beta1的NV12橫幅子矩陣已通過；早期五種直幅的通過受當次機身方向限制，不涵蓋全部模式。未充分暖機的FPS失敗保留，不當作已證明不相容。
 - [ ] UYVY 選項對應的 H.264 路徑與4K高幀率：多種 AVF output policy、延長20秒及解鎖環境仍無 sample callback；繼續核對 OBS 的實際影像及其他路徑，不能把選單宣告當可用。[解鎖對照](artifacts/hardware-resumed/uyvy-unlocked-20s.json)、[協議／格式證據](docs/HARDWARE_ACCEPTANCE.md)
 - [ ] BLE 原生持續馬達控制。有效時序的200 ms低速脈衝沒有位移；04/50 readiness 查詢無回覆。已配對／可讀姿態不等於可控制馬達。[脈衝](artifacts/hardware-resumed/ble-native-probe-2/result.json)、[readiness](artifacts/hardware-resumed/ble-readiness-result.json)
-- [ ] 完成真實相機下Apple及外部MCP的「先看→移動／縮放→新影格→回答」，以及拒絕、取消與錯誤恢復的完整流程。MLX的單次raw200真機任務已由上節補足，不再把全部真模型zoom證據寫成simulation；它仍不代替Apple、外部MCP或全視角驗收。
+- [x] build17的外部packaged MCP完成真機縮放100→200→100，三張同session新影格與兩次精確回讀均通過；獨立manual模式的合法縮放請求回`access_denied`且原值不變。只保留圖片hash／大小，不保存照片。[縮放](artifacts/mcp-zoom-hardware/6c10d197-9e1e-4b4b-b518-348f56141472/result.json)、[拒絕](artifacts/mcp-zoom-hardware/cea79505-a683-4c99-9b54-f10aedd42c4e/result.json)
+- [ ] 完成真實相機下模型與外部MCP的取消、重連、錯誤恢復及移動後新影格完整流程。MLX與MLX控制／Apple回答的單次真機任務已有上節證據；外部MCP縮放與拒絕已補足，但不代表所有語句／全視角已驗收。
+- [ ] Mac Studio遠端桌面／無實體螢幕驗收：區分顯示器關閉、GUI鎖定、使用者登出及整機睡眠；涵蓋預覽、MCP、手動拖曳／放開及遠端斷線。核心控制無螢幕亮起門檻；AppKit合成事件／popover動畫的不可用不能等同相機服務失效。本次MCP操作前displayAsleep=false，**尚非關螢幕或實際遠端驗收**。[環境](artifacts/mcp-zoom-hardware/build17-context.json)
+- [x] build18來源加入隨取像生命週期管理的ProcessInfo活動：防止閒置系統睡眠及App Nap，允許螢幕休眠，Stop／失敗／實際session停止或斷線時釋放，舊generation通知不得釋放新活動。460項Release測試執行通過、3項opt-in跳過；另8個MCP離線流程含磁碟失敗清理通過。實際App電力活動仍需安裝後核對。[測試](artifacts/capture-activity-build18/release-tests.log)
 - [ ] USB 供電／未知充電提示的最新 UI 與實機回歸；不把配置電力當實際充電功率或電池回報。
 
 ## 其他本輪功能與外部發布條件
@@ -131,6 +134,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
 - [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
 - [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。
+- [x] 隔離的beta1 build9→candidate17副本已實際透過Sparkle下載／安裝／重啟，完整副本bytes／簽署、偏好、新PID與IPC、測試清理均通過。使用獨立bundle ID及測試feed，沒有取像；正式App更新UI／正式feed與取像中的更新仍屬上一項未完成範圍。[結果](artifacts/update-install/build9-to17-complete-20260909/result.json)、[流程](docs/RELEASE.md)
 - [ ] Developer ID／公證及公開分發驗收。本機版已有固定開發簽署，不再稱無有效本機身分；公開發布條件尚未完成，也不阻止可離線完成的工作。
 
 ## 歷史證據與已被取代的狀態

@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 17. The build 16 model routing below is a development addition, not a published beta 1 feature.
+This guide covers published **0.0.1 beta 1, build 9**; `main` is beta 2 development, build 18. The build 16 model routing below is a development addition, not a published beta 1 feature.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
@@ -39,6 +39,21 @@ before trying the corresponding operation again.
 **Privacy pause** stops the current work and releases capture inputs. Closing the
 main window keeps the menu bar service running; **Quit** ends the service.
 The menu bar icon opens the panel with a left click and its menu with a right click.
+
+## Remote desktop and background use
+
+The camera service has no physical-display-on requirement. The app must remain
+running in the logged-in user's macOS session; the local CLI/MCP helper uses that
+same user's service and does not start a system daemon before login. Remote
+desktop input still depends on an accessible desktop and the app window receiving
+the gesture. Display sleep, a locked desktop and system sleep are different states.
+
+Development build 18 keeps an activity open while capture is running to prevent
+idle system sleep and App Nap, without keeping the display on. Pause, disconnect
+and capture teardown release it. An explicit system sleep still suspends the
+camera; reconnect after waking. This is a development addition, not a beta 1 claim.
+Actual Mac Studio remote-desktop, display-off and remote-disconnect input tests
+remain pending; the build 17 external MCP zoom test ran with the display awake.
 
 ## USB preview and formats
 

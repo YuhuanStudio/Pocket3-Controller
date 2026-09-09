@@ -258,6 +258,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     private var audioInput: AVCaptureDeviceInput?
     private var audioOutput: AVCaptureAudioDataOutput?
     private var sessionObservers: [NSObjectProtocol] = []
+    private let captureActivity = CaptureActivityLease()
     private let lifecycleLock: NSLock
     private let callbackFence: CaptureCallbackFence
     private var failedStartDiagnostics: CaptureSampleDiagnostics?
@@ -271,19 +272,44 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
         let store = self.store
         let center = NotificationCenter.default
         sessionObservers = [
-            center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { notification in
+            center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { [weak self] notification in
                 let error = notification.userInfo?[AVCaptureSessionErrorKey] as? NSError
                 store.recordRuntimeError(avFoundationCode: error?.domain == AVFoundationErrorDomain ? error?.code : nil)
+                self?.reconcileCaptureActivity()
             },
-            center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { _ in
+            center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { [weak self] _ in
                 store.recordInterruption(active: true)
+                self?.reconcileCaptureActivity()
             },
-            center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: nil) { _ in
+            center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: nil) { [weak self] _ in
                 store.recordInterruption(active: false)
+                self?.reconcileCaptureActivity()
+            },
+            center.addObserver(forName: AVCaptureSession.didStopRunningNotification, object: session, queue: nil) { [weak self] _ in
+                self?.reconcileCaptureActivity()
+            },
+            center.addObserver(forName: AVCaptureSession.didStartRunningNotification, object: session, queue: nil) { [weak self] _ in
+                self?.reconcileCaptureActivity()
+            },
+            center.addObserver(forName: AVCaptureDevice.wasDisconnectedNotification, object: nil, queue: nil) { [weak self] _ in
+                self?.reconcileCaptureActivity()
             }
         ]
     }
-    deinit { sessionObservers.forEach { NotificationCenter.default.removeObserver($0) } }
+    deinit {
+        sessionObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        captureActivity.stop()
+    }
+    private func reconcileCaptureActivity() {
+        // Capture the lifecycle at notification arrival, then inspect AVF on
+        // its owning queue. Notification delivery can lag a stop/start cycle.
+        let generation = currentLifecycle()
+        queue.async { [weak self] in
+            guard let self, self.isCurrent(generation) else { return }
+            self.captureActivity.reconcile(generation: generation, isRunning: self.session.isRunning,
+                deviceConnected: self.currentVideoDeviceOnQueue()?.isConnected == true)
+        }
+    }
     public func lastFailedStartDiagnostics() -> CaptureSampleDiagnostics? {
         lifecycleLock.withLock { failedStartDiagnostics }
     }
@@ -474,6 +500,9 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                     let actualSubType = CMFormatDescriptionGetMediaSubType(device.activeFormat.formatDescription)
                     guard pixelFormat.accepts(mediaSubType: actualSubType) else { throw BridgeFailure("input_format_changed", "相機將輸入格式改為 \(CapturePixelFormat.fourCCString(actualSubType))，未套用要求的 \(pixelFormat.title)") }
                     guard session.isRunning else { throw BridgeFailure("capture_start_failed", "相機未能開始取像") }
+                    guard callbackFence.whileCurrent(generation, perform: {
+                        captureActivity.start(generation: generation)
+                    }) else { throw CancellationError() }
                     continuation.resume()
                 } catch {
                     let attempt = store.sampleDiagnostics()
@@ -489,6 +518,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
         await withCheckedContinuation { continuation in queue.async { self.stopOnQueue(); continuation.resume() } }
     }
     private func stopOnQueue() {
+        captureActivity.stop()
         // Invalidate first: even a callback already computing outside the lock
         // cannot commit after this point. Detach delegates before stop/removal.
         callbackFence.invalidateAll()
