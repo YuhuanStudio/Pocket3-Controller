@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。目前正在發布 **Pocket 3 Controller 0.0.1 beta 1（公開 build 9）**；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
+更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前推進 beta 2 開發 build 11；使用者已重新接回相機。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。新 candidate 的結果另行記錄，不把舊版通過套用到新版。
 
 ## beta 1 發布與整理
 
@@ -10,7 +10,9 @@
 - [x] 第一批已清理 155 個舊測試照片／截圖（31,326,669 bytes），保存原始 JSON、log、媒體 hash 及刪除清單；必要模型 fixtures 和當前 UI 複核截圖保留。[政策與 receipt](docs/TEST_ARTIFACTS.md)
 - [x] 已對照 YunAudio 並落地純本機 Release 預備工具、資產白名單、checksums／notes／draft argv；9 項離線測試通過。[發布流程](docs/RELEASE.md)
 - [x] 已取得發布授權，建立獨立 Sparkle Keychain account 與公開更新設定，保留私鑰於 Keychain。
-- [ ] 公開 build 9：乾淨來源 commit／tag、整包 gate、GitHub prerelease、公開下載與簽署 feed 核對。
+- [x] 公開 build 9：乾淨來源 commit／tag、完整 gate、GitHub prerelease、四項資產公開下載、signed feed／ZIP 公鑰驗證已完成。[Release](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+- [x] 三語 README／文件索引／使用指南與九張排除取景照片的 UI 圖已完成，圖片與公開下載版本分別標明。[公開呈現清單](docs/RELEASE_PRESENTATION_CHECKLIST.md)
+- [x] beta 2 build 11 版面修正：AI卡等高與控制列齊、MCP長路徑、設定長標籤與更新列、權限圖示、診斷卡、音訊動態本地化；三語、兩種視窗尺寸已逐張視覺檢查，完整回歸測試另記。
 - [ ] 新版真正下載、更新安裝、重新啟動驗收；未公證可明示發布 beta，不把它描述成 Apple 已驗證。
 
 ## 相機重新開啟後的新證據

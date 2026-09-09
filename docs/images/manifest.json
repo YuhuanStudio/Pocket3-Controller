@@ -1,0 +1,109 @@
+{
+  "appVersion": "0.0.1-beta.2",
+  "buildVersion": "11",
+  "releaseStatus": "development preview; beta 1 build 9 remains the published download",
+  "appExecutableSHA256": "42a63b9c47d624483218769444dacf7453889ff65bbbf5a7ad8c17adc076a004",
+  "capturedAt": "2026-09-09T07:08:32.704551+00:00",
+  "method": "Actual AppKit UI with scroll positions normalised; live preview detached and sensor JPEG encoding disabled",
+  "images": [
+    {
+      "file": "docs/images/window.png",
+      "language": "en",
+      "surface": "main",
+      "page": "camera",
+      "width": 2880,
+      "height": 1800,
+      "sha256": "e01c670d3330f9b58ac81a25c24e29e25402eb405c80fbfe0ff182aa0892c058",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/engines.png",
+      "language": "en",
+      "surface": "main",
+      "page": "engines",
+      "width": 2360,
+      "height": 1440,
+      "sha256": "ace8532ab70f9241d5414da97d59fcfcf81b41f7d77e1ba968876df5a810eccc",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/appearance.png",
+      "language": "en",
+      "surface": "settings",
+      "page": "appearance",
+      "width": 1600,
+      "height": 1300,
+      "sha256": "b1e404d611be9c04d9df725db5d5fdfea75397c6cde647a9d199a8297b6156ed",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/window-zh-Hant.png",
+      "language": "zh-Hant",
+      "surface": "main",
+      "page": "camera",
+      "width": 2880,
+      "height": 1800,
+      "sha256": "7b17e1a13aa401c8dd1386b2760f5b9a708f60f6fd3466699c82da022b4f69bf",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/engines-zh-Hant.png",
+      "language": "zh-Hant",
+      "surface": "main",
+      "page": "engines",
+      "width": 2360,
+      "height": 1440,
+      "sha256": "1f46e082ad5d9e872f7a609eff42407b74991fde08b054f6ba8f61ee65be3ab2",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/appearance-zh-Hant.png",
+      "language": "zh-Hant",
+      "surface": "settings",
+      "page": "appearance",
+      "width": 1600,
+      "height": 1300,
+      "sha256": "5bfc29c23d2d6b4ccf730453975ffee7a76b4c80d73e1bd38804ed68fab7a2d3",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/window-zh-Hans.png",
+      "language": "zh-Hans",
+      "surface": "main",
+      "page": "camera",
+      "width": 2880,
+      "height": 1800,
+      "sha256": "2ccc0bbde8608a113058b1fb1f189fd77caaf08d453bc80554bc013f9995d327",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/engines-zh-Hans.png",
+      "language": "zh-Hans",
+      "surface": "main",
+      "page": "engines",
+      "width": 2360,
+      "height": 1440,
+      "sha256": "89ab694ec80d468a59b530d495511ac9b3596b3618e1d7ff34c37ae8eda99118",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    },
+    {
+      "file": "docs/images/appearance-zh-Hans.png",
+      "language": "zh-Hans",
+      "surface": "settings",
+      "page": "appearance",
+      "width": 1600,
+      "height": 1300,
+      "sha256": "ae71e665caa6405534356d8bd7992caa9ec9691e188d63af13e0df34a7e82746",
+      "cameraPreviewIncluded": false,
+      "uiPhase": "ready"
+    }
+  ]
+}

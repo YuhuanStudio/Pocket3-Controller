@@ -33,8 +33,10 @@
 - [x] 新 candidate 真機基本流程：1920×1080 NV12 新影格、實際按鈕放開、位置有界還原、縮放往返、隱私暫停及新 session 重連；綁定當次 capture／USB attachment，最終 Stop verified。[本版實機結果](../artifacts/beta1-2026-09-09/hardware-smoke/result.json)。位置允許1080 raw容差，Zoom允許1 raw容差，不代表機械停止／完整範圍校準。
 - [x] 安裝說明與已知限制隨 App／DMG 提供，公開更新來源保持未配置。
 - [x] 使用者確定 GitHub 儲存庫名稱：`YuhuanStudio/Pocket3-Controller`。
-- [ ] 完成公開儲存庫、原始碼 commit／tag、Release 資產與下載驗證，再發布正式更新 feed。未公證 beta 可沿用 YunAudio 的明示分發方式，公證不是 beta 的必要門檻。
+- [x] 公開儲存庫、原始碼 commit／tag、Release 資產與無登入下載驗證、正式更新 feed 簽署與公開驗簽已完成。未公證 beta 可沿用 YunAudio 的明示分發方式，公證不是 beta 的必要門檻。
 
 本機開發簽署的內測包與公開分發是不同驗收。本頁是待完成的beta交付清單，尚未宣稱已發布或完成整體1.0。
 
-本機 build 8 候選 App SHA-256：`1081ef5c1321ba059ad78f11f808d62fe4809ba22673d0e85604850339e16c71`。公開 Release 尚未建立。
+本機 build 8 候選 App SHA-256：`1081ef5c1321ba059ad78f11f808d62fe4809ba22673d0e85604850339e16c71`。[公開 Release 已建立](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)，signed beta feed 已發布並通過公開下載驗簽。
+
+公開版為 build 9，來源 `21778c0e6ddec9ec9da017683f74c62177443985`，App SHA-256 `5aa5587910e63c7e47d50d75fc9d14e9f07e3bcd8085573a37c8175ebf031cee`。版面修正與新鏡頭記錄在 main 的 beta 2 開發線，沒有改寫 beta 1 的已發布資產。

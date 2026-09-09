@@ -1,0 +1,70 @@
+{
+  "release": "0.0.1-beta.1",
+  "buildVersion": "9",
+  "sourceCommit": "21778c0e6ddec9ec9da017683f74c62177443985",
+  "appExecutableSHA256": "5aa5587910e63c7e47d50d75fc9d14e9f07e3bcd8085573a37c8175ebf031cee",
+  "softwareGate": {
+    "passed": true,
+    "runID": "67281a99-641f-41f5-b5c2-fab718e894f0",
+    "unitTests": 397,
+    "uiCaptures": 59,
+    "checks": [
+      "build",
+      "unit tests",
+      "UVC ownership with AddressSanitizer",
+      "retained UVC session with AddressSanitizer",
+      "USB interface ownership with AddressSanitizer",
+      "shared design",
+      "translations",
+      "public release-settings validation",
+      "source provenance and release preflight",
+      "isolated Sparkle signed-feed verification",
+      "portable resources",
+      "live layout",
+      "window and popover lifetime",
+      "copied-app MLX and Core AI inference",
+      "model memory release",
+      "offline MCP",
+      "MCP cancellation",
+      "ZIP/DMG assembly",
+      "DMG checksum",
+      "extracted ZIP and read-only DMG payload signatures and hashes"
+    ]
+  },
+  "hardwareSmoke": {
+    "passed": true,
+    "mode": "1920x1080@30 NV12",
+    "checks": {
+      "freshPreviewAndSnapshot": true,
+      "manualInputReleaseAndRestoration": true,
+      "zoomRoundTrip": true,
+      "privacyPause": true,
+      "reconnectNewSession": true
+    },
+    "scope": "preview, actual manual input/release, zoom roundtrip, privacy pause and reconnect; not full-range or mechanical stopping calibration"
+  },
+  "downloadedAssets": [
+    {
+      "file": "Pocket3Controller-0.0.1-beta.1.zip",
+      "bytes": 38878491,
+      "sha256": "ca282b3d9c4f504652cb4a1742116962cbb693f201a1f784a87a1b5a36de04df"
+    },
+    {
+      "file": "Pocket3Controller-0.0.1-beta.1.dmg",
+      "bytes": 38784000,
+      "sha256": "ac37384fb99a8728003f8f716e5d04e365868621592412098578f12586e082d7"
+    }
+  ],
+  "signedPublicFeedAndZIP": {
+    "archiveVerified": true,
+    "feedVerified": true,
+    "privateKeyAccess": false
+  },
+  "notVerified": [
+    "cross-version update installation and relaunch",
+    "Developer ID and Apple notarisation",
+    "native rapid recenter/flip and App tap autofocus",
+    "complete optical/range/stopping calibration"
+  ],
+  "privateCameraImagesIncluded": false
+}
