@@ -10,9 +10,9 @@ Pocket 3 Controller 的 AI 應產生可使用的觀察、目標位置、構圖�
 
 ## 現有 AI 為何缺乏使用感
 
-現有 App 已能讓 Apple 或 MLX 看圖、產生結構化回答，並在允許的條件下使用相機工具。這是可用的接入層，但尚未形成持續的視覺工作流程：沒有面向使用者的離線素材輸入、跨影格目標 ID、事件時間軸，或可編輯的構圖任務。現在的物件偵測也是單張、固定類別的偵測，不等於「找到我說的那個物件」。[^app]
+截至build21，App的AI主要是看圖回答與有界工具流程。build22已補上面向使用者的靜態圖片工作區：開啟／替換檔案、問答、計數、定位標記、OCR，以及取消與來源切換；這些已通過無相機的真App基本流程測試。仍未形成持續的視覺工作流程：短片輸入、互動ROI、跨影格目標ID、事件時間軸與可編輯構圖任務尚待實作。固定類別物件偵測與少量語意定位案例，也仍不等於任意物件都能可靠找到。[^app][^workspace22]
 
-截至build21的基線路由存在不必要的雙模型成本。選擇 Apple 時，只要相機具備可用的移動或縮放權限，程式便先執行 MLX 控制階段，再更新影格給 Apple 回答；它沒有先區分本次只是觀察，還是真的要求操作。因此授予控制權後，即使問題沒有動作要求，也可能支付兩段模型生成的成本。這是該版本原始碼可確認的行為；確切多花多少時間仍需同圖同問的對照，不能用不同版本的兩次記錄相減。後續原始碼已開始加入獨立的 `observe`／`assistFraming` 任務意圖，下述build21結果不能當作新路由已完成驗收。[^route]
+截至build21的基線路由存在不必要的雙模型成本。選擇 Apple 時，只要相機具備可用的移動或縮放權限，程式便先執行 MLX 控制階段，再更新影格給 Apple 回答；它沒有先區分本次只是觀察，還是真的要求操作。因此授予控制權後，即使問題沒有動作要求，也可能支付兩段模型生成的成本。build22已加入獨立的 `observe`／`assistFraming` 任務意圖：預設純觀察不提供寫入工具，也不因既有控制權而啟動混合路由；相關路由與CLI傳遞／拒絕測試已納入通過的軟體gate。確切節省時間仍需同圖同問的專門對照，不能用不同版本或不同入口的時間相減，也不能把軟體測試當成新真機操作驗收。[^route][^gate22]
 
 另兩個常見解釋不符合目前證據。模型權重、tokenizer 與 grammar 已有重用，不能說每一問都重新下載或載入整套模型。MLX provider 沒有宣告 reasoning capability，所固定的橋接版本會關閉可選 thinking；不能把延遲直接歸因於忘記關閉 thinking。尚未建立的是跨提問的可證實 KV／影像特徵重用，以及完整的分階段延遲量測。[^mlx-provider]
 
@@ -28,13 +28,13 @@ Pocket 3 Controller 的 AI 應產生可使用的觀察、目標位置、構圖�
 
 ### 離線影像工作區
 
-App 應接受使用者選取的照片與短片，在沒有相機時仍能閱讀文字、選取區域、詢問內容及比較畫面。每份輸入必須明示來源為檔案，保留影像尺寸、影片時間點、旋轉與裁切資訊。檔案分析不應建立真實 CameraService，也不應因全域相機權限已開放，就取得操作硬體的能力。
+build22已實作靜態圖片的第一步；接下來應擴充短片、區域選取與畫面比較。每份輸入必須明示來源為檔案，保留影像尺寸及後續影片時間點、旋轉與裁切資訊。現有檔案分析介面不持有CameraService或硬體方法；全域相機權限不會使匯入圖片取得操作能力。
 
 這同時是日常功能與測試基礎。相同素材能重播給不同模型，失敗答案可直接對照原圖；影片則能驗證目標消失、場景變化與追蹤漂移。模型不可用、取消、卸載、開啟另一份檔案，應與即時相機一樣有清楚狀態，不能把已換來源的舊回答顯示成目前結果。
 
 ### 觀察與調整分開
 
-權限回答「允許做什麼」，任務模式回答「這次要做什麼」。建議先提供明確的「觀察」與「協助取景」入口：前者只提供讀取工具，後者才提出動作與完成條件；兩者都不能提高全域權限。這比立即依賴尚未驗證的意圖分類器，更容易可靠交付。
+權限回答「允許做什麼」，任務模式回答「這次要做什麼」。build22已提供明確的「觀察」與「協助取景」入口：前者只提供讀取工具，後者才可使用符合既有權限與能力的調整工具；兩者都不能提高全域權限。這個明示模式不依賴尚未驗證的意圖分類器，後續仍須驗證實際構圖任務的完成率。
 
 未來可增加自動意圖判斷，但要包含否定句、引述、模糊指代與圖片內文字的測試。「不要放大」「告訴我放大會怎樣」與「放大那個標籤」不是同一任務。無法分清時可以要求選擇目標或模式，不能默默嘗試動作，再靠回答文字補救。
 
@@ -198,17 +198,38 @@ MLX的定位數值若**事後假定**為0–1000再換算，會落在左椅子�
 
 9次host拒絕均發生在不存在目標題，但API沒有返回被拒絕的原始內容，**其視覺判斷不可評估**。因此Apple的0／6有效拒絕猜測不等於它在六張圖中都看見了不存在的物件，MLX的3次host拒絕也不能直接算成3次幻覺。這些仍是端到端失敗，需要診斷生成內容、可空值表示與host契約之間的關係。公開metadata亦逐筆標出此限制。[^typed21]
 
-### 可空值診斷與build22待驗證修正
+### 可空值診斷與build22修正
 
 針對Apple的一個失敗案例，另以獨立可執行程式保留相同圖片、提示、型別結構與影像前處理，只切換 `@Generable` 的可空值表達選項。交錯測試中，預設設定三次均產生 `found=false` 卻帶有 `(0,0)` 點位；開啟 `representNilExplicitlyInGeneratedContent: true` 的三次均得到 `found=false` 且point為nil，在 `generatedContent` 中明示為null。這支持將目標不存在時的可空值表示納入修正，但只是單圖診斷，不能回填其他9次拒絕的未知原始內容。[^nil-diagnostic]
 
-Apple文件將此選項定義為省略nil欄位或明示null的控制。後續原始碼已為Location與Presence兩個型別加入上述選項，並補上 `generatedContent` 的null回歸檢查。這項檢查驗證模型介面對可空值的表達，與只測IPC JSON是否手動寫入null不同；它仍不保證模型一定判斷正確，也不證明切換選項一定會改變對外展示的schema JSON。**build22的相同36次完整重測尚待完成**，新結果應另存版本及原始回覆，再判斷不存在目標的失敗是否下降、其他類別是否回歸。[^nil-source]
+Apple文件將此選項定義為省略nil欄位或明示null的控制。build22已為Location與Presence兩個型別加入上述選項，並通過 `generatedContent` 的null回歸檢查。這項檢查驗證模型介面對可空值的表達，與只測IPC JSON是否手動寫入null不同；它仍不保證模型一定判斷正確，也不證明切換選項一定會改變對外展示的schema JSON。[^nil-source]
+
+### build22：相同36次重測與可使用的圖片工作區
+
+build22使用相同manifest、18份truth與typed問題完成36次重測，資料另存於[build22公開metadata](../Evaluation/Grounding/results/build22-typed.json)。本次source commit為`dc3595c846fc7d8a45fea6432b9db9f788117fec`；沒有下載新模型，也沒有使用相機或控制工具。
+
+| build22指標 | Apple 系統模型 | MLX Qwen3.5-4B 4-bit |
+|---|---:|---:|
+| 完整任務成功 | 12／18 | 14／18 |
+| 計數成功 | 5／6 | 5／6 |
+| 點位落在指定bbox內 | 1／6 | 6／6 |
+| 不存在目標的有效拒絕猜測 | 6／6 | 3／6 |
+| 返回可驗證schema的結果 | 18／18 | 15／18 |
+| host以`grounding_output_invalid`拒絕 | 0／18 | 3／18 |
+| 整體CLI延遲p50 | 約1.008秒 | 約1.113秒 |
+| 整體CLI延遲p95 | 約1.222秒 | 約1.366秒 |
+
+Apple在本題集的不存在目標結果由0／6有效回覆改善為6／6，host拒絕由6次降為0；計數與定位的通過數沒有增加，**Apple的精確定位仍是明顯不足**。MLX仍為14／18，剩餘3次不存在目標的host拒絕沒有原始輸出，不能稱作3次視覺幻覺，也不能宣稱可空值問題已在所有後端解決。每題仍只有一次、pilot先於完整測試且重用模型快取，這是同題集的版本回歸結果，不是通用模型排名或冷載入效能比較。[^typed22]
+
+真App圖片工作區的基本流程也已通過：Apple圖片問答、MLX指定物件計數與定位標記、Vision OCR、取消、換圖與來源切換的舊結果清除。測試期間相機維持0影格，原有session／access未更動；三語測試截圖均隱去匯入圖片與私人觀察內容。這證明使用者已有不需相機的靜態圖片入口；短片、互動ROI、持續追蹤、事件時間軸及VLA策略仍未完成。[^workspace22]
+
+同一build22完成整體軟體gate：503項已執行測試通過、3項選配測試跳過，59份UI擷取及版面檢查、三語與7個Yun共用檔案核對、複製App的MLX／CoreAI推論與記憶體釋放、離線MCP及CLI意圖測試、ZIP／DMG內容簽章與雜湊檢查。gate未包含真機影音／運動、正式feed更新、Developer ID或公證；公開下載仍是beta1 build9。[^gate22]
 
 相機停止期間的所有結果只涵蓋檔案、模型、模擬或軟體生命週期，不能解除真機追蹤與校準的驗收要求。
 
 ## 實作次序
 
-1. **P0：讓AI在沒有相機時也有用。** 加入照片／短片來源，清楚的來源標記、只讀問答、ROI、取消與結果保存。拆開觀察與調整任務，減少不必要的雙模型生成。
+1. **P0：讓AI在沒有相機時也有用。** build22已完成靜態圖片來源、問答／計數／定位／OCR、取消與來源隔離，並拆開觀察與調整任務。短片、互動ROI與結果保存／比較仍需繼續。
 2. **P1：把語意變成可驗證的位置。** GroundedTarget資料契約、候選選擇、座標變換測試、構圖幾何與離線評測。未找到或有歧義時不產生動作。
 3. **P2：增加時間。** RecordedFrameSource、短期track、相機運動補償、事件去重與證據時間軸；先完成影片重播的品質和資源驗收。
 4. **P3：接上已校準的真機。** 用同一任務與控制器，比較模擬和實際pan／tilt／zoom，量停止、越限及目標遺失；原生preset與機身設定維持各自驗收。
@@ -255,4 +276,7 @@ Apple文件將此選項定義為省略nil欄位或明示null的控制。後續�
 [^evaluations]: Apple，[Evaluations](https://developer.apple.com/documentation/evaluations)、[Create robust evaluations for agentic apps](https://developer.apple.com/videos/play/wwdc2026/299/)，WWDC26。
 [^typed21]: Pocket 3 Controller，[build21 typed評測metadata](../Evaluation/Grounding/results/build21-typed.json)、[題集與評分方法](../Evaluation/Grounding/README.md)，2026-09-09，36次真模型／公開檔案請求，無相機與控制工具。
 [^nil-diagnostic]: Pocket 3 Controller，本機診斷紀錄`artifacts/ai-grounding/diagnostic-apple-build21/result.json`、`explicit-nil-result.json`、`alternating-results.json`，2026-09-09；原始程式差異僅Presence的Generable選項。這些是本機單例診斷，未作完整題集或獨立人工品質驗收。
-[^nil-source]: Apple，[Generable(description:representNilExplicitlyInGeneratedContent:)](https://developer.apple.com/documentation/foundationmodels/generable%28description%3Arepresentnilexplicitlyingeneratedcontent%3A%29)，2026-09-09查閱；Pocket 3 Controller，[GroundedImageAnalysis](../Sources/Pocket3Intelligence/GroundedImageAnalysis.swift)、[GroundedImageAnalysisTests](../Tests/Pocket3IntelligenceTests/GroundedImageAnalysisTests.swift)，build22待驗證修正；完整模型結果仍須另測。
+[^nil-source]: Apple，[Generable(description:representNilExplicitlyInGeneratedContent:)](https://developer.apple.com/documentation/foundationmodels/generable%28description%3Arepresentnilexplicitlyingeneratedcontent%3A%29)，2026-09-09查閱；Pocket 3 Controller，[GroundedImageAnalysis](../Sources/Pocket3Intelligence/GroundedImageAnalysis.swift)、[GroundedImageAnalysisTests](../Tests/Pocket3IntelligenceTests/GroundedImageAnalysisTests.swift)，build22已驗證的可空值表示與範圍契約；不等於任意語意判斷可靠。
+[^typed22]: Pocket 3 Controller，[build22 typed評測metadata](../Evaluation/Grounding/results/build22-typed.json)，2026-09-09，36次真模型／公開檔案請求，無相機與控制工具；模型、版本及快取條件見報告。
+[^workspace22]: Pocket 3 Controller，本機`artifacts/image-workspace/build22/result.json`，2026-09-09，真App工作區與模型基本流程測試，`cameraUsed=false`、`cameraStateUnchanged=true`；來源及介面見[ImageObservationSource](../Sources/Pocket3BridgeApp/ImageObservationSource.swift)。
+[^gate22]: Pocket 3 Controller，本機`artifacts/offline-workspace-build22/final/verification-gate.json`與同目錄test/UI/model/package紀錄，2026-09-09；source `dc3595c846fc7d8a45fea6432b9db9f788117fec`、App SHA-256 `b1d48f838498b28fbe80fdfe640e8d4960acfb4a2e7043c499ff68738a2cb0bb`，離線gate通過，明列真機與正式發布更新未測。

@@ -26,10 +26,23 @@ def main():
     report = {"passed": False, "cameraUsed": False, "capturesIncludeImages": False, "cases": []}
 
     def call(*command):
-        result = subprocess.run([str(args.binary), *command], capture_output=True, text=True, timeout=125)
-        if result.returncode:
+        deadline = time.monotonic() + 5
+        while True:
+            result = subprocess.run([str(args.binary), *command], capture_output=True, text=True, timeout=125)
+            if result.returncode == 0:
+                return json.loads(result.stdout)
+            # The UI's shared model status refreshes asynchronously after its
+            # own workspace task finishes. Only a pre-submission busy rejection
+            # is retried; never retry a submitted model job, timeout or failure.
+            try:
+                code = json.loads(result.stderr).get("code")
+            except ValueError:
+                code = None
+            if command[:3] == ("image-workspace", "--action", "run") and code == "ai_busy" and time.monotonic() < deadline:
+                report["readinessWaits"] = report.get("readinessWaits", 0) + 1
+                time.sleep(0.1)
+                continue
             raise RuntimeError(result.stderr)
-        return json.loads(result.stdout)
 
     def workspace(action="status", *options):
         return call("image-workspace", "--action", action, *options)

@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9** and separately labels upcoming build 22 source changes. Build 22's source, packaged-App and UI acceptance checks are pending; it is not a published download. The build 16 hardware result is historical evidence, not build 22 verification.
+This guide covers published **0.0.1 beta 1, build 9** and separately labels development build 22. Build 22 has passed its offline software, packaged-App and UI checks, but is not a published download. The build 16 hardware result remains historical evidence, not new build 22 hardware verification.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
@@ -124,7 +124,11 @@ requires a network connection; inference uses the locally available model.
 
 ### Build 22 development: image file workspace
 
-The following workflow is implemented in the upcoming build 22 source. Its source checks, packaged-App tests and three-language UI gate are still pending; it is not included in published beta 1 build 9.
+This workflow is available in development build 22 and passed an actual App smoke test without a camera: Apple questions, MLX counting and location, Vision OCR, cancellation, image replacement and stale-result clearing. The software/package gate and three-language UI review also passed. It is not included in published beta 1 build 9.
+
+![Development build 22 image workspace](images/image-workspace-en.png)
+
+*Development build 22: the imported image and analysis are hidden. This is not the published beta 1 interface.*
 
 Choose **Image file** as the observation source, then **Open image** to select a local image of up to 8 MB. **Replace image** selects a different file and clears the previous result. Choose **Ask about image**, **Count objects**, or **Locate a target**, enter the question or target, then use the analysis button. **OCR** reads visible text without needing a question. A successful location result appears as a marker on the imported image.
 
@@ -143,13 +147,13 @@ For the **camera** source, select **Observe only** or **Assist framing** for the
 | MLX + Observe only | MLX observes without movement or zoom tools. |
 | MLX + Assist framing | MLX receives only the adjustment tools allowed by the existing access and capability checks. |
 
-The initial task mode is observation. Models are not downloaded automatically. Assistance that needs an absent MLX model reports the requirement; observation with Apple does not require that download. An engine role never proves that an action occurred: check the actual action result and its readback. Build 22's full software and UI acceptance remains pending.
+The initial task mode is observation. Models are not downloaded automatically. Assistance that needs an absent MLX model reports the requirement; observation with Apple does not require that download. An engine role never proves that an action occurred: check the actual action result and its readback. Build 22's offline routing, CLI and UI checks passed; no new physical camera adjustment was tested.
 
 ### Historical build 16 hardware result
 
 The earlier mixed-model route selected control from available access rather than an explicit task mode. One build 16 live-camera run completed in 38.039 seconds with 11 checks passing: MLX used `capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`, submitted one raw-200 zoom, and received verified readback. The App then refreshed the frame for Apple; that refresh was not an extra model tool call. Raw 100 and manual access were restored.
 
-This is evidence for that bounded build 16 case, not build 22 acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
+This is evidence for that bounded build 16 case, not new build 22 hardware acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
 
 ## MCP and CLI
 
@@ -164,7 +168,7 @@ It connects to the app through a private local Unix socket and respects the acce
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --question 'Read the visible label.'
 ```
 
-In the upcoming build 22 CLI, `ask --intent observe|assistFraming` makes the task explicit and defaults to `observe` when omitted. For example:
+In the development build 22 CLI, `ask --intent observe|assistFraming` makes the task explicit and defaults to `observe` when omitted. For example:
 
 ```sh
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --intent observe --question 'What is visible?'

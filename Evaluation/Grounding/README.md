@@ -76,7 +76,24 @@ All nine host rejections occurred on absent-target tasks. The API rejected those
 
 A subsequent standalone Apple diagnostic used the same image, prompt, type structure, and preprocessing for one absent-target case. Across three alternating trials per variant, default `@Generable` returned `found=false` with point `(0,0)`, while `representNilExplicitlyInGeneratedContent: true` returned `found=false` with a nil point, explicitly null in `generatedContent`. This motivated a source fix for the optional Location and Presence types plus a generated-content regression check. It is a single-case diagnostic, not proof that all failures share that cause or that a displayed schema JSON necessarily changes.
 
-**Build 22 full-dataset verification is pending.** Its 36 requests must be recorded separately before claiming the nil fix resolves absent-target behavior or preserves other task quality. The [AI research report](../../docs/AI_RESEARCH.md) distinguishes this baseline, the diagnostic, and the pending integration; historical results are not overwritten.
+## Build 22 full-dataset rerun
+
+[Build 22 metadata](results/build22-typed.json) records a separate 36-request rerun of the same manifest, tasks, prompts, and point-scoring rules. The source commit is `dc3595c846fc7d8a45fea6432b9db9f788117fec`; no camera or control tools were used, and no new model was downloaded. Historical build 21 results remain unchanged.
+
+| Metric | Apple system model | MLX Qwen3.5-4B 4-bit |
+|---|---:|---:|
+| Complete tasks passed | 12 / 18 | 14 / 18 |
+| Count | 5 / 6 | 5 / 6 |
+| Point inside target bbox | 1 / 6 | 6 / 6 |
+| Valid absent-target abstention | 6 / 6 | 3 / 6 |
+| Returned schema-valid results | 18 / 18 | 15 / 18 |
+| Host output rejections | 0 / 18 | 3 / 18 |
+| Whole-request p50 | 1.008 s | 1.113 s |
+| Whole-request p95 | 1.222 s | 1.366 s |
+
+The Apple absent-target cases now return valid abstentions in this six-case set, after explicit-nil generation was integrated. Its point success remains 1 / 6, so the representation fix does not establish reliable Apple grounding. MLX still has three host rejections whose raw content is unavailable; they remain end-to-end failures without a factual hallucination label. One count error remains for each model.
+
+A pilot preceded the rerun and cached models were reused. Each task ran Apple then MLX once. These are version-regression observations, not a general model ranking, a cold-load benchmark, or proof of physical autofocus/tracking. The same build passed its offline software/package gate and an actual App image-workspace smoke test, including ask/count/location/OCR and cancellation/source replacement without camera-state changes. Short-video input, interactive ROI, continuous tracking, event timelines, and a VLA policy remain future work. See the [AI research report](../../docs/AI_RESEARCH.md) for the bounded evidence and remaining requirements.
 
 ## Sources and licenses
 

@@ -1,0 +1,40 @@
+{
+  "appVersion": "0.0.1-beta.2",
+  "buildVersion": "22",
+  "sourceCommit": "dc3595c846fc7d8a45fea6432b9db9f788117fec",
+  "appExecutableSHA256": "b1d48f838498b28fbe80fdfe640e8d4960acfb4a2e7043c499ff68738a2cb0bb",
+  "releaseStatus": "development preview; published beta 1 build 9 unchanged",
+  "method": "Actual AppKit image-workspace UI; imported image, filename, question, answer, evidence and marker omitted at render time",
+  "images": [
+    {
+      "file": "docs/images/image-workspace-en.png",
+      "language": "en",
+      "width": 2360,
+      "height": 1440,
+      "cameraPreviewIncluded": false,
+      "importedImageIncluded": false,
+      "analysisIncluded": false,
+      "sha256": "b77e8e3f109c5149002e194c902784ab6df47cf1b44dba9e81c65258d4b2e657"
+    },
+    {
+      "file": "docs/images/image-workspace-zh-Hant.png",
+      "language": "zh-Hant",
+      "width": 2360,
+      "height": 1440,
+      "cameraPreviewIncluded": false,
+      "importedImageIncluded": false,
+      "analysisIncluded": false,
+      "sha256": "0b56140e183239c8ca1b487e04bbf7ffd58b676b599d876567520ee23ab16ad5"
+    },
+    {
+      "file": "docs/images/image-workspace-zh-Hans.png",
+      "language": "zh-Hans",
+      "width": 2360,
+      "height": 1440,
+      "cameraPreviewIncluded": false,
+      "importedImageIncluded": false,
+      "analysisIncluded": false,
+      "sha256": "c889d40048bd63942aa7c770747f1ffa562249aca31bb7d69f956829674c0964"
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 
 [文档入口](README.md) · [项目概览](../../README.zh-Hans.md)
 
-本指南涵盖已发布的 **0.0.1 beta 1，build 9**，并单独标明即将推出的build22源码变更。build22的源码、打包App与UI验收仍待完成，尚不是公开下载；build16硬件结果是历史证据，不代表build22已验收。停用或标为实验性的控制，不表示对应机身功能已支持。
+本指南涵盖已发布的 **0.0.1 beta 1，build 9**，并单独标明build22开发版。build22已通过离线软件、打包App和UI验收，尚不是公开下载；build16硬件结果是历史证据，不代表build22另做了真机验收。停用或标为实验性的控制，不表示对应机身功能已支持。
 
 ## 安装与首次启动
 
@@ -68,9 +68,13 @@ Roll 标为**实验性**，数值是设备控制单位，不是已校准的物�
 
 在「AI 引擎与接入」选择引擎。Apple Foundation Models 需要相应系统模型可用。MLX Qwen 3.5 为可选，通过下载操作取得，预留约 3.1 GB 模型空间。下载需要网络，推理使用已在本地的模型。
 
-### build22开发中：图片文件工作区
+### build22开发版：图片文件工作区
 
-以下流程已加入即将推出的build22源码，源码检查、打包App测试与三语UI gate仍待完成；已发布的beta1 build9不包含这些功能。
+以下流程已在build22开发版的真实App、无相机条件下通过基本流程测试：Apple问答、MLX计数与定位、Vision OCR、取消、换图和过期结果清除。软件／打包gate及三语UI检查也已通过；已发布的beta1 build9不包含这些功能。
+
+![build22开发版图片工作区](../images/image-workspace-zh-Hans.png)
+
+*build22开发版；导入图片与分析内容已隐藏，这不是公开beta1的画面。*
 
 把观察来源切为 **Image file（图片文件）**，点击 **Open image（打开图片）**，选择8 MB以下的本地图片。**Replace image（替换图片）**会更换文件并清除上一份结果。选择 **Ask about image（图片问答）**、**Count objects（计算对象）**或 **Locate a target（定位目标）**，输入问题或目标后开始分析；**OCR**可直接读取可见文字，不需要先输入问题。成功的定位结果会在导入图片上显示标记。
 
@@ -78,7 +82,7 @@ Roll 标为**实验性**，数值是设备控制单位，不是已校准的物�
 
 对象数量、位置与回答都是模型估计，可能出错；尤其是相似对象或部分遮挡，请对照原图。“取消”会提出取消请求并等待当前工作结束，更换文件或来源会清除过期结果。第一版工作区只接受静态图片，尚不包含视频播放或持续跟踪。
 
-### build22开发中：本次任务与相机权限分开
+### build22开发版：本次任务与相机权限分开
 
 使用**相机来源**时，可为本次问题选择 **Observe only（只观察）**或 **Assist framing（协助取景）**。这是任务模式，与全局相机访问选项分开，不会自行授予权限。
 
@@ -89,13 +93,13 @@ Roll 标为**实验性**，数值是设备控制单位，不是已校准的物�
 | MLX＋只观察 | MLX只观察，不获取移动或缩放工具。 |
 | MLX＋协助取景 | MLX只获取现有权限与能力检查允许的调整工具。 |
 
-源码的初始任务模式为观察，不会自动下载模型。协助取景若需要尚未下载的MLX，会说明需求；Apple纯观察不需要该下载。模型角色本身不表示做过动作，仍需核对实际结果与读回。build22完整软件及UI验收仍待完成。
+源码的初始任务模式为观察，不会自动下载模型。协助取景若需要尚未下载的MLX，会说明需求；Apple纯观察不需要该下载。模型角色本身不表示做过动作，仍需核对实际结果与读回。build22的离线路由、CLI及UI检查已通过；本轮没有测试新的实体相机调整。
 
 ### build16的历史硬件结果
 
 较早的混合路由根据可用控制权选择流程，尚未区分本次任务模式。一次build16真机任务以38.039秒完成，11项检查通过；MLX顺序为`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`，只有一次raw200缩放并取得verified读回。App再取新画面交给Apple，这不是额外的模型工具调用。之后恢复raw100及manual。
 
-这是build16单个有界案例的证据，不是build22已完成验收，也不代表Apple曾独立控制相机。公开beta1维持build9，详见[硬件记录](../HARDWARE_ACCEPTANCE.md)。
+这是build16单个有界案例的证据，不是build22新增的硬件验收，也不代表Apple曾独立控制相机。公开beta1维持build9，详见[硬件记录](../HARDWARE_ACCEPTANCE.md)。
 
 ## MCP 与 CLI
 
@@ -107,7 +111,7 @@ Roll 标为**实验性**，数值是设备控制单位，不是已校准的物�
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --question '读取画面上可见的标签。'
 ```
 
-即将推出的build22 CLI以 `ask --intent observe|assistFraming` 明确指定本次任务；省略时默认为 `observe`。例如：
+build22开发版CLI以 `ask --intent observe|assistFraming` 明确指定本次任务；省略时默认为 `observe`。例如：
 
 ```sh
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --intent observe --question '画面中有什么？'

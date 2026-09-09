@@ -1,0 +1,1721 @@
+{
+  "dataset": "COCO val2017 six-image annotated grounding smoke set",
+  "manifestSHA256": "aabe61d36fa38e598ba2cd356a377260685d80184c7f7dfa5d40d06ca91b8f1b",
+  "binarySHA256": "b44206f1ad69218b50ba69e8d0e2acd10b5e0feeffc31d1e847ade15cff72390",
+  "engines": [
+    "apple",
+    "mlx"
+  ],
+  "repeats": 1,
+  "cameraUsed": false,
+  "controlToolsAvailable": false,
+  "modelDownloadsRequested": false,
+  "modelRequestsSubmitted": 36,
+  "endpoint": "evaluate-grounding",
+  "outputContract": "typed",
+  "benchmarkContractVersion": "coco-six-typed-v2",
+  "createdAt": "2026-09-09T14:51:41Z",
+  "limitations": [
+    "COCO is widely used in model pretraining; this is a reproducible regression/smoke set, not an unseen or contamination-free benchmark.",
+    "Six photographs and 18 tasks are too small for general reliability or model-ranking claims.",
+    "COCO annotations can omit visible objects and category definitions may differ from ordinary language; count means comparison with non-crowd COCO instance annotations, not guaranteed complete scene truth.",
+    "Absent targets are absent from annotations and were visually checked by the coding assistant; this is not independently human-adjudicated exhaustive negative ground truth.",
+    "A point inside an annotated axis-aligned bbox is a coarse grounding check; it can lie on background within a box and does not establish segmentation, focus coordinates or physical camera calibration.",
+    "Photos are retained only in an ignored local image cache; not included in App, README, releases or model training. COCO license records are historical and author names are not supplied by instances_val2017.json; original Flickr source URLs are preserved.",
+    "No Pocket3 hardware, photos, camera permissions or camera control are used by this benchmark."
+  ],
+  "summary": {
+    "apple": {
+      "completedCases": 18,
+      "transportSucceeded": 18,
+      "hostRejectedGroundingOutput": 0,
+      "jsonParsed": 18,
+      "schemaValid": 18,
+      "factuallyCorrect": 12,
+      "taskPassed": 12,
+      "wallSecondsP50": 1.0078675209661014,
+      "wallSecondsP95": 1.2215135733247726,
+      "byKind": {
+        "count": {
+          "cases": 6,
+          "passed": 5
+        },
+        "point": {
+          "cases": 6,
+          "passed": 1
+        },
+        "absent": {
+          "cases": 6,
+          "passed": 6
+        }
+      }
+    },
+    "mlx": {
+      "completedCases": 18,
+      "transportSucceeded": 15,
+      "hostRejectedGroundingOutput": 3,
+      "jsonParsed": 15,
+      "schemaValid": 15,
+      "factuallyCorrect": 14,
+      "taskPassed": 14,
+      "wallSecondsP50": 1.1130797915393487,
+      "wallSecondsP95": 1.3660863275523298,
+      "byKind": {
+        "count": {
+          "cases": 6,
+          "passed": 5
+        },
+        "point": {
+          "cases": 6,
+          "passed": 6
+        },
+        "absent": {
+          "cases": 6,
+          "passed": 3
+        }
+      }
+    }
+  },
+  "sourceCommit": "dc3595c846fc7d8a45fea6432b9db9f788117fec",
+  "appBuild": 22,
+  "appExecutableSHA256": "b1d48f838498b28fbe80fdfe640e8d4960acfb4a2e7043c499ff68738a2cb0bb",
+  "fullLocalReportSHA256": "29b12ce5a164e31c8016a0ff30af27051e27d141c7483c59d918d4c875f48228",
+  "timingContext": "Sequential Apple then MLX per task, one repeat; pilot preceded full run. Whole CLI latency; no isolated cold-load or sustained-memory measurement.",
+  "modelContext": {
+    "mlx": {
+      "name": "Qwen 3.5 · 4B",
+      "repository": "mlx-community/Qwen3.5-4B-4bit",
+      "revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c",
+      "phase": "loaded"
+    },
+    "apple": {
+      "available": true,
+      "engine": "Apple 本機 AI",
+      "phase": "idle"
+    },
+    "note": "Apple system weight revision is not exposed by the app."
+  },
+  "records": [
+    {
+      "taskID": "000000029596-count",
+      "kind": "count",
+      "imageID": "coco-000000029596",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個椅子（chair）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "chair",
+        "count": 2,
+        "annotationIDs": [
+          100285,
+          108105
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 2,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 2,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.7251734590390697,
+      "responseResult": {
+        "count": 2,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000029596-count",
+      "kind": "count",
+      "imageID": "coco-000000029596",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個椅子（chair）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "chair",
+        "count": 2,
+        "annotationIDs": [
+          100285,
+          108105
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "count": 3,
+          "uncertain": false
+        },
+        "countAbsoluteError": 1,
+        "typedPayload": {
+          "count": 3,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9247642910340801,
+      "responseResult": {
+        "count": 3,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000029596-point",
+      "kind": "point",
+      "imageID": "coco-000000029596",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的椅子（chair），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "chair",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 100285,
+        "bboxXYWH": [
+          264.16,
+          227.41,
+          48.79,
+          119.65
+        ],
+        "bboxNormalizedXYWH": [
+          0.41275000000000006,
+          0.5313317757009346,
+          0.076234375,
+          0.27955607476635513
+        ],
+        "centerNormalizedXY": [
+          0.4508671875,
+          0.6711098130841122
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "point": [
+            0.1,
+            0.3
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": false,
+        "centerErrorNormalizedXY": 0.5107154556418719,
+        "typedPayload": {
+          "point": {
+            "x": 0.1,
+            "y": 0.3
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0354889170266688,
+      "responseResult": {
+        "point": {
+          "x": 0.1,
+          "y": 0.3
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000029596-point",
+      "kind": "point",
+      "imageID": "coco-000000029596",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的椅子（chair），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "chair",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 100285,
+        "bboxXYWH": [
+          264.16,
+          227.41,
+          48.79,
+          119.65
+        ],
+        "bboxNormalizedXYWH": [
+          0.41275000000000006,
+          0.5313317757009346,
+          0.076234375,
+          0.27955607476635513
+        ],
+        "centerNormalizedXY": [
+          0.4508671875,
+          0.6711098130841122
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.44,
+            0.62
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.05225235647942627,
+        "typedPayload": {
+          "point": {
+            "x": 0.44,
+            "y": 0.62
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.2594037500675768,
+      "responseResult": {
+        "point": {
+          "x": 0.44,
+          "y": 0.62
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000029596-absent",
+      "kind": "absent",
+      "imageID": "coco-000000029596",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找大象（elephant）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "elephant",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.7474980839760974,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000029596-absent",
+      "kind": "absent",
+      "imageID": "coco-000000029596",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找大象（elephant）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "elephant",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.8844938749680296,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000054605-count",
+      "kind": "count",
+      "imageID": "coco-000000054605",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個飲料杯（cup）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "cup",
+        "count": 2,
+        "annotationIDs": [
+          1502310,
+          1506712
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 2,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 2,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0749832909787074,
+      "responseResult": {
+        "count": 2,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000054605-count",
+      "kind": "count",
+      "imageID": "coco-000000054605",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個飲料杯（cup）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "cup",
+        "count": 2,
+        "annotationIDs": [
+          1502310,
+          1506712
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 2,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 2,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0481093330308795,
+      "responseResult": {
+        "count": 2,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000054605-point",
+      "kind": "point",
+      "imageID": "coco-000000054605",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的飲料杯（cup），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "cup",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 1502310,
+        "bboxXYWH": [
+          0.0,
+          207.97,
+          78.9,
+          198.99
+        ],
+        "bboxNormalizedXYWH": [
+          0.0,
+          0.3398202614379085,
+          0.128921568627451,
+          0.3251470588235294
+        ],
+        "centerNormalizedXY": [
+          0.0644607843137255,
+          0.5023937908496733
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "point": [
+            0.1,
+            0.3
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": false,
+        "centerErrorNormalizedXY": 0.20549034630876653,
+        "typedPayload": {
+          "point": {
+            "x": 0.1,
+            "y": 0.3
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9895619170274585,
+      "responseResult": {
+        "point": {
+          "x": 0.1,
+          "y": 0.3
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000054605-point",
+      "kind": "point",
+      "imageID": "coco-000000054605",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的飲料杯（cup），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "cup",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 1502310,
+        "bboxXYWH": [
+          0.0,
+          207.97,
+          78.9,
+          198.99
+        ],
+        "bboxNormalizedXYWH": [
+          0.0,
+          0.3398202614379085,
+          0.128921568627451,
+          0.3251470588235294
+        ],
+        "centerNormalizedXY": [
+          0.0644607843137255,
+          0.5023937908496733
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.05,
+            0.46
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.04479227372632386,
+        "typedPayload": {
+          "point": {
+            "x": 0.05,
+            "y": 0.46
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.3709971660282463,
+      "responseResult": {
+        "point": {
+          "x": 0.05,
+          "y": 0.46
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000054605-absent",
+      "kind": "absent",
+      "imageID": "coco-000000054605",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找腳踏車（bicycle）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "bicycle",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.716872833087109,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000054605-absent",
+      "kind": "absent",
+      "imageID": "coco-000000054605",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找腳踏車（bicycle）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "bicycle",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": false,
+      "score": {
+        "jsonParsed": false,
+        "schemaValid": false,
+        "factuallyCorrect": false,
+        "taskPassed": false
+      },
+      "exitCode": 1,
+      "wallSeconds": 1.3496425420744345,
+      "hostRejectedGroundingOutput": true,
+      "errorCode": "grounding_output_invalid",
+      "factualAssessment": "unavailable: host rejected output before returning its content"
+    },
+    {
+      "taskID": "000000132329-count",
+      "kind": "count",
+      "imageID": "coco-000000132329",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個瓶子（bottle）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "bottle",
+        "count": 4,
+        "annotationIDs": [
+          96066,
+          78703,
+          87987,
+          95919
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "count": 3,
+          "uncertain": false
+        },
+        "countAbsoluteError": 1,
+        "typedPayload": {
+          "count": 3,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.1012419590260834,
+      "responseResult": {
+        "count": 3,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000132329-count",
+      "kind": "count",
+      "imageID": "coco-000000132329",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個瓶子（bottle）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "bottle",
+        "count": 4,
+        "annotationIDs": [
+          96066,
+          78703,
+          87987,
+          95919
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 4,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 4,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9342536659678444,
+      "responseResult": {
+        "count": 4,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000132329-point",
+      "kind": "point",
+      "imageID": "coco-000000132329",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的瓶子（bottle），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "bottle",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 96066,
+        "bboxXYWH": [
+          107.35,
+          85.43,
+          53.68,
+          129.37
+        ],
+        "bboxNormalizedXYWH": [
+          0.2519953051643192,
+          0.13348437500000002,
+          0.1260093896713615,
+          0.20214062500000002
+        ],
+        "centerNormalizedXY": [
+          0.315,
+          0.23455468750000003
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "point": [
+            0.1,
+            0.2
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": false,
+        "centerErrorNormalizedXY": 0.21775910182635913,
+        "typedPayload": {
+          "point": {
+            "x": 0.1,
+            "y": 0.2
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0016081249341369,
+      "responseResult": {
+        "point": {
+          "x": 0.1,
+          "y": 0.2
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000132329-point",
+      "kind": "point",
+      "imageID": "coco-000000132329",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的瓶子（bottle），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "bottle",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 96066,
+        "bboxXYWH": [
+          107.35,
+          85.43,
+          53.68,
+          129.37
+        ],
+        "bboxNormalizedXYWH": [
+          0.2519953051643192,
+          0.13348437500000002,
+          0.1260093896713615,
+          0.20214062500000002
+        ],
+        "centerNormalizedXY": [
+          0.315,
+          0.23455468750000003
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.32,
+            0.22
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.015389572061063207,
+        "typedPayload": {
+          "point": {
+            "x": 0.32,
+            "y": 0.22
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.2371305829146877,
+      "responseResult": {
+        "point": {
+          "x": 0.32,
+          "y": 0.22
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000132329-absent",
+      "kind": "absent",
+      "imageID": "coco-000000132329",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找長頸鹿（giraffe）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "giraffe",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.7404529169434682,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000132329-absent",
+      "kind": "absent",
+      "imageID": "coco-000000132329",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找長頸鹿（giraffe）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "giraffe",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": false,
+      "score": {
+        "jsonParsed": false,
+        "schemaValid": false,
+        "factuallyCorrect": false,
+        "taskPassed": false
+      },
+      "exitCode": 1,
+      "wallSeconds": 1.2402606670511886,
+      "hostRejectedGroundingOutput": true,
+      "errorCode": "grounding_output_invalid",
+      "factualAssessment": "unavailable: host rejected output before returning its content"
+    },
+    {
+      "taskID": "000000127182-count",
+      "kind": "count",
+      "imageID": "coco-000000127182",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個盆栽（potted plant）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "potted plant",
+        "count": 1,
+        "annotationIDs": [
+          19679
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 1,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 1,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.1052922090748325,
+      "responseResult": {
+        "count": 1,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000127182-count",
+      "kind": "count",
+      "imageID": "coco-000000127182",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個盆栽（potted plant）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "potted plant",
+        "count": 1,
+        "annotationIDs": [
+          19679
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 1,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 1,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9424441660521552,
+      "responseResult": {
+        "count": 1,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000127182-point",
+      "kind": "point",
+      "imageID": "coco-000000127182",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的盆栽（potted plant），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "potted plant",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 19679,
+        "bboxXYWH": [
+          314.46,
+          261.42,
+          70.64,
+          100.13
+        ],
+        "bboxNormalizedXYWH": [
+          0.7364402810304449,
+          0.40846875000000005,
+          0.16543325526932084,
+          0.156453125
+        ],
+        "centerNormalizedXY": [
+          0.8191569086651054,
+          0.48669531250000003
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "point": [
+            0.1,
+            0.3
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": false,
+        "centerErrorNormalizedXY": 0.7429951540825979,
+        "typedPayload": {
+          "point": {
+            "x": 0.1,
+            "y": 0.3
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.014126916998066,
+      "responseResult": {
+        "point": {
+          "x": 0.1,
+          "y": 0.3
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000127182-point",
+      "kind": "point",
+      "imageID": "coco-000000127182",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的盆栽（potted plant），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "potted plant",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 19679,
+        "bboxXYWH": [
+          314.46,
+          261.42,
+          70.64,
+          100.13
+        ],
+        "bboxNormalizedXYWH": [
+          0.7364402810304449,
+          0.40846875000000005,
+          0.16543325526932084,
+          0.156453125
+        ],
+        "centerNormalizedXY": [
+          0.8191569086651054,
+          0.48669531250000003
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.82,
+            0.49
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.0034105369770214035,
+        "typedPayload": {
+          "point": {
+            "x": 0.82,
+            "y": 0.49
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.2874424159526825,
+      "responseResult": {
+        "point": {
+          "x": 0.82,
+          "y": 0.49
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000127182-absent",
+      "kind": "absent",
+      "imageID": "coco-000000127182",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找摩托車（motorcycle）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "motorcycle",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.7202344170073047,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000127182-absent",
+      "kind": "absent",
+      "imageID": "coco-000000127182",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找摩托車（motorcycle）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "motorcycle",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": false,
+      "score": {
+        "jsonParsed": false,
+        "schemaValid": false,
+        "factuallyCorrect": false,
+        "taskPassed": false
+      },
+      "exitCode": 1,
+      "wallSeconds": 1.2071657079504803,
+      "hostRejectedGroundingOutput": true,
+      "errorCode": "grounding_output_invalid",
+      "factualAssessment": "unavailable: host rejected output before returning its content"
+    },
+    {
+      "taskID": "000000058111-count",
+      "kind": "count",
+      "imageID": "coco-000000058111",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個貓（cat）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "cat",
+        "count": 1,
+        "annotationIDs": [
+          52187
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 1,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 1,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0584056250518188,
+      "responseResult": {
+        "count": 1,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000058111-count",
+      "kind": "count",
+      "imageID": "coco-000000058111",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個貓（cat）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "cat",
+        "count": 1,
+        "annotationIDs": [
+          52187
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 1,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 1,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9282583750318736,
+      "responseResult": {
+        "count": 1,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000058111-point",
+      "kind": "point",
+      "imageID": "coco-000000058111",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的貓（cat），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "cat",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 52187,
+        "bboxXYWH": [
+          32.74,
+          22.7,
+          461.48,
+          461.49
+        ],
+        "bboxNormalizedXYWH": [
+          0.06548000000000001,
+          0.0463265306122449,
+          0.92296,
+          0.9418163265306123
+        ],
+        "centerNormalizedXY": [
+          0.52696,
+          0.517234693877551
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.1,
+            0.3
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.47904671361368645,
+        "typedPayload": {
+          "point": {
+            "x": 0.1,
+            "y": 0.3
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9955261660506949,
+      "responseResult": {
+        "point": {
+          "x": 0.1,
+          "y": 0.3
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000058111-point",
+      "kind": "point",
+      "imageID": "coco-000000058111",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的貓（cat），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "cat",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 52187,
+        "bboxXYWH": [
+          32.74,
+          22.7,
+          461.48,
+          461.49
+        ],
+        "bboxNormalizedXYWH": [
+          0.06548000000000001,
+          0.0463265306122449,
+          0.92296,
+          0.9418163265306123
+        ],
+        "centerNormalizedXY": [
+          0.52696,
+          0.517234693877551
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.5,
+            0.5
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.03199806670805121,
+        "typedPayload": {
+          "point": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.1780502500478178,
+      "responseResult": {
+        "point": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000058111-absent",
+      "kind": "absent",
+      "imageID": "coco-000000058111",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找狗（dog）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "dog",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.73082516703289,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000058111-absent",
+      "kind": "absent",
+      "imageID": "coco-000000058111",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找狗（dog）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "dog",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.8624981669709086,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000027620-count",
+      "kind": "count",
+      "imageID": "coco-000000027620",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個筆記型電腦（laptop）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "laptop",
+        "count": 1,
+        "annotationIDs": [
+          1102181
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 1,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 1,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.1326324170222506,
+      "responseResult": {
+        "count": 1,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000027620-count",
+      "kind": "count",
+      "imageID": "coco-000000027620",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。圖片中可見幾個筆記型電腦（laptop）？部分可見也計入，照片／螢幕中的圖案不计。看不清是否還有其他目標時，請標示不確定。",
+      "expected": {
+        "category": "laptop",
+        "count": 1,
+        "annotationIDs": [
+          1102181
+        ],
+        "groundTruthBasis": "all non-crowd annotations of target category, visually checked"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "count": 1,
+          "uncertain": false
+        },
+        "countAbsoluteError": 0,
+        "typedPayload": {
+          "count": 1,
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0207758749602363,
+      "responseResult": {
+        "count": 1,
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000027620-point",
+      "kind": "point",
+      "imageID": "coco-000000027620",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的筆記型電腦（laptop），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "laptop",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 1102181,
+        "bboxXYWH": [
+          224.86,
+          40.0,
+          142.71,
+          123.24
+        ],
+        "bboxNormalizedXYWH": [
+          0.35134375,
+          0.08333333333333333,
+          0.222984375,
+          0.25675
+        ],
+        "centerNormalizedXY": [
+          0.46283593750000007,
+          0.21170833333333333
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": false,
+        "taskPassed": false,
+        "parsedAnswer": {
+          "point": [
+            0.2,
+            0.3
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": false,
+        "centerErrorNormalizedXY": 0.2772690903153139,
+        "typedPayload": {
+          "point": {
+            "x": 0.2,
+            "y": 0.3
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.0249279170529917,
+      "responseResult": {
+        "point": {
+          "x": 0.2,
+          "y": 0.3
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000027620-point",
+      "kind": "point",
+      "imageID": "coco-000000027620",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。找出畫面最左邊的筆記型電腦（laptop），回傳該物件的中心點。使用原始照片左上角為(0,0)、右下角為(1,1)，x向右、y向下。找不到或無法確定時，不要猜測座標，請標示不確定。",
+      "expected": {
+        "category": "laptop",
+        "selectedBy": "leftmost annotated bbox center, then annotation ID",
+        "annotationID": 1102181,
+        "bboxXYWH": [
+          224.86,
+          40.0,
+          142.71,
+          123.24
+        ],
+        "bboxNormalizedXYWH": [
+          0.35134375,
+          0.08333333333333333,
+          0.222984375,
+          0.25675
+        ],
+        "centerNormalizedXY": [
+          0.46283593750000007,
+          0.21170833333333333
+        ],
+        "pointAcceptance": "inside selected COCO bbox; center distance reported separately"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "point": [
+            0.44,
+            0.22
+          ],
+          "uncertain": false
+        },
+        "pointInsideAnnotatedBBox": true,
+        "centerErrorNormalizedXY": 0.024294686201204948,
+        "typedPayload": {
+          "point": {
+            "x": 0.44,
+            "y": 0.22
+          },
+          "uncertain": false
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 1.3652197089977562,
+      "responseResult": {
+        "point": {
+          "x": 0.44,
+          "y": 0.22
+        },
+        "uncertain": false
+      }
+    },
+    {
+      "taskID": "000000027620-absent",
+      "kind": "absent",
+      "imageID": "coco-000000027620",
+      "engine": "apple",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找斑馬（zebra）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "zebra",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.7236247919499874,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    },
+    {
+      "taskID": "000000027620-absent",
+      "kind": "absent",
+      "imageID": "coco-000000027620",
+      "engine": "mlx",
+      "question": "這是公開資料集的單張照片，不是即時相機；不要宣稱移動相機。請在圖片中尋找斑馬（zebra）。如果沒有可確認的目標，必須拒絕猜測位置。若確實看見，才回傳位置；座標是原始照片左上為(0,0)、右下為(1,1)，x向右、y向下。",
+      "expected": {
+        "category": "zebra",
+        "annotationCount": 0,
+        "point": null,
+        "found": false,
+        "groundTruthBasis": "no category annotations plus assistant visual inspection; not exhaustive human-adjudicated absence"
+      },
+      "transportSucceeded": true,
+      "score": {
+        "jsonParsed": true,
+        "schemaValid": true,
+        "factuallyCorrect": true,
+        "taskPassed": true,
+        "parsedAnswer": {
+          "found": false,
+          "point": null
+        },
+        "abstained": true,
+        "typedPayload": {
+          "found": false,
+          "point": null
+        },
+        "coordinateConversion": "object_to_array_only_no_rescale_clamp_or_rounding"
+      },
+      "exitCode": 0,
+      "wallSeconds": 0.9545872089220211,
+      "responseResult": {
+        "found": false,
+        "point": null
+      }
+    }
+  ]
+}
