@@ -606,11 +606,17 @@ public actor CameraService {
                 }
             }
             lastError = "USB 縮放回讀未確認"; log("zoom", lastError!, error: true, presentationKey: "zoom.failed")
-            return USBZoomResult(target: rawValue, observed: observed.current, accepted: true,
+            let unconfirmed = USBZoomResult(target: rawValue, observed: observed.current, accepted: true,
                 completed: false, verified: false, verification: "uvc_zoom_readback_unconfirmed", capabilities: observed,
                 message: "縮放請求已送出，但回讀未確認，請勿自動重送",
                 toleranceRaw: verifier.toleranceRaw, sampleCount: verifier.sampleCount,
                 stableDurationSeconds: verifier.stableDurationSeconds)
+            // Reaching the readback deadline is not proof the device stopped.
+            // Preserve the failed zoom snapshot, then hold independently before
+            // returning. A successful hold can never turn this zoom into success.
+            await stopCurrentZoom(id: id, generation: generation, lifecycle: lifecycle,
+                sessionID: expectedSessionID, connection: uvc, permit: permit)
+            return unconfirmed
         } catch {
             // Cancellation of the request only fences future SETs; a submitted
             // zoom can keep slewing in the device. While this exact operation
@@ -618,20 +624,28 @@ public actor CameraService {
             // stop() invalidates/revokes before its first await, and its hold
             // task survives this submitting task's cancellation. A replacement
             // session or newer operation must never receive this cleanup.
-            if generation == motionGeneration, lifecycle == lifecycleGeneration,
-               motionID == id, self.uvc === uvc,
-               capture.store.stats().sessionID == expectedSessionID {
-                permit.invalidate()
-                let failure = (error as? BridgeFailure)?.message ?? "USB 縮放操作未完成"
-                _ = try? await stop()
-                if lifecycle == lifecycleGeneration, self.uvc === uvc,
-                   motionGeneration == generation + 1 {
-                    lastError = failure
-                    log("zoom", failure, error: true, presentationKey: "zoom.failed")
-                }
+            let failure = (error as? BridgeFailure)?.message ?? "USB 縮放操作未完成"
+            let owned = await stopCurrentZoom(id: id, generation: generation, lifecycle: lifecycle,
+                sessionID: expectedSessionID, connection: uvc, permit: permit)
+            if owned, lifecycle == lifecycleGeneration, self.uvc === uvc,
+               motionGeneration == generation + 1 {
+                lastError = failure
+                log("zoom", failure, error: true, presentationKey: "zoom.failed")
             }
             throw error
         }
+    }
+    @discardableResult
+    private func stopCurrentZoom(id: UUID, generation: Int, lifecycle: Int,
+                                 sessionID: String, connection: any CameraControlConnection,
+                                 permit: OperationPermit) async -> Bool {
+        guard generation == motionGeneration, lifecycle == lifecycleGeneration,
+              motionID == id, uvc === connection, capture.store.stats().sessionID == sessionID else { return false }
+        // A repeated grant may advance interactionEpoch without replacing the
+        // operation. Physical cleanup follows its actual motion owner instead.
+        permit.invalidate()
+        _ = try? await stop()
+        return true
     }
     public func rollCapabilities(expectedSessionID: String? = nil) async throws -> USBRollCapabilities {
         try Task.checkCancellation()

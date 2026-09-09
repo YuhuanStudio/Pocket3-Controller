@@ -187,3 +187,27 @@ private func waitForFirstSet(_ connection: CancellationCameraConnection) async t
     let denied = await service.handle(ServiceRequest(token: "fixture", operation: "zoom", arguments: zoomArguments(service), source: .mcp))
     #expect(denied.error?.code == "zoom_denied")
 }
+
+@Test func zoomSettlingTimeoutHoldsCurrentValueWithoutReportingOriginalTargetAsSuccess() async throws {
+    let connection = CancellationCameraConnection(), frame = try cancellationFrame()
+    let service = CameraService(testConnection: connection, testFrame: frame)
+    let task = Task { await service.handle(ServiceRequest(token: "fixture", operation: "zoom", arguments: zoomArguments(service), source: .mcp)) }
+    try await waitForFirstSet(connection)
+    let releasedAt = ProcessInfo.processInfo.systemUptime
+    // No cancellation: every normal read remains at 160 until the real
+    // 100→200 settling deadline expires. Only the subsequent hold sets 160.
+    await connection.releaseFirstSet()
+    let reply = await task.value
+    #expect(reply.error == nil)
+    let result = try #require(reply.result).decode(USBZoomResult.self)
+    #expect(result.accepted && !result.completed && !result.verified)
+    #expect(result.verification == "uvc_zoom_readback_unconfirmed")
+    #expect(result.target == 200 && result.observed == 160 && result.capabilities.current == 160)
+    #expect(ProcessInfo.processInfo.systemUptime - releasedAt >= 3.1)
+    #expect(await connection.zoomWrites == [200, 160])
+    #expect(await connection.panWrites == [.init(pan: 0, tilt: 0)])
+    service.capture.store.receive(frame.pixelBuffer, pts: 2)
+    let denied = await service.handle(ServiceRequest(token: "fixture", operation: "zoom", arguments: zoomArguments(service), source: .mcp))
+    #expect(denied.error?.code == "zoom_denied")
+    #expect(await connection.zoomWrites == [200, 160]) // No automatic retry or restoration.
+}

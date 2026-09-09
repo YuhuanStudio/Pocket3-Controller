@@ -299,3 +299,30 @@ USB前後位置亦相同，cleanup target／observed保持−14040／6120且veri
 | 4 | AudioStreaming，alt1 | 83 isochronous IN |
 
 這份目前Webcam配置沒有vendor-specific、CDC或額外bulk OUT介面。唯一UVC Extension Unit仍為unit6、兩個未知controls；既有GET_LEN為16 bytes，不足以把它識別為DUML、對焦或原生雲台命令。未對它猜測SET，也未使用seize、切換USB configuration／alternate setting或卸載驅動。未公開EP0／其他機身模式的可能性不由此排除。
+
+## 2026-09-09 build19：MCP 取消確實保持縮放
+
+原有MCP SDK→IPC的取消已能送到service，但`zoom`的catch只記錄錯誤、清除動作狀態，沒有處理裝置仍朝目標slew的情況。修正後同一motion ID／generation、capture session與連線的失敗取消會等待既有獨立Stop；重新授予相同control權限不會錯誤地阻擋此清理。真正換連線或新動作仍受身分限制。未確認的zoom hold會阻擋後續zoom及pan／tilt，而不是覆蓋待停止目標。
+
+新增5項Core回歸涵蓋真IPC＋假UVC取消後保持、failed hold禁止新寫入、replacement零舊清理、重複control授權及Stop去重。完整Release suite為470項：467項執行通過、3項opt-in跳過；另有8個Python取消驗證器測試、11個純假情境，包含磁碟／關閉失敗不能誤報成功。[Release](../artifacts/mcp-cancel-build19/release-tests.log)
+
+乾淨來源`72ab388d2c40ebf9e5c8ea5cbfae70e68e0d1208`的build19已安裝，App SHA-256為`cb3cd2400826e1cbe1b17f85d294bbd98e41983359e4689e7687e23a674237c2`。[建置身分](../artifacts/mcp-cancel-build19/build-metadata.json)
+
+實際外部stdio MCP先提交raw400，觀察到相機仍moving且兩個不同讀回105／200，再送一次`notifications/cancelled`。服務進入stopping並撤回AI動作權限，之後ready／observe，raw200的獨立回讀穩定1.086686秒；未到原目標400。**客戶端沒有送Stop**，取消請求沒有完成回覆，隨後tools/list仍回覆完整六個工具。該測試不拍照、不自行復位。[完整結果](../artifacts/mcp-zoom-cancellation/59d10e7c-ccc3-4a09-9094-54486775c469/result.json)
+
+檢視結果並再次確認同連線／raw200後，另以manual明確恢復100，`completed/verified=true`。[獨立恢復](../artifacts/mcp-zoom-cancellation/59d10e7c-ccc3-4a09-9094-54486775c469/explicit-restoration.json)。這只驗一個已開始動作後的MCP取消，不包括早於SDK request登記的取消、EOF、所有重連競爭、物理煞停延遲或完整倍率校準。
+
+## 2026-09-09 build19：明確 H.264 輸出的有界測試
+
+開發限定`POCKET3_CAPTURE_OUTPUT=h264`與`--hardware-validation`現在使用Apple明列的`AVVideoCodecKey`，在activeFormat配置後檢查`availableVideoCodecTypes`包含avc1，才指定H.264及要求尺寸。普通啟動仍為BGRA。這是[AVFoundation輸出設定](https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/availablevideocodectypes)，不保證裝置原生直通，可能由主機重新編碼。
+
+| 輸入 | 6秒啟動窗口中的實際回呼 | 結果 |
+|---|---|---|
+| NV12 1920×1080@30 | 138 samples，全為avc1 CMBlockBuffer，零pixel buffer | 壓縮輸出資料路徑成立；沒有解碼，所以普通preview啟動未通過 |
+| UYVY 1920×1080@30 | 零sample | 仍無輸入回呼 |
+| UYVY 3840×2160@30 | 零sample | 仍無輸入回呼 |
+| UYVY 3840×2160@60 | 零sample | 仍無輸入回呼 |
+
+四項均使用capture-only隔離（skipUVC）、有界6秒窗口，無runtime error或interruption回報，也沒有保存影像。NV12正向對照證明新設定確實可產生壓縮資料；另外三項仍沒有可交給解碼器的sample，不能把它們列為H.264／4K60已可用。[結果](../artifacts/h264-output-build19/result.json)
+
+測完清除App的診斷環境、正常重啟並恢復3840×2160@30 NV12→BGRA與USB控制。暖機後約29.983fps、影格age約0.0223秒，raw100、manual、motion inactive；早期重連後1秒的22.93fps讀值保留，不將它改寫成已穩定30fps。[恢復](../artifacts/h264-output-build19/normal-restored.json)、[暖機後](../artifacts/h264-output-build19/normal-restored-settled.json)

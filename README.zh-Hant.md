@@ -27,7 +27,7 @@ Pocket 3 Controller 讓 Mac 成為 Pocket 3 的操作介面：看預覽、按住
 | | |
 |---|---|
 | **目前下載** | **0.0.1 beta 1，build 9**，tag `v0.0.1-beta.1` |
-| **開發分支** | `main` 正在開發 **beta 2，build 19**；不是已發布版本 |
+| **開發分支** | `main` 正在開發 **beta 2，build 20**；不是已發布版本 |
 | **平台** | Apple Silicon、macOS 27 或更新 |
 | **介面** | 原生 App、選單列、CLI、MCP stdio |
 | **控制路徑** | USB 預覽及手動 pan／tilt；BLE 提供另行配對的只讀回報 |
