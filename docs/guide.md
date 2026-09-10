@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9** and separately labels development build 22. Build 22 has passed its offline software, packaged-App and UI checks, but is not a published download. The build 16 hardware result remains historical evidence, not new build 22 hardware verification.
+This guide covers published **0.0.1 beta 1, build 9** and separately labels development features. **Build 23 is in development; its actual App smoke test and complete release gate are pending.** Build 22's passed offline, packaged-App and UI checks, screenshots and model results are historical evidence. Neither development build is a published download, and the build 16 hardware result does not verify build 23 hardware behaviour.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
@@ -122,19 +122,34 @@ the corresponding system model available. MLX Qwen 3.5 is optional: select its
 download action and allow space for roughly 3.1 GB of model files. The download
 requires a network connection; inference uses the locally available model.
 
-### Build 22 development: image file workspace
+### Build 23 development: images, selected video frames and areas
 
-This workflow is available in development build 22 and passed an actual App smoke test without a camera: Apple questions, MLX counting and location, Vision OCR, cancellation, image replacement and stale-result clearing. The software/package gate and three-language UI review also passed. It is not included in published beta 1 build 9.
+This extends build 22's image workspace. Build 23 source implements the workflow below; actual App and complete release-gate verification are pending. The local offline media regression log records 72 tests across six suites passing, but it is development evidence rather than the actual App smoke test or the complete release gate. These features are not included in published beta 1 build 9.
 
-![Development build 22 image workspace](images/image-workspace-en.png)
+1. Choose **Media file** as the observation source, then **Open media**. Select a readable local image of up to 8 MB or a local video containing a video track. **Replace media** opens another file and clears the previous analysis and selected area. Video support depends on macOS being able to decode the file; a filename extension alone does not establish support.
+2. For a video, use the **Video time** slider or **−1 s / +1 s** buttons to choose a frame. Release the slider and wait for the preview to update before analysing. The displayed time returns to the decoded frame's actual presentation timestamp (PTS), which may differ from the requested time. The result describes that one frame; this workspace does not play the video, analyse audio, summarise events across time or continuously track a subject.
+3. To analyse part of the image or frame, choose **Select area** and drag a rectangle inside the displayed image. Only the selected area's cropped pixels are passed to the model or OCR. A location returned within the crop is mapped back onto the original image for its marker. Choose **Whole frame** to remove the selection. Changing the selection, including resetting it, clears the old result.
+4. Choose **Ask about image**, **Count objects**, or **Locate a target**, enter the question or target, then use the analysis button. **OCR** reads visible text without requiring a question. For example, select a label and ask “What does this label say?”, or select a shelf and count the visible bottles. Check the preview and selection before each run.
 
-*Development build 22: the imported image and analysis are hidden. This is not the published beta 1 interface.*
+File analysis works without Pocket 3 and uses the selected Apple or MLX model; OCR uses local text recognition. It does not acquire camera-control rights or turn a marker into a gimbal or autofocus command. Switching the observation source leaves any existing camera connection and its access setting unchanged; use **Privacy pause** separately to release live capture.
 
-Choose **Image file** as the observation source, then **Open image** to select a local image of up to 8 MB. **Replace image** selects a different file and clears the previous result. Choose **Ask about image**, **Count objects**, or **Locate a target**, enter the question or target, then use the analysis button. **OCR** reads visible text without needing a question. A successful location result appears as a marker on the imported image.
+Counts, positions and answers are model estimates and can be wrong, especially with similar objects or partial occlusion. **Cancel** requests cancellation and waits for the current work to finish. Replacing the file, seeking to another video frame, changing the area or changing the observation source clears stale answers, markers and the exportable result. Wait for cancelled work to finish before starting another analysis.
 
-File analysis works without Pocket 3 and uses only the selected Apple or MLX model; OCR uses local text recognition. It does not acquire camera-control rights or turn a marker into a gimbal or autofocus command. Switching the observation source leaves any existing camera connection and its access setting unchanged; use **Privacy pause** separately to release live capture.
+#### Save a result
 
-Counts, positions and answers are model estimates and can be wrong. Check the image, especially with several similar objects or partial occlusion. Cancel requests cancellation and waits for the current work to finish; replacing the file or changing source clears stale results. This first workspace accepts still images, not video playback or continuous subject tracking.
+After a successful analysis, use **Save Markdown** or **Save JSON** in the **Export result** footer and choose the destination in the save dialog. Markdown is suitable for reading or sharing; JSON preserves structured fields for further processing. The footer follows the shared Yun interface styles.
+
+Each export is a fixed snapshot of the completed analysis: the source basename, source type, submitted question and engine, task, answer, evidence and uncertainties, frame metadata, selected-area metadata when used, and result creation time. Video frame metadata records the decoded frame's actual PTS; a crop retains its original-frame and region information. OCR records the Vision engine and no question. Changing the question or engine after completion does not rewrite that earlier result; run analysis again to obtain a result for the new settings.
+
+Exports do not embed image bytes or the source file's URL or directory path. They do contain the source filename and analysis text, which may include visible personal information; review the document before sharing. The snapshot records model output, not proof that a camera action occurred.
+
+#### Historical build 22 image workspace
+
+Build 22's actual App smoke test passed Apple questions, MLX counting and location, Vision OCR, cancellation, image replacement and stale-result clearing without a camera. Its software/package gate and three-language UI review also passed. Those results do not verify build 23's video, area or export additions.
+
+![Historical development build 22 image workspace](images/image-workspace-en.png)
+
+*Historical build 22 screenshot: the imported image and analysis are hidden. It does not show build 23's media, area or export controls and is not the published beta 1 interface.*
 
 ### Build 22 development: choose the task separately from camera access
 
@@ -153,7 +168,7 @@ The initial task mode is observation. Models are not downloaded automatically. A
 
 The earlier mixed-model route selected control from available access rather than an explicit task mode. One build 16 live-camera run completed in 38.039 seconds with 11 checks passing: MLX used `capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`, submitted one raw-200 zoom, and received verified readback. The App then refreshed the frame for Apple; that refresh was not an extra model tool call. Raw 100 and manual access were restored.
 
-This is evidence for that bounded build 16 case, not new build 22 hardware acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
+This is evidence for that bounded build 16 case, not new build 22 or build 23 hardware acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
 
 ## MCP and CLI
 
@@ -168,7 +183,7 @@ It connects to the app through a private local Unix socket and respects the acce
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --question 'Read the visible label.'
 ```
 
-In the development build 22 CLI, `ask --intent observe|assistFraming` makes the task explicit and defaults to `observe` when omitted. For example:
+In the development CLI, introduced in build 22, `ask --intent observe|assistFraming` makes the task explicit and defaults to `observe` when omitted. For example:
 
 ```sh
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --intent observe --question 'What is visible?'
@@ -176,7 +191,7 @@ In the development build 22 CLI, `ask --intent observe|assistFraming` makes the 
 
 `assistFraming` still needs eligible camera-control permission and capabilities. Debug `evaluate-workflow` accepts the same intent for its simulated camera; it defaults to observation too, and a simulated action is not hardware evidence.
 
-MCP still exposes exactly six basic camera tools: `camera_status`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. CLI `ask`, image-file analysis and the evaluation endpoints are not new MCP wrapper tools.
+MCP still exposes exactly six basic camera tools: `camera_status`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. CLI `ask`, media-file analysis and the evaluation endpoints are not new MCP wrapper tools.
 
 For MCP zoom, obtain `camera_status.capture.sessionID`, pass it as
 `expectedSessionID` to `camera_zoom_status`, and select an integer `rawValue`
@@ -191,6 +206,8 @@ unconfirmed action must not trigger an automatic sequence of retry movements.
 | Camera not listed | Check the USB data connection and select Webcam on the camera. |
 | Camera listed but no preview | Check camera permission, close another capture app if it holds the device, and reconnect with 1080p30 NV12. |
 | MCP image request denied | Keep the app connected and choose Observe only before requesting an image. |
+| Local media will not open or a video frame cannot be read | Choose a readable file on a local volume with a decodable video track, or try another time in the clip; still images must be no larger than 8 MB. |
+| Result or export controls disappeared after changing a frame or area | The previous result was cleared because its input changed. Analyse the current frame and area again. |
 | Model unavailable | Check the system model's availability or complete the optional MLX download. |
 | AF, rapid recenter or flip unavailable | These are unfinished app capabilities; pairing alone does not enable them. |
 | Battery is falling over time | Check the camera's own battery indication and power connection; USB configuration values are not current measurements. |

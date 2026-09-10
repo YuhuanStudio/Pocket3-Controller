@@ -236,7 +236,7 @@ public actor IntelligenceEngine {
     public func grounded(frame: FramePacket, question: String, kind: GroundedImageKind,
                          engine: String = "apple") async throws -> GroundedImageResult {
         guard !observing else { throw BridgeFailure("ai_busy", "另一個 AI 觀察正在執行") }
-        guard frame.info.timestampSource == "local_image_import", frame.info.deviceID == "local-evaluation" else {
+        guard frame.info.isImportedMedia else {
             throw BridgeFailure("grounding_input_invalid", "定位評測只接受本機匯入的靜態影像")
         }
         guard ["apple", "mlx"].contains(engine) else { throw BridgeFailure("invalid_engine", "未知模型引擎") }

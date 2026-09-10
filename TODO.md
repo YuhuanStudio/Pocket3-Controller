@@ -15,7 +15,8 @@
 - [x] build22離線照片工作區：開啟／替換圖片、問答、計數、模型定位、OCR、取消／舊結果隔離與三語介面。真App流程通過，使用合成圖；相機仍0影格、session與access未變。[流程](artifacts/image-workspace/build22/result.json)
 - [x] build22觀察／協助取景分流：全域控制權不再自動觸發MLX控制階段；CLI顯式intent、image mode無硬體工具。stage／tool／直接context拒絕矩陣與3個CLI轉送、7個前置拒絕均通過；新的真機協助流程仍待硬體驗收。
 - [x] build22完整gate與安裝：503項執行通過、3項opt-in跳過；59張UI、3語、7個Yun共用設計檔、搬移後MLX/CoreAI推論、ZIP/DMG驗證通過。另6項照片workspace回歸包含真實RootView隱私／marker渲染；3張照片工作區公開UI已逐張看過，所有圖片內容與分析均隱去。[gate](artifacts/offline-workspace-build22/final/verification-gate.json)、[安裝](artifacts/offline-workspace-build22/installed.json)、[公開截圖manifest](docs/images/image-workspace-build22.json)
-- [ ] 短片匯入、ROI、結果保存、構圖幾何、短期追蹤／場景事件時間軸。
+- [ ] build23媒體工作區：本機影片時間點、實際PTS與方向、ROI拖選裁切／標記映回、JSON／Markdown不可變結果匯出。原始碼與初步測試已完成，待最終App流程與gate。
+- [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
 

@@ -1420,3 +1420,24 @@
 "Choose a readable image file no larger than 8 MB." = "請選擇可讀取且不超過 8 MB 的影像檔案。";
 "The image analysis could not finish. Try another question or model." = "影像分析未能完成，請嘗試其他問題或模型。";
 "The model did not return a valid image location. No marker was placed." = "模型未傳回有效的影像位置，因此未放置標記。";
+
+"Export result" = "匯出結果";
+"Save Markdown" = "儲存 Markdown";
+"Save JSON" = "儲存 JSON";
+"Media file" = "媒體檔案";
+"Open media" = "開啟媒體";
+"Replace media" = "更換媒體";
+"Video frame" = "影片影格";
+"Video time" = "影片時間";
+"Select area" = "選取區域";
+"Drag over the image" = "在影像上拖曳";
+"Selected analysis area" = "已選取的分析區域";
+"Whole frame" = "完整畫面";
+"Only the selected area is sent to the model." = "僅將選取區域交給模型分析。";
+"Open an image or a local video. Analysis uses only the selected frame or area." = "開啟影像或本機影片，僅分析選定影格或區域。";
+"Local file · analyse a selected frame or area" = "本機檔案 · 分析選定影格或區域";
+"The media file could not be opened. Choose a readable local image or video." = "無法開啟媒體檔案，請選擇可讀取的本機圖片或影片。";
+"That video frame could not be read. Choose another time in the clip." = "無法讀取該影片影格，請選擇片段中的其他時間點。";
+"Choose an analysis area inside the displayed image." = "請在顯示的影像內選擇分析區域。";
+"Choose a camera or a media file" = "選擇相機或媒體檔案";
+"The selected model analyses this frame or area. Camera controls are not used." = "由選定模型分析此影格或區域，不使用相機控制。";

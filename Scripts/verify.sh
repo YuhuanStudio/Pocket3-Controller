@@ -69,6 +69,9 @@ PYWAIT
   python3 Scripts/mcp-smoke.py --offline --output artifacts/mcp-offline > artifacts/mcp-offline.log
   python3 Scripts/mcp-cancellation-test.py > artifacts/mcp-cancellation.log
   python3 -B Scripts/test-observation-intent.py > artifacts/observation-intent-cli.log
+  if [[ "$check_models" == 1 ]]; then
+    python3 -B Scripts/verify-media-workspace.py --output "artifacts/media-workspace-gate-$(date +%s)" > artifacts/media-workspace-gate.log
+  fi
 fi
 if [[ "$check_ui" == 1 ]]; then
   python3 Scripts/ui-parity.py > artifacts/ui-gate.log
@@ -94,6 +97,7 @@ checks+=['offline image-grounding scorer contracts']
 if ui=='1':checks+=['live layout','window and popover lifetime']
 if models=='1':checks+=['copied-app MLX and Core AI inference','model memory release']
 if ui=='1' or models=='1':checks+=['offline MCP','MCP cancellation','CLI observation-intent forwarding and rejection']
+if models=='1':checks+=['actual App image/video frame, ROI, OCR, model and export workspace']
 if package=='1':checks+=['ZIP/DMG assembly','DMG checksum','extracted ZIP and read-only DMG payload signatures and hashes']
 not_checked=['physical camera and audio','physical movement and stopping','published updates','Developer ID and notarisation']
 if ui=='1':

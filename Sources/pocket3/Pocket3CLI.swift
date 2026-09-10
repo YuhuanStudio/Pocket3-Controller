@@ -137,7 +137,7 @@ import MCP
             }
             if command == "image-workspace" {
                 let action = option("--action") ?? "status"
-                guard ["import", "run", "ocr", "cancel", "clear", "camera", "status"].contains(action) else {
+                guard ["import", "run", "ocr", "cancel", "clear", "camera", "status", "region", "seek", "export"].contains(action) else {
                     throw BridgeFailure("usage", "Unknown image-workspace action")
                 }
                 arguments["action"] = .string(action)
@@ -148,6 +148,13 @@ import MCP
                 if let kind = option("--kind") { arguments["kind"] = .string(kind) }
                 if let question = option("--question") { arguments["question"] = .string(question) }
                 if let engine = option("--engine") { arguments["engine"] = .string(engine) }
+                if let seconds = option("--seconds") {
+                    guard let value = Double(seconds), value.isFinite else { throw BridgeFailure("video_time_range", "Pass finite seconds") }
+                    arguments["seconds"] = .number(value)
+                }
+                if let region = option("--region-json") { arguments["region"] = try JSONDecoder().decode(JSONValue.self, from: Data(region.utf8)) }
+                if let output = option("--output") { arguments["output"] = .string(URL(fileURLWithPath: output).standardizedFileURL.path) }
+                if let format = option("--format") { arguments["format"] = .string(format) }
                 let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
@@ -269,6 +276,9 @@ import MCP
         pocket3 image-workspace --action import --image FILE
         pocket3 image-workspace --action run --kind ask|count|locate --question TEXT [--engine apple|mlx]
         pocket3 image-workspace --action status|ocr|cancel|clear|camera
+        pocket3 image-workspace --action seek --seconds NUMBER
+        pocket3 image-workspace --action region --region-json '{"x":0.1,"y":0.1,"width":0.4,"height":0.5}'
+        pocket3 image-workspace --action export --format json|markdown --output FILE
           Exercises the actual image workspace in a development App. Requires --hardware-validation.
         pocket3 mcp
         """)

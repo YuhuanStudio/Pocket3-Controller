@@ -13,9 +13,21 @@ struct ImportedObservationImage: Sendable {
     let frame: FramePacket
     let previewData: Data
     let displayName: String
+    var videoSource: ImportedVideoSource? = nil
 
     static func load(_ url: URL) async throws -> Self {
-        try await Task.detached {
+        try Task.checkCancellation()
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        if try url.resourceValues(forKeys: [.contentTypeKey]).contentType?.conforms(to: .movie) == true {
+            let video = try await ImportedVideoSource.open(url)
+            do {
+                let frame = try await video.frame(at: video.metadata.startSeconds)
+                try Task.checkCancellation()
+                return Self(frame: frame, previewData: try frame.jpeg(maxDimension: 1920), displayName: url.lastPathComponent, videoSource: video)
+            } catch { await video.close(); throw error }
+        }
+        return try await Task.detached {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             try Task.checkCancellation()
@@ -43,6 +55,12 @@ enum ImageObservationResponse: Sendable {
     private(set) var preview: NSImage?
     private(set) var response: ImageObservationResponse?
     private(set) var responseFrameID: String?
+    private(set) var responseSourceFrameID: String?
+    private(set) var resultSnapshot: AnalysisExportSnapshot?
+    private(set) var region: NormalizedImageRegion?
+    var selectingRegion = false
+    var videoSeekTime: Double = 0
+    var videoScrubbing = false
     private(set) var isImporting = false
     private(set) var isAnalyzing = false
     private(set) var isCancelling = false
@@ -54,7 +72,7 @@ enum ImageObservationResponse: Sendable {
     private var importID = UUID()
     private var revision = 0
     var isWorking: Bool { isImporting || isAnalyzing }
-    var ready: Bool { asset != nil && !isImporting }
+    var ready: Bool { asset != nil && !isImporting && !videoScrubbing }
 
     init(load: @escaping @Sendable (URL) async throws -> ImportedObservationImage = ImportedObservationImage.load,
          analyze: @escaping Analyze) {
@@ -76,44 +94,99 @@ enum ImageObservationResponse: Sendable {
         cancel(clearResult: true)
         importTask?.cancel()
         importID = UUID(); let id = importID
+        let oldVideo = asset?.videoSource
         asset = nil; preview = nil; error = nil; isImporting = true
+        region = nil; selectingRegion = false; videoSeekTime = 0
         importTask = Task { [self] in
             defer { if importID == id { isImporting = false; importTask = nil } }
+            var importedVideo: ImportedVideoSource?
             do {
+                await oldVideo?.close()
                 let loaded = try await load(url)
+                importedVideo = loaded.videoSource
                 try Task.checkCancellation()
-                guard importID == id else { return }
-                guard loaded.frame.info.timestampSource == "local_image_import",
+                guard importID == id else { await importedVideo?.close(); return }
+                guard ["local_image_import", "local_video_import"].contains(loaded.frame.info.timestampSource),
                       loaded.frame.info.deviceID == "local-evaluation",
                       let image = NSImage(data: loaded.previewData) else {
                     throw BridgeFailure("fixture_image", "Imported image could not be prepared")
                 }
-                asset = loaded; preview = image
-            } catch is CancellationError {}
-            catch { if importID == id { self.error = AppErrorPresentation.message(error, fallback: .imageFile) } }
+                asset = loaded; preview = image; videoSeekTime = loaded.frame.info.presentationTime
+            } catch is CancellationError { await importedVideo?.close() }
+            catch {
+                await importedVideo?.close()
+                if importID == id { self.error = AppErrorPresentation.message(error, fallback: .mediaFile) }
+            }
         }
+    }
+
+    func seek(to seconds: Double) {
+        guard let current = asset, let video = current.videoSource,
+              seconds.isFinite, (video.metadata.startSeconds...video.metadata.lastSeekSeconds).contains(seconds) else { return }
+        cancel(clearResult: true)
+        let id = UUID(); importID = id; isImporting = true; videoSeekTime = seconds
+        importTask = Task { [self] in
+            defer { if importID == id { isImporting = false; importTask = nil } }
+            do {
+                let frame = try await video.frame(at: seconds)
+                let bytes = try await Task.detached { try frame.jpeg(maxDimension: 1920) }.value
+                try Task.checkCancellation()
+                guard importID == id, asset?.videoSource === video else { return }
+                asset = ImportedObservationImage(frame: frame, previewData: bytes, displayName: current.displayName, videoSource: video)
+                preview = NSImage(data: bytes); videoSeekTime = frame.info.presentationTime
+            } catch is CancellationError {}
+            catch {
+                if importID == id {
+                    videoSeekTime = asset?.frame.info.presentationTime ?? 0
+                    self.error = AppErrorPresentation.message(error, fallback: .videoTime)
+                }
+            }
+        }
+    }
+
+    func setRegion(_ value: NormalizedImageRegion?) {
+        guard region != value else { selectingRegion = false; return }
+        cancel(clearResult: true); region = value; selectingRegion = false
     }
 
     func begin(engine: String, action override: ImageObservationAction? = nil) {
         guard ready, !isAnalyzing, let asset else { return }
         let requestedAction = override ?? action
-        let requestedQuestion = question
+        let requestedQuestion = question, selectedRegion = region
         guard requestedAction == .ocr || !requestedQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         revision += 1; let requestedRevision = revision, frameID = asset.frame.info.id
-        response = nil; responseFrameID = nil; error = nil
+        response = nil; responseFrameID = nil; responseSourceFrameID = nil; resultSnapshot = nil; error = nil
         isAnalyzing = true; isCancelling = false
         analysisTask = Task { [self] in
             defer { isAnalyzing = false; isCancelling = false; analysisTask = nil }
             do {
-                let result = try await analyze(asset.frame, requestedQuestion, requestedAction, engine)
+                let analysisFrame = try await Task.detached {
+                    try Task.checkCancellation()
+                    return try selectedRegion.map { try asset.frame.cropImported(to: $0).frame } ?? asset.frame
+                }.value
+                try Task.checkCancellation()
+                let result = try await analyze(analysisFrame, requestedQuestion, requestedAction, engine)
                 try Task.checkCancellation()
                 guard revision == requestedRevision, self.asset?.frame.info.id == frameID else { return }
                 if case .grounding(let grounded) = result {
-                    guard grounded.frame.id == frameID, grounded.frame.timestampSource == "local_image_import" else {
+                    guard grounded.frame.id == analysisFrame.info.id, grounded.frame.timestampSource == analysisFrame.info.timestampSource else {
                         throw BridgeFailure("grounding_input_invalid", "Result belongs to another image")
                     }
                 }
-                response = result; responseFrameID = frameID
+                response = result; responseFrameID = analysisFrame.info.id; responseSourceFrameID = frameID
+                let exportedAction: AnalysisExportAction = switch requestedAction {
+                case .ask: .question
+                case .count: .count
+                case .locate: .point
+                case .ocr: .ocr
+                }
+                let grounding: JSONValue?
+                if case .grounding(let value) = result { grounding = try value.metadata() } else { grounding = nil }
+                resultSnapshot = try AnalysisExportSnapshot(sourceName: asset.displayName,
+                    sourceKind: asset.videoSource == nil ? .image : .video, frame: analysisFrame.info,
+                    engine: requestedAction == .ocr ? "vision" : engine, action: exportedAction,
+                    question: requestedAction == .ocr ? "" : requestedQuestion,
+                    answer: answer, evidence: evidence, uncertainties: uncertainties, grounding: grounding, createdAt: Date())
             } catch is CancellationError {}
             catch {
                 if revision == requestedRevision, self.asset?.frame.info.id == frameID {
@@ -126,14 +199,17 @@ enum ImageObservationResponse: Sendable {
     func cancel(clearResult: Bool = true) {
         revision += 1
         importID = UUID(); importTask?.cancel(); importTask = nil; isImporting = false
+        videoScrubbing = false
+        if asset?.videoSource != nil { videoSeekTime = asset?.frame.info.presentationTime ?? 0 }
         analysisTask?.cancel()
         isCancelling = isAnalyzing
-        if clearResult { response = nil; responseFrameID = nil; error = nil }
+        if clearResult { response = nil; responseFrameID = nil; responseSourceFrameID = nil; resultSnapshot = nil; error = nil }
     }
     func clear() {
         cancel()
         importID = UUID(); importTask?.cancel(); importTask = nil; isImporting = false
-        asset = nil; preview = nil; question = ""
+        if let video = asset?.videoSource { Task { await video.close() } }
+        asset = nil; preview = nil; question = ""; region = nil; selectingRegion = false; videoSeekTime = 0
     }
     func clearResult() { cancel(clearResult: true) }
     func cancelAndWait() async {
@@ -143,13 +219,15 @@ enum ImageObservationResponse: Sendable {
     }
 
     var marker: CGPoint? {
-        guard responseFrameID == asset?.frame.info.id, case .grounding(let result) = response,
+        guard responseSourceFrameID == asset?.frame.info.id, case .grounding(let result) = response,
               case .point(let location) = result.value, !location.uncertain, let point = location.point,
               point.x.isFinite, point.y.isFinite, (0...1).contains(point.x), (0...1).contains(point.y) else { return nil }
-        return CGPoint(x: point.x, y: point.y)
+        let local = CGPoint(x: point.x, y: point.y)
+        if let region = result.frame.importedRegion?.region { return try? region.mapToOriginal(local) }
+        return local
     }
     var answer: String {
-        guard responseFrameID == asset?.frame.info.id, let response else { return "" }
+        guard responseSourceFrameID == asset?.frame.info.id, let response else { return "" }
         switch response {
         case .answer(let answer): return answer.answer
         case .text(let lines): return lines.isEmpty ? loc("No clear text was recognised.") : lines.joined(separator: "\n")
@@ -219,9 +297,9 @@ extension AppModel {
     func chooseObservationImage() {
         guard !switchingObservationSource else { return }
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
+        panel.allowedContentTypes = [.image, .movie]
         panel.allowsMultipleSelection = false; panel.canChooseDirectories = false
-        panel.prompt = loc("Open image")
+        panel.prompt = loc("Open media")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task {
             if isCameraSource { await changeObservationSource(.image) }
@@ -238,6 +316,20 @@ extension AppModel {
     func clearObservationPresentation() {
         answer = ""; evidence = []; uncertainties = []; observationActions = []; observationRoles = nil
         evidenceImage = nil; evidenceFrameID = ""; message = nil
+    }
+
+    func exportImageAnalysis(format: AnalysisExportFormat) {
+        guard !isCameraSource, !capturingUI, let snapshot = imageWorkspace.resultSnapshot else { return }
+        do {
+            // Capture immutable bytes before presenting the panel. A later
+            // source/question change cannot rewrite this already chosen report.
+            let data = try AnalysisExport.data(for: snapshot, format: format)
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = format == .json ? [.json] : [.plainText]
+            panel.nameFieldStringValue = format == .json ? "Pocket3-analysis.json" : "Pocket3-analysis.md"
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            try data.write(to: url, options: .atomic)
+        } catch { message = AppErrorPresentation.message(error, fallback: .imageAnalysis) }
     }
 
     /// Development-only driver of the same user workspace, for reproducible
@@ -268,6 +360,22 @@ extension AppModel {
             imageWorkspace.action = kind == .ocr ? .ask : kind
             imageWorkspace.begin(engine: engine, action: kind)
         case "cancel": imageWorkspace.cancel()
+        case "seek":
+            guard let time = request.arguments["seconds"].number, let video = imageWorkspace.asset?.videoSource,
+                  time.isFinite, (video.metadata.startSeconds...video.metadata.lastSeekSeconds).contains(time) else { throw BridgeFailure("video_time_range", "Choose a time within this clip") }
+            imageWorkspace.seek(to: time)
+        case "region":
+            if request.arguments["region"] == .null { imageWorkspace.setRegion(nil) }
+            else {
+                let region = try JSONDecoder().decode(NormalizedImageRegion.self, from: JSONEncoder().encode(request.arguments["region"]))
+                imageWorkspace.setRegion(region)
+            }
+        case "export":
+            guard let snapshot = imageWorkspace.resultSnapshot, let path = request.arguments["output"].string, path.hasPrefix("/"),
+                  let format = AnalysisExportFormat(rawValue: request.arguments["format"].string ?? "json") else {
+                throw BridgeFailure("export_unavailable", "Choose a completed result, format and absolute output file")
+            }
+            try AnalysisExport.data(for: snapshot, format: format).write(to: URL(fileURLWithPath: path), options: .atomic)
         case "clear": imageWorkspace.clear()
         case "camera": await changeObservationSource(.camera)
         case "status": break
@@ -281,6 +389,11 @@ extension AppModel {
             "uncertainties": .array(file.uncertainties.map(JSONValue.string)), "error": file.error.map(JSONValue.string) ?? .null,
             "frame": try file.asset.map { try JSONValue.encode($0.frame.info) } ?? .null,
             "responseFrameID": file.responseFrameID.map(JSONValue.string) ?? .null,
+            "responseSourceFrameID": file.responseSourceFrameID.map(JSONValue.string) ?? .null,
+            "region": try file.region.map(JSONValue.encode) ?? .null,
+            "video": try (file.asset?.videoSource?.metadata).map(JSONValue.encode) ?? .null,
+            "videoSeekTime": .number(file.videoSeekTime),
+            "exportAvailable": .bool(file.resultSnapshot != nil), "aiBusy": .bool(aiWorking),
             "marker": file.marker.map { .object(["x": .number($0.x), "y": .number($0.y)]) } ?? .null,
             "cameraActionReady": .bool(cameraActionReady), "cameraAccess": .string(access.rawValue)]
         if case .grounding(let grounding) = file.response { result["grounding"] = try grounding.metadata() }

@@ -58,6 +58,9 @@ enum AppErrorMessageKey: String, CaseIterable {
     case imageFile = "Choose a readable image file no larger than 8 MB."
     case imageAnalysis = "The image analysis could not finish. Try another question or model."
     case imageGrounding = "The model did not return a valid image location. No marker was placed."
+    case mediaFile = "The media file could not be opened. Choose a readable local image or video."
+    case videoTime = "That video frame could not be read. Choose another time in the clip."
+    case imageRegion = "Choose an analysis area inside the displayed image."
     case validation = "Complete camera control validation in Diagnostics before allowing AI adjustments."
     case postActionImage = "The camera action finished, but a new image was unavailable. Capture a fresh image before another adjustment."
     case generic = "The operation could not be completed. Check the connection and diagnostics."
@@ -140,6 +143,9 @@ enum AppErrorPresentation {
         case "invalid_question", "invalid_engine", "invalid_intent": return .question
         case "fixture_size", "fixture_image", "fixture_memory", "grounding_input_invalid": return .imageFile
         case "grounding_output_invalid": return .imageGrounding
+        case "video_local_file_required", "video_no_track", "video_metadata_invalid", "video_transform_unsupported", "video_metadata_timeout": return .mediaFile
+        case "video_time_range", "video_closed", "video_frame_invalid", "video_frame_memory", "video_frame_timeout", "video_decode_failed": return .videoTime
+        case "invalid_image_region", "invalid_image_point", "image_region_provenance", "image_region_pixels", "image_region_memory", "image_region_source": return .imageRegion
         case "model_timeout", "native_action_timeout": return .timedOut
         case "already_running", "app_not_running", "ipc_auth", "ipc_bind", "ipc_disconnected", "ipc_identity", "ipc_lock", "ipc_path", "ipc_protocol", "ipc_size", "ipc_socket", "ipc_write", "invalid_probe", "invalid_probe_reply": return .bridge
         case "audio_ambiguous", "audio_start_timeout", "audio_unavailable": return .audio

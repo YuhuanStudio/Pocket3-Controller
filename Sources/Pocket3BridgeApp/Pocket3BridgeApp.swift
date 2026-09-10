@@ -513,7 +513,7 @@ final class AppModel {
             modelStatus?.available == true && (!appleUsesMLXControl || localStatus?.available == true)
     }
     var engineRoleMessage: String {
-        if !isCameraSource { return loc("The selected model analyses this image file. Camera controls are not used.") }
+        if !isCameraSource { return loc("The selected model analyses this frame or area. Camera controls are not used.") }
         if observationIntent == .observe { return loc("Only the selected model observes. Camera adjustments are not part of this task.") }
         return selectedEngine == "apple"
             ? loc("Apple answers from images. AI control also uses the downloaded MLX model.")
@@ -702,12 +702,12 @@ struct RootView: View {
         HStack(alignment: .top, spacing: Yun.Space.lg) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Yun.Space.md) {
-                    heading(loc("Source"), loc("Choose a camera or an image file"))
+                    heading(loc("Source"), loc("Choose a camera or a media file"))
                     YunCard {
                         VStack(alignment: .leading, spacing: Yun.Space.md) {
                             YunSegmented(selection: Binding(get: { model.observationSource }, set: { source in
                                 Task { await model.changeObservationSource(source) }
-                            }), options: [(.camera, loc("Live camera")), (.image, loc("Image file"))])
+                            }), options: [(.camera, loc("Live camera")), (.image, loc("Media file"))])
                                 .disabled(!model.canChangeObservationSource)
                             if model.isCameraSource {
                             HStack {
@@ -773,7 +773,7 @@ struct RootView: View {
                 }.padding(.bottom, Yun.Space.md)
             }.scrollIndicators(.automatic).yunScrollFade().frame(width: MainWindowLayout.sourceWidth).measuredForLayout("source")
             VStack(alignment: .leading, spacing: Yun.Space.md) {
-                heading(loc(model.isCameraSource ? "Live view" : "Image file"), loc(model.isCameraSource ? "Live preview · images shared with AI on request" : "Local image · analysis does not control the camera"))
+                heading(loc(model.isCameraSource ? "Live view" : "Media file"), loc(model.isCameraSource ? "Live preview · images shared with AI on request" : "Local file · analyse a selected frame or area"))
                 YunCard(padding: 0) {
                     ZStack {
                         let previewIsActive = ["ready", "moving", "stopping", "validating", "soaking"].contains(model.status?.phase ?? "")
@@ -782,7 +782,10 @@ struct RootView: View {
                             ImportedImagePreview(image: model.imageWorkspace.preview,
                                 imageSize: CGSize(width: model.imageWorkspace.asset?.frame.info.width ?? 1,
                                     height: model.imageWorkspace.asset?.frame.info.height ?? 1),
-                                point: model.imageWorkspace.marker, redacted: model.capturingUI)
+                                point: model.imageWorkspace.marker, redacted: model.capturingUI,
+                                region: model.imageWorkspace.region,
+                                selectingRegion: model.imageWorkspace.selectingRegion,
+                                selectRegion: { model.imageWorkspace.setRegion($0) })
                         } else if let image = model.capturePreview { Image(nsImage: image).resizable().scaledToFit() }
                         else if !model.capturingUI { Preview(session: model.service.capture.session, frame: model.status?.capture.frame, focus: model.focus) }
                         else if previewIsActive { YunEmptyState(symbol: "eye.slash", message: loc("Preview hidden for this screenshot")) }
@@ -840,6 +843,15 @@ struct RootView: View {
                     Button("OCR") { Task { await model.ocr() } }.buttonStyle(YunButtonStyle(.ghost, small: true)).disabled(!model.observationReady || model.aiWorking)
                 }
                 .measuredForLayout("answerActions")
+                if !model.isCameraSource, model.imageWorkspace.resultSnapshot != nil {
+                    HStack(spacing: Yun.Space.sm) {
+                        Text(loc("Export result")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                        Spacer(minLength: 0)
+                        Button(loc("Save Markdown")) { model.exportImageAnalysis(format: .markdown) }
+                        Button(loc("Save JSON")) { model.exportImageAnalysis(format: .json) }
+                    }.buttonStyle(YunButtonStyle(.ghost, small: true))
+                        .disabled(model.capturingUI)
+                }
                 if !model.canAsk { Text(model.engineMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }
                 YunDivider()
                 ScrollView {

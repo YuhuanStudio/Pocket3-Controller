@@ -1420,3 +1420,24 @@
 "Choose a readable image file no larger than 8 MB." = "请选择可读取且不超过 8 MB 的图像文件。";
 "The image analysis could not finish. Try another question or model." = "图像分析未能完成，请尝试其他问题或模型。";
 "The model did not return a valid image location. No marker was placed." = "模型未返回有效的图像位置，因此未放置标记。";
+
+"Export result" = "导出结果";
+"Save Markdown" = "保存 Markdown";
+"Save JSON" = "保存 JSON";
+"Media file" = "媒体文件";
+"Open media" = "打开媒体";
+"Replace media" = "更换媒体";
+"Video frame" = "视频帧";
+"Video time" = "视频时间";
+"Select area" = "选择区域";
+"Drag over the image" = "在图像上拖动";
+"Selected analysis area" = "已选择的分析区域";
+"Whole frame" = "完整画面";
+"Only the selected area is sent to the model." = "仅将所选区域交给模型分析。";
+"Open an image or a local video. Analysis uses only the selected frame or area." = "打开图像或本地视频，仅分析选定帧或区域。";
+"Local file · analyse a selected frame or area" = "本地文件 · 分析选定帧或区域";
+"The media file could not be opened. Choose a readable local image or video." = "无法打开媒体文件，请选择可读取的本地图像或视频。";
+"That video frame could not be read. Choose another time in the clip." = "无法读取该视频帧，请选择片段中的其他时间点。";
+"Choose an analysis area inside the displayed image." = "请在显示的图像内选择分析区域。";
+"Choose a camera or a media file" = "选择相机或媒体文件";
+"The selected model analyses this frame or area. Camera controls are not used." = "由选定模型分析此帧或区域，不使用相机控制。";

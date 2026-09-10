@@ -1420,3 +1420,24 @@
 "Choose a readable image file no larger than 8 MB." = "Choose a readable image file no larger than 8 MB.";
 "The image analysis could not finish. Try another question or model." = "The image analysis could not finish. Try another question or model.";
 "The model did not return a valid image location. No marker was placed." = "The model did not return a valid image location. No marker was placed.";
+
+"Export result" = "Export result";
+"Save Markdown" = "Save Markdown";
+"Save JSON" = "Save JSON";
+"Media file" = "Media file";
+"Open media" = "Open media";
+"Replace media" = "Replace media";
+"Video frame" = "Video frame";
+"Video time" = "Video time";
+"Select area" = "Select area";
+"Drag over the image" = "Drag over the image";
+"Selected analysis area" = "Selected analysis area";
+"Whole frame" = "Whole frame";
+"Only the selected area is sent to the model." = "Only the selected area is sent to the model.";
+"Open an image or a local video. Analysis uses only the selected frame or area." = "Open an image or a local video. Analysis uses only the selected frame or area.";
+"Local file · analyse a selected frame or area" = "Local file · analyse a selected frame or area";
+"The media file could not be opened. Choose a readable local image or video." = "The media file could not be opened. Choose a readable local image or video.";
+"That video frame could not be read. Choose another time in the clip." = "That video frame could not be read. Choose another time in the clip.";
+"Choose an analysis area inside the displayed image." = "Choose an analysis area inside the displayed image.";
+"Choose a camera or a media file" = "Choose a camera or a media file";
+"The selected model analyses this frame or area. Camera controls are not used." = "The selected model analyses this frame or area. Camera controls are not used.";

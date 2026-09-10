@@ -100,6 +100,8 @@ public struct FrameInfo: Codable, Sendable, Equatable, Identifiable {
     public var inputPixelFormatFourCC: String? = nil
     /// The delivered representation, for example BGRA for buffers or JPEG for snapshots.
     public var outputPixelFormat: String? = nil
+    /// Optional path-free provenance for an explicitly cropped imported image/video frame.
+    public var importedRegion: ImportedRegionProvenance? = nil
 }
 public struct MotionResult: Codable, Sendable {
     public var id: String

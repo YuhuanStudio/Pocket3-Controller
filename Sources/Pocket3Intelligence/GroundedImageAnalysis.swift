@@ -91,7 +91,7 @@ public struct GroundedImageResult: Sendable {
     public func metadata() throws -> JSONValue {
         .object(["schemaVersion": .number(1), "kind": .string(kind.rawValue),
             "result": try value.json(), "frame": try .encode(frame), "engine": .string(engine),
-            "origin": .string("local_image_import"), "coordinateSpace": .string("normalized_top_left_0_1"),
+            "origin": .string(frame.timestampSource), "coordinateSpace": .string("normalized_top_left_0_1"),
             "elapsedSeconds": .number(elapsedSeconds)])
     }
 }

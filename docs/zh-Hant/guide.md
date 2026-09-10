@@ -4,7 +4,7 @@
 
 [文件入口](README.md) · [專案概觀](../../README.zh-Hant.md)
 
-本指南涵蓋已發布的 **0.0.1 beta 1，build 9**，並另外標明build22開發版。build22已通過離線軟體、打包App及UI驗收，尚不是公開下載；build16硬體結果是歷史證據，不代表build22另做了真機驗收。停用或標為實驗性的控制，不表示對應機身功能已支援。
+本指南涵蓋已發布的 **0.0.1 beta 1，build 9**，並另外標明開發功能。**build23仍在開發，真App基本流程測試與完整發行gate待驗。** build22已通過的離線軟體、打包App與UI檢查，以及截圖與模型結果，均保留為歷史證據。這兩個開發版都不是公開下載；build16硬體結果不代表build23真機行為已驗證。停用或標為實驗性的控制，不表示對應機身功能已支援。
 
 ## 安裝與首次啟動
 
@@ -68,19 +68,34 @@ Roll 標為**實驗性**，數值是裝置控制單位，不是已校準的物�
 
 在「AI 引擎與接入」選擇引擎。Apple Foundation Models 需要相應系統模型可用。MLX Qwen 3.5 為選配，透過下載操作取得，預留約 3.1 GB 模型空間。下載需要網路，推論使用已在本機的模型。
 
-### build22開發版：圖片檔案工作區
+### build23開發版：圖片、指定影片影格與區域
 
-以下流程已在build22開發版的真App、無相機條件下通過基本流程測試：Apple問答、MLX計數與定位、Vision OCR、取消、換圖及過期結果清除。軟體／打包gate及三語UI檢查也已通過；已發布的beta1 build9不包含這些功能。
+此版本延伸build22的圖片工作區。以下流程已在build23原始碼實作，真App及完整發行gate仍待驗證。本機離線媒體回歸紀錄顯示六個測試套件共72項通過，但那只是開發證據，不是實際App基本流程測試或完整發行gate。已發布的beta1 build9不包含這些功能。
 
-![build22開發版圖片工作區](../images/image-workspace-zh-Hant.png)
+1. 把觀察來源切成 **Media file（媒體檔案）**，按 **Open media（開啟媒體）**，選取不超過8 MB的可讀本機圖片，或含有視訊軌的本機影片。**Replace media（更換媒體）**會開啟另一個檔案，並清除前一次分析與選取區域。影片需能由macOS解碼，副檔名本身不保證支援。
+2. 影片可用 **Video time（影片時間）**滑桿或 **−1 s／+1 s** 按鈕選取影格。放開滑桿，等待預覽更新後再分析；顯示時間會回到實際解碼影格的呈現時間戳（PTS），可能與要求的時間不同。結果只描述該張影格；工作區不播放影片、不分析音訊、不跨時間總結事件，也不持續追蹤主體。
+3. 若只需分析局部，按 **Select area（選取區域）**，在顯示的影像內拖出矩形。模型或OCR只會收到該區域裁切後的像素；模型在裁切區內傳回的位置會映回原圖顯示標記。按 **Whole frame（完整畫面）**移除選取範圍。更換或重設區域都會清除舊結果。
+4. 選擇 **Ask about image（圖片問答）**、**Count objects（計算物件）**或 **Locate a target（定位目標）**，輸入問題或目標後開始分析。**OCR**可直接讀取可見文字，不需要先輸入問題。例如圈選標籤詢問文字，或圈選一層架子計算可見瓶子；每次執行前先核對預覽與區域。
 
-*build22開發版；匯入圖片與分析內容已隱去，這不是公開beta1的畫面。*
+檔案分析不需要Pocket3，使用所選的Apple或MLX模型；OCR使用本機文字辨識。它不取得相機控制權，位置標記也不會變成雲台或對焦命令。切換觀察來源會保留既有相機連線與存取設定；要釋放正在進行的即時取像，另外使用「隱私暫停」。
 
-把觀察來源切成 **Image file（圖片檔案）**，按 **Open image（開啟圖片）**，選取8 MB以下的本機圖片。**Replace image（替換圖片）**會更換檔案並清除上一份結果。選擇 **Ask about image（圖片問答）**、**Count objects（計算物件）**或 **Locate a target（定位目標）**，輸入問題或目標後開始分析；**OCR**可直接讀取可見文字，不需要先輸入問題。成功的定位結果會在匯入圖片上顯示標記。
+物件數量、位置與回答都是模型估計，可能出錯，尤其是相似物件或部分遮擋。**取消**會提出取消要求並等待目前工作結束。更換檔案、移到其他影片影格、更改區域或切換觀察來源，都會清除過期回答、標記及可匯出結果；等取消中的工作結束後，再開始下一次分析。
 
-圖片分析不需要Pocket3，只使用所選的Apple或MLX模型；OCR使用本機文字辨識。它不取得相機控制權，位置標記也不會變成雲台或對焦命令。切換觀察來源會保留既有相機連線與存取設定；要釋放正在進行的即時取像，另外使用「隱私暫停」。
+#### 儲存分析結果
 
-物件數量、位置與回答都是模型估計，可能出錯；尤其是相似物件或部分遮擋，請對照原圖。「取消」會提出取消要求並等待目前工作結束，更換檔案或來源會清除過期結果。第一版工作區只接受靜態圖片，尚不包含影片播放或持續追蹤。
+成功分析後，在結果頁尾的 **Export result（匯出結果）**區使用 **Save Markdown（儲存 Markdown）**或 **Save JSON（儲存 JSON）**，並在儲存對話框選擇位置。Markdown方便閱讀與分享，JSON保留供後續處理的結構化欄位；頁尾沿用Yun共用介面樣式。
+
+每份匯出固定記錄該次已完成的分析：來源 basename（僅檔名）、來源類型、送出時的問題與引擎、任務、回答、依據與不確定性、影格中繼資料、使用裁切時的區域資料，以及結果建立時間。影片影格記錄實際解碼的PTS；裁切保留原始影格與區域資訊。OCR記錄Vision引擎且不含問題。完成後修改輸入框或引擎，不會改寫先前結果；要取得新設定的結果，需再次分析。
+
+匯出不嵌入圖片位元組，也不附來源檔案URL或目錄路徑；仍包含來源檔名與分析文字，可能帶有影像中的個人資訊，分享前請先檢視。這份快照記錄模型輸出，不是相機動作已發生的證明。
+
+#### build22圖片工作區歷史紀錄
+
+build22曾在真App、無相機條件下通過Apple問答、MLX計數與定位、Vision OCR、取消、換圖及過期結果清除；軟體／打包gate及三語UI檢查也已通過。這些結果不驗證build23新增的影片、區域或匯出功能。
+
+![build22開發版圖片工作區歷史截圖](../images/image-workspace-zh-Hant.png)
+
+*build22歷史截圖；匯入圖片與分析內容已隱去。畫面不包含build23的媒體、區域與匯出控制，也不是公開beta1的介面。*
 
 ### build22開發版：本次任務與相機權限分開
 
@@ -99,7 +114,7 @@ Roll 標為**實驗性**，數值是裝置控制單位，不是已校準的物�
 
 較早的混合路由依可用控制權選擇流程，尚未區分本次任務模式。一次build16真機任務以38.039秒完成，11項檢查通過；MLX順序為`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`，只有一次raw200縮放並取得verified讀回。App再取新影格交給Apple，這不是額外的模型工具呼叫。其後恢復raw100及manual。
 
-這是build16單一有界案例的證據，不是build22新增的硬體驗收，也不代表Apple曾獨立控制相機。公開beta1維持build9，詳見[硬體紀錄](../HARDWARE_ACCEPTANCE.md)。
+這是build16單一有界案例的證據，不是build22或build23新增的硬體驗收，也不代表Apple曾獨立控制相機。公開beta1維持build9，詳見[硬體紀錄](../HARDWARE_ACCEPTANCE.md)。
 
 ## MCP 與 CLI
 
@@ -111,7 +126,7 @@ Roll 標為**實驗性**，數值是裝置控制單位，不是已校準的物�
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --question '讀取畫面上可見的標籤。'
 ```
 
-build22開發版CLI以 `ask --intent observe|assistFraming` 明確指定本次任務；省略時預設為 `observe`。例如：
+開發版CLI自build22起以 `ask --intent observe|assistFraming` 明確指定本次任務；省略時預設為 `observe`。例如：
 
 ```sh
 '/Applications/Pocket 3 Controller.app/Contents/MacOS/pocket3' ask --engine apple --intent observe --question '畫面中有什麼？'
@@ -119,7 +134,7 @@ build22開發版CLI以 `ask --intent observe|assistFraming` 明確指定本次�
 
 `assistFraming`仍需要符合條件的相機控制權與能力。Debug版 `evaluate-workflow` 的模擬相機也接受相同intent，省略時同樣只觀察；模擬動作不是硬體證據。
 
-MCP維持六個基礎相機工具：`camera_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。CLI的`ask`、圖片檔案分析及評測入口沒有另包成新的MCP工具。
+MCP維持六個基礎相機工具：`camera_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。CLI的`ask`、媒體檔案分析及評測入口沒有另包成新的MCP工具。
 
 MCP 縮放先取得 `camera_status.capture.sessionID`，以 `expectedSessionID` 傳給 `camera_zoom_status`，再選擇符合其 minimum／maximum／step 刻度的整數 `rawValue` 呼叫 `camera_set_zoom`。檢查 `completed` 與 `verified`，再取得新影格。取消或未確認的動作不能觸發自動連續重試。
 
@@ -130,6 +145,8 @@ MCP 縮放先取得 `camera_status.capture.sessionID`，以 `expectedSessionID` 
 | 找不到相機 | 檢查 USB 資料連接，並在機身選擇 Webcam。 |
 | 列出相機但沒有預覽 | 檢查相機權限；若另一個取像 App 占用裝置，先結束它，再以 1080p30 NV12 重連。 |
 | MCP 取像被拒絕 | 保持 App 已連接，並先選擇「只允許觀察」。 |
+| 本機媒體無法開啟，或讀不到指定影片影格 | 選擇本機磁碟上可讀、包含可解碼視訊軌的檔案，或嘗試片段中的其他時間點；靜態圖片不得超過8 MB。 |
+| 換影格或區域後結果與匯出控制消失 | 輸入改變後會清除舊結果，請重新分析目前影格與區域。 |
 | 模型不可用 | 檢查系統模型是否可用，或完成選配 MLX 模型下載。 |
 | AF、快速回中或翻轉不可用 | 這些 App 能力尚未完成，單純配對不會啟用它們。 |
 | 電量持續下降 | 核對機身電量與供電連接；USB 配置值不是電流實測值。 |

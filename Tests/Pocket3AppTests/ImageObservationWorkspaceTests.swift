@@ -166,13 +166,24 @@ private actor WorkspaceFixture {
             try changedPixels(hiddenMarker, hiddenNoMarker, region: CGRect(x: 0, y: 0, width: 400, height: 300))
         }.value
         #expect(hiddenDifference == 0)
+        let region = try NormalizedImageRegion(x: 0.1, y: 0.2, width: 0.6, height: 0.5)
+        let withRegion = try await renderPreview(image, point: nil, redacted: false, region: region)
+        let regionDifference = try await Task.detached {
+            try changedPixels(withRegion, withoutMarker, region: CGRect(x: 0, y: 0, width: 400, height: 300))
+        }.value
+        #expect(regionDifference > 100)
+        let hiddenRegion = try await renderPreview(image, point: nil, redacted: true, region: region)
+        let hiddenRegionDifference = try await Task.detached {
+            try changedPixels(hiddenRegion, hiddenNoMarker, region: CGRect(x: 0, y: 0, width: 400, height: 300))
+        }.value
+        #expect(hiddenRegionDifference == 0)
     }
 }
 
 private struct RenderedImage: @unchecked Sendable { let image: CGImage }
 
-@MainActor private func renderPreview(_ image: NSImage, point: CGPoint?, redacted: Bool) async throws -> RenderedImage {
-    let view = NSHostingView(rootView: ImportedImagePreview(image: image, imageSize: .init(width: 160, height: 100), point: point, redacted: redacted))
+@MainActor private func renderPreview(_ image: NSImage, point: CGPoint?, redacted: Bool, region: NormalizedImageRegion? = nil) async throws -> RenderedImage {
+    let view = NSHostingView(rootView: ImportedImagePreview(image: image, imageSize: .init(width: 160, height: 100), point: point, redacted: redacted, region: region))
     return try await renderView(view, size: CGSize(width: 400, height: 300))
 }
 private func changedPixels(_ a: RenderedImage, _ b: RenderedImage, region: CGRect) throws -> Int {

@@ -21,6 +21,7 @@ extension FramePacket {
         let id = UUID().uuidString
         var info = FrameInfo(id: id, sessionID: "fixture-" + id, deviceID: "local-evaluation", receivedAt: Date(), receivedUptime: ProcessInfo.processInfo.systemUptime, presentationTime: 0, width: image.width, height: image.height)
         info.timestampSource = "local_image_import"
+        info.outputPixelFormat = "BGRA"
         return FramePacket(pixelBuffer: buffer, info: info)
     }
 }
