@@ -4,7 +4,7 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9** and separately labels development features. **Build 23 is in development; its actual App smoke test and complete release gate are pending.** Build 22's passed offline, packaged-App and UI checks, screenshots and model results are historical evidence. Neither development build is a published download, and the build 16 hardware result does not verify build 23 hardware behaviour.
+This guide covers published **0.0.1 beta 1, build 9** and separately labels verified development build 23. **Build 23 passed the complete software/package gate and the installed App media-workspace gate.** The verified source is `b2c32b86e6f552cf6c37a830a8bd5dae4a5f12bb` and the verified App executable SHA-256 is `4c719cc7cd9e78483c0aedf162a127732fae1323e79fb0bec5c83a11d4ff2f0e`. The media checks used synthetic image/video; physical camera/audio/movement, published updates, Developer ID signing and notarisation remain outside those gates. Build 23 is not a published download. Build 22's checks, screenshots and model results remain historical evidence, and its build 16 hardware result does not establish full build 23 hardware behaviour.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
@@ -122,9 +122,13 @@ the corresponding system model available. MLX Qwen 3.5 is optional: select its
 download action and allow space for roughly 3.1 GB of model files. The download
 requires a network connection; inference uses the locally available model.
 
-### Build 23 development: images, selected video frames and areas
+### Build 23 verified development: images, selected video frames and areas
 
-This extends build 22's image workspace. Build 23 source implements the workflow below; actual App and complete release-gate verification are pending. The local offline media regression log records 72 tests across six suites passing, but it is development evidence rather than the actual App smoke test or the complete release gate. These features are not included in published beta 1 build 9.
+This extends build 22's image workspace. Build 23 source and the installed App passed the complete gate and the actual media-workspace check. The final gate listed 537 checks, executed 534 and skipped 3 opt-in checks (Intelligence 44, Evaluation 1, Core 420, App 72); it also covered 59 UI captures in three languages, seven Yun files, copied-App MLX/Core AI inference and memory release, and ZIP/DMG/signature checks. The media gate and manual smoke used synthetic image/video and passed ROI MLX count 1 with an uncertainty warning, Vision OCR `FRAME B`, Apple answer `FRAME B`, JSON/Markdown export, and rapid-seek cancellation with the displayed actual video time at 1.5 s. Redacted renders covered all three languages, and camera frames, session and access stayed unchanged. These features are not included in published beta 1 build 9.
+
+![Verified development build 23 media workspace](images/media-workspace-en.png)
+
+*Build 23 media workspace after analysing one selected video frame. The imported frame, filename, question and result are hidden in this public UI capture.*
 
 1. Choose **Media file** as the observation source, then **Open media**. Select a readable local image of up to 8 MB or a local video containing a video track. **Replace media** opens another file and clears the previous analysis and selected area. Video support depends on macOS being able to decode the file; a filename extension alone does not establish support.
 2. For a video, use the **Video time** slider or **−1 s / +1 s** buttons to choose a frame. Release the slider and wait for the preview to update before analysing. The displayed time returns to the decoded frame's actual presentation timestamp (PTS), which may differ from the requested time. The result describes that one frame; this workspace does not play the video, analyse audio, summarise events across time or continuously track a subject.
@@ -145,7 +149,7 @@ Exports do not embed image bytes or the source file's URL or directory path. The
 
 #### Historical build 22 image workspace
 
-Build 22's actual App smoke test passed Apple questions, MLX counting and location, Vision OCR, cancellation, image replacement and stale-result clearing without a camera. Its software/package gate and three-language UI review also passed. Those results do not verify build 23's video, area or export additions.
+Build 22's actual App smoke test passed Apple questions, MLX counting and location, Vision OCR, cancellation, image replacement and stale-result clearing without a camera. Its software/package gate and three-language UI review also passed; its benchmark and public UI-only screenshot remain historical. Build 23's video, area and export additions are verified by the gates described above.
 
 ![Historical development build 22 image workspace](images/image-workspace-en.png)
 
@@ -162,13 +166,17 @@ For the **camera** source, select **Observe only** or **Assist framing** for the
 | MLX + Observe only | MLX observes without movement or zoom tools. |
 | MLX + Assist framing | MLX receives only the adjustment tools allowed by the existing access and capability checks. |
 
-The initial task mode is observation. Models are not downloaded automatically. Assistance that needs an absent MLX model reports the requirement; observation with Apple does not require that download. An engine role never proves that an action occurred: check the actual action result and its readback. Build 22's offline routing, CLI and UI checks passed; no new physical camera adjustment was tested.
+The initial task mode is observation. Models are not downloaded automatically. Assistance that needs an absent MLX model reports the requirement; observation with Apple does not require that download. An engine role never proves that an action occurred: check the actual action result and its readback. Build 22's offline routing, CLI and UI checks passed; its verification did not include a new physical camera adjustment.
 
 ### Historical build 16 hardware result
 
 The earlier mixed-model route selected control from available access rather than an explicit task mode. One build 16 live-camera run completed in 38.039 seconds with 11 checks passing: MLX used `capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`, submitted one raw-200 zoom, and received verified readback. The App then refreshed the frame for Apple; that refresh was not an extra model tool call. Raw 100 and manual access were restored.
 
-This is evidence for that bounded build 16 case, not new build 22 or build 23 hardware acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
+This is evidence for that bounded build 16 case, not full build 22 or build 23 hardware acceptance or Apple independently controlling the camera. Published beta 1 remains build 9. See the [hardware record](HARDWARE_ACCEPTANCE.md).
+
+### Bounded build 23 hardware checks
+
+Separate hardware checks covered only the declared observation and framing paths. With standing control permission, an MLX observe-intent run used `read_visible_text` only: it used no write tools and made no pan, tilt or zoom change, then restored manual access on the same session. An Apple observe attempt hit the system safety guardrails; cleanup was verified. Assist framing used MLX `camera_zoom_status → camera_set_zoom` for raw target 110; independent readback was 109 within tolerance 1, then raw 100 and manual access were restored on the same session with no active motion. The camera capture was 1920 × 1080 at 30 fps in NV12, approximately 30 fps. These checks do not validate full gimbal, preset, focus or camera-settings behaviour.
 
 ## MCP and CLI
 

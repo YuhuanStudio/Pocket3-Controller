@@ -4,7 +4,7 @@
 
 [文档入口](README.md) · [项目概览](../../README.zh-Hans.md)
 
-本指南涵盖已发布的 **0.0.1 beta 1，build 9**，并单独标明开发功能。**build23仍在开发，真实App基本流程测试与完整发行gate待验。** build22已通过的离线软件、打包App和UI检查，以及截图与模型结果，均保留为历史证据。这两个开发版都不是公开下载；build16硬件结果不代表build23真机行为已验证。停用或标为实验性的控制，不表示对应机身功能已支持。
+本指南涵盖已发布的 **0.0.1 beta 1，build 9**，并单独标明已验证的build23开发版。**build23已通过完整软件／打包gate与已安装App的媒体工作区gate。**验证source为 `b2c32b86e6f552cf6c37a830a8bd5dae4a5f12bb`，App执行文件SHA-256为 `4c719cc7cd9e78483c0aedf162a127732fae1323e79fb0bec5c83a11d4ff2f0e`。媒体检查使用合成图片／视频；真机音视频／运动、正式更新、Developer ID签署及公证不在这些gate内。build23仍不是公开下载；build22的检查、截图与模型结果保留为历史证据，build16硬件结果也不代表build23已完成完整真机验收。停用或标为实验性的控制，不表示对应机身功能已支持。
 
 ## 安装与首次启动
 
@@ -68,9 +68,13 @@ Roll 标为**实验性**，数值是设备控制单位，不是已校准的物�
 
 在「AI 引擎与接入」选择引擎。Apple Foundation Models 需要相应系统模型可用。MLX Qwen 3.5 为可选，通过下载操作取得，预留约 3.1 GB 模型空间。下载需要网络，推理使用已在本地的模型。
 
-### build23开发版：图片、指定视频帧与区域
+### build23已验证开发版：图片、指定视频帧与区域
 
-此版本扩展build22的图片工作区。以下流程已在build23源码实现，真实App及完整发行gate仍待验证。本地离线媒体回归记录显示六个测试套件共72项通过，但那只是开发证据，不是真实App基本流程测试或完整发行gate。已发布的beta1 build9不包含这些功能。
+此版本扩展build22的图片工作区。build23源码与已安装App已通过完整gate及实际媒体工作区检查。最终gate列出537项、执行534项、3项可选跳过（Intelligence 44、Evaluation 1、Core 420、App 72）；另完成59份三语UI采集、7个Yun文件、复制App的MLX／CoreAI推理与内存释放，以及ZIP／DMG／签名检查。媒体gate与手动基本流程只使用合成图片／视频，通过ROI的MLX计数1但带不确定警告、Vision OCR `FRAME B`、Apple回答 `FRAME B`、JSON／Markdown导出，以及快速移动视频帧取消后显示实际视频时间1.5秒。三语隐私遮罩画面通过，离线期间相机帧、session与access保持不变。已发布的beta1 build9不包含这些功能。
+
+![已验证的build23开发版媒体工作区](../images/media-workspace-zh-Hans.png)
+
+*build23分析单一指定视频帧后的媒体工作区；公开界面截图已隐藏导入帧、文件名、问题与结果。*
 
 1. 把观察来源切为 **Media file（媒体文件）**，点击 **Open media（打开媒体）**，选择不超过8 MB的可读本地图片，或含有视频轨的本地视频。**Replace media（更换媒体）**会打开另一个文件，并清除前一次分析和选取区域。视频需能由macOS解码，扩展名本身不保证支持。
 2. 视频可用 **Video time（视频时间）**滑块或 **−1 s／+1 s** 按钮选取帧。松开滑块，等待预览更新后再分析；显示时间会回到实际解码帧的呈现时间戳（PTS），可能与请求的时间不同。结果只描述该帧；工作区不播放视频、不分析音频、不跨时间总结事件，也不持续跟踪主体。
@@ -91,7 +95,7 @@ Roll 标为**实验性**，数值是设备控制单位，不是已校准的物�
 
 #### build22图片工作区历史记录
 
-build22曾在真实App、无相机条件下通过Apple问答、MLX计数与定位、Vision OCR、取消、换图及过期结果清除；软件／打包gate及三语UI检查也已通过。这些结果不验证build23新增的视频、区域或导出功能。
+build22曾在真实App、无相机条件下通过Apple问答、MLX计数与定位、Vision OCR、取消、换图及过期结果清除；软件／打包gate及三语UI检查也已通过，benchmark与公开纯UI截图保留为历史证据。build23新增的视频、区域及导出功能已由上述gate验证。
 
 ![build22开发版图片工作区历史截图](../images/image-workspace-zh-Hans.png)
 
@@ -114,7 +118,11 @@ build22曾在真实App、无相机条件下通过Apple问答、MLX计数与定�
 
 较早的混合路由根据可用控制权选择流程，尚未区分本次任务模式。一次build16真机任务以38.039秒完成，11项检查通过；MLX顺序为`capture_frame → camera_zoom_status → camera_set_zoom → capture_frame`，只有一次raw200缩放并取得verified读回。App再取新画面交给Apple，这不是额外的模型工具调用。之后恢复raw100及manual。
 
-这是build16单个有界案例的证据，不是build22或build23新增的硬件验收，也不代表Apple曾独立控制相机。公开beta1维持build9，详见[硬件记录](../HARDWARE_ACCEPTANCE.md)。
+这是build16单个有界案例的证据，不是完整build22或build23硬件验收，也不代表Apple曾独立控制相机。公开beta1维持build9，详见[硬件记录](../HARDWARE_ACCEPTANCE.md)。
+
+### build23有界硬件检查
+
+另外的硬件检查只涵盖已声明的观察与协助取景路径。MLX observe intent在现有control权限下只使用 `read_visible_text`，没有write工具，也没有改变pan、tilt或zoom，之后在同一session恢复manual。Apple observe尝试触发系统安全防护，清理已验证。Assist framing的MLX流程以 `camera_zoom_status → camera_set_zoom` 送出raw110目标；独立读回为109、在容许误差1内，之后于同一session恢复raw100与manual，且没有active motion。相机格式为1920 × 1080、NV12、30 fps，观察吞吐约30 fps。这些检查不代表完整云台、预设动作、对焦或机身设置验收。
 
 ## MCP 与 CLI
 

@@ -1,0 +1,40 @@
+{
+  "appVersion": "0.0.1-beta.2",
+  "buildVersion": "23",
+  "sourceCommit": "b2c32b86e6f552cf6c37a830a8bd5dae4a5f12bb",
+  "appExecutableSHA256": "4c719cc7cd9e78483c0aedf162a127732fae1323e79fb0bec5c83a11d4ff2f0e",
+  "releaseStatus": "development preview; published beta 1 build 9 unchanged",
+  "method": "Actual AppKit media workspace after selected-video-frame analysis; imported pixels, filename, question, answer, evidence and marker omitted at render time",
+  "images": [
+    {
+      "file": "docs/images/media-workspace-en.png",
+      "language": "en",
+      "width": 2360,
+      "height": 1440,
+      "cameraPreviewIncluded": false,
+      "importedImageIncluded": false,
+      "privateObservationContentIncluded": false,
+      "sha256": "a13c0b93c9b0ce30a07ceaebb5086f7fd1e1eb93f26a902f716d38ffc2ff8edc"
+    },
+    {
+      "file": "docs/images/media-workspace-zh-Hant.png",
+      "language": "zh-Hant",
+      "width": 2360,
+      "height": 1440,
+      "cameraPreviewIncluded": false,
+      "importedImageIncluded": false,
+      "privateObservationContentIncluded": false,
+      "sha256": "bdfb9f44dcda9feed8b3862339f0e50554d3e7f60c79a373bf924e9ae20226a6"
+    },
+    {
+      "file": "docs/images/media-workspace-zh-Hans.png",
+      "language": "zh-Hans",
+      "width": 2360,
+      "height": 1440,
+      "cameraPreviewIncluded": false,
+      "importedImageIncluded": false,
+      "privateObservationContentIncluded": false,
+      "sha256": "a0bd15e8a5cb81d716dabec5cd92c5ad08b69b9020dc763cb65b35a20e96bb65"
+    }
+  ]
+}

@@ -13,9 +13,10 @@
 - [x] build21新路徑完整軟體gate通過：492項Release、59張UI、三語與7個Yun共用設計檔、搬移App後實際MLX/CoreAI推論、ZIP/DMG簽署和payload。[本輪封存](artifacts/offline-build21/final/verification-gate.json)
 - [x] build22修正模型nil表示並完成相同36次重測：Apple12/18，MLX14/18；Apple六題不存在目標均回空位置。MLX仍有3次host拒絕，不能當成視覺幻覺；單圖pilot亦顯示輸出有變動，不能宣稱全面穩定。[結果](Evaluation/Grounding/results/build22-typed.json)
 - [x] build22離線照片工作區：開啟／替換圖片、問答、計數、模型定位、OCR、取消／舊結果隔離與三語介面。真App流程通過，使用合成圖；相機仍0影格、session與access未變。[流程](artifacts/image-workspace/build22/result.json)
-- [x] build22觀察／協助取景分流：全域控制權不再自動觸發MLX控制階段；CLI顯式intent、image mode無硬體工具。stage／tool／直接context拒絕矩陣與3個CLI轉送、7個前置拒絕均通過；新的真機協助流程仍待硬體驗收。
+- [x] build23觀察／協助取景真機分流：全域為control時，MLX observe只用只讀文字工具，pan／tilt／zoom均未變；assistFraming才執行zoom status→set raw110，獨立讀回109符合±1 step，之後確認恢復100／manual／同session。Apple真機observe本次被系統安全護欄拒絕，cleanup通過；不把單次縮放當完整雲台驗收。[純觀察](artifacts/hardware-build23/mlx-observe-intent-summary.json)、[協助取景](artifacts/hardware-build23/mlx-assist-zoom-summary.json)
 - [x] build22完整gate與安裝：503項執行通過、3項opt-in跳過；59張UI、3語、7個Yun共用設計檔、搬移後MLX/CoreAI推論、ZIP/DMG驗證通過。另6項照片workspace回歸包含真實RootView隱私／marker渲染；3張照片工作區公開UI已逐張看過，所有圖片內容與分析均隱去。[gate](artifacts/offline-workspace-build22/final/verification-gate.json)、[安裝](artifacts/offline-workspace-build22/installed.json)、[公開截圖manifest](docs/images/image-workspace-build22.json)
-- [ ] build23媒體工作區：本機影片時間點、實際PTS與方向、ROI拖選裁切／標記映回、JSON／Markdown不可變結果匯出。原始碼與初步測試已完成，待最終App流程與gate。
+- [x] build23媒體工作區：本機影片時間點、實際PTS與方向、VFR／長hold／GOP邊界、ROI拖選裁切／標記映回、JSON／Markdown不可變結果匯出。真App以合成圖片與影片完成MLX ROI計數、Vision OCR、Apple影片影格回答、匯出、快速seek取消與三語隱私截圖；相機狀態在離線gate維持零影格不變。[流程](artifacts/media-workspace-gate-1789044947/result.json)
+- [x] build23完整gate與安裝：534項執行通過、3項opt-in跳過；59張UI、三語、7個Yun共用設計檔、搬移App後MLX/CoreAI推論、ZIP/DMG與簽章通過。已安裝與gate相同的build23。[gate](artifacts/offline-media-build23/final/verification-gate.json)、[截圖manifest](docs/images/media-workspace-build23.json)、[安裝](artifacts/offline-media-build23/installed.json)
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
