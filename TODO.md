@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-09。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 1（build 9）已發布**，目前已安裝 beta 2 開發 build 22；本輪已完成離線照片工作區及真模型評測，沒有使用關閉中的Pocket 3。歷史單次MLX控制＋Apple回答已有真機驗收，原生快速預設及機身設定寫入仍未完成。build 7 的只讀 BLE 設定面板已通過 397 項 Release 測試及完整軟體 gate，原始報告保留於 [build 7 紀錄](artifacts/history/build7-c405cf48/artifacts/verification-gate.json)。各 candidate 的結果分開記錄，不把舊版通過套用到新版。
+更新：2026-09-10。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）為目前發布候選**；build23已完成媒體工作區軟體gate及有界真機觀察／縮放驗收，原生快速預設、點按對焦及機身設定寫入仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。
 
 ## 相機關閉期間：軟體與 AI
 
@@ -22,6 +22,8 @@
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
 
 ## beta 1 發布與整理
+
+- [ ] beta 2 build24 exact-source封版：完整gate、beta1→candidate更新安裝、annotated tag、GitHub prerelease四項資產、公開下載hash／簽章與signed appcast。發布完成後將本項改為證據連結，不移動beta1 tag。
 
 - [x] 使用者選定產品名稱 Pocket 3 Controller、GitHub 儲存庫名稱 `YuhuanStudio/Pocket3-Controller`；內部 bundle ID、簽署身分與設定沿用。
 - [x] build 8 完整軟體 gate：397 項 Release 測試、59 張 UI、三語／Yun 共用設計、搬移後模型推論、更新簽章、ZIP／DMG 驗證通過。[本版 gate](artifacts/beta1-2026-09-09/software/artifacts/verification-gate.json)

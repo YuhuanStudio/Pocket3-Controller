@@ -6,7 +6,7 @@
 
 [![macOS 27](https://img.shields.io/badge/macOS-27-000000?logo=apple&logoColor=white)](#requirements-and-building)
 [![Apple Silicon](https://img.shields.io/badge/Apple-Silicon-555555)](#requirements-and-building)
-[![0.0.1 beta 1](https://img.shields.io/badge/release-0.0.1%20beta%201-blue)](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+[![0.0.1 beta 2](https://img.shields.io/badge/release-0.0.1%20beta%202-blue)](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)
 
 English · [繁體中文](README.zh-Hant.md) · [简体中文](README.zh-Hans.md)
 
@@ -14,7 +14,7 @@ English · [繁體中文](README.zh-Hant.md) · [简体中文](README.zh-Hans.md
 
 <img src="docs/images/window.png" alt="Pocket 3 Controller: camera workspace, manual controls and local AI, with the sensor preview omitted" width="100%">
 
-*Current development UI · beta 2 build 16 · camera preview omitted. Published downloads are beta 1 build 9.*
+*Camera UI captured during beta 2 development; the sensor preview is omitted. The beta 2 build 24 media workspace is shown in the usage guide.*
 
 ## Overview
 
@@ -29,8 +29,8 @@ USB control keeps the Mac on its existing network; no camera Wi-Fi join is neede
 
 | | |
 |---|---|
-| **Published release** | [0.0.1 beta 1 · build 9](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) |
-| **Development branch** | `main` is preparing 0.0.1 beta 2 · build 23; it is not the published beta 1 binary |
+| **Published release** | [0.0.1 beta 2 · build 24](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) |
+| **Release source** | Tag `v0.0.1-beta.2`; later `main` changes may be newer |
 | **Platform** | macOS 27, Apple Silicon, Pocket 3 in USB Webcam mode |
 | **Interfaces** | Main window, menu bar panel, CLI and MCP over stdio |
 | **Languages** | English, Traditional Chinese and Simplified Chinese |
@@ -40,10 +40,10 @@ USB control keeps the Mac on its existing network; no camera Wi-Fi join is neede
 
 | Asset | Download |
 |---|---|
-| Disk image | [Pocket3Controller-0.0.1-beta.1.dmg](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/Pocket3Controller-0.0.1-beta.1.dmg) |
-| ZIP archive | [Pocket3Controller-0.0.1-beta.1.zip](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/Pocket3Controller-0.0.1-beta.1.zip) |
-| SHA-256 checksums | [checksums-0.0.1-beta.1.txt](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/checksums-0.0.1-beta.1.txt) |
-| Release notes | [Features and known limitations](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) |
+| Disk image | [Pocket3Controller-0.0.1-beta.2.dmg](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.2/Pocket3Controller-0.0.1-beta.2.dmg) |
+| ZIP archive | [Pocket3Controller-0.0.1-beta.2.zip](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.2/Pocket3Controller-0.0.1-beta.2.zip) |
+| SHA-256 checksums | [checksums-0.0.1-beta.2.txt](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.2/checksums-0.0.1-beta.2.txt) |
+| Release notes | [Features and known limitations](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) |
 
 1. Download the DMG or ZIP and move **Pocket 3 Controller.app** into **Applications**.
 2. Open the app. This beta is signed with a local development certificate and is
@@ -142,7 +142,7 @@ the window leaves the menu bar service running; quitting ends it.
 </tr>
 </table>
 
-These screenshots show the current beta 2 development interface (build 16), with the sensor preview omitted. They contain no Pocket 3 photographs. Each README uses its own language; the published beta 1 download remains build 9.
+These camera screenshots were captured during beta 2 development, with the sensor preview omitted. They contain no Pocket 3 photographs. The [build 23 media workspace screenshot](docs/guide.md#build-23-verified-development-images-selected-video-frames-and-areas) shows the later file-analysis UI shipped in build 24.
 
 ## MCP and CLI
 
@@ -186,14 +186,14 @@ Building requires full Xcode with the macOS 27 SDK. Scripts use
 ./Scripts/verify.sh --release --ui --models --package
 ```
 
-Build output is `dist/Pocket 3 Controller.app`. Use tag `v0.0.1-beta.1` to reproduce
-beta 1; `main` produces beta 2 development. The full gate relaunches the app and
+Build output is `dist/Pocket 3 Controller.app`. Use tag `v0.0.1-beta.2` to reproduce
+beta 2; `main` may contain later development. The full gate relaunches the app and
 needs the optional MLX model downloaded first. It prepares evaluation fixtures
 automatically and does not open the camera. Finish active app work before running it.
 
 ## Verification
 
-The public beta 1 build is tied to clean source [`21778c0`](https://github.com/YuhuanStudio/Pocket3-Controller/commit/21778c0e6ddec9ec9da017683f74c62177443985).
+The historical public beta 1 build is tied to clean source [`21778c0`](https://github.com/YuhuanStudio/Pocket3-Controller/commit/21778c0e6ddec9ec9da017683f74c62177443985).
 Its release verification includes **397 tests**, **59 UI captures**, shared-design
 and three-language checks, copied-app inference, and ZIP / DMG payload signatures
 and hashes. A separate clean-checkout compilation passed, and the public downloads
@@ -210,7 +210,7 @@ Historical reports retain their original conditions and limitations.
 Start with the [usage guide](docs/guide.md) for everyday operation, or the
 [documentation index](docs/README.md) for validation, design and release records.
 The [device roadmap](docs/DEVICE_CAPABILITY_ROADMAP.md) and [TODO](TODO.md) track
-unfinished work; the [beta 1 release page](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+unfinished work; the [beta 2 release page](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)
 defines the published download. See [Contributing](CONTRIBUTING.md) before changing
 hardware control or shared design behaviour.
 
@@ -220,4 +220,4 @@ YunAudio / YunUI supply the shared design; uvc-util, Kaze and the model projects
 See [NOTICE.md](NOTICE.md) and the licences included in the app. The project's own source has no
 separate open-source licence. Pocket 3 Controller is not an official DJI product.
 
-[Public beta 1 verification summary](docs/releases/0.0.1-beta.1-verification.json)
+[Beta 2 release notes](docs/releases/0.0.1-beta.2.md) · [Historical beta 1 verification summary](docs/releases/0.0.1-beta.1-verification.json)

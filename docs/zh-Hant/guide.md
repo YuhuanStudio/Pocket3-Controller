@@ -4,11 +4,11 @@
 
 [文件入口](README.md) · [專案概觀](../../README.zh-Hant.md)
 
-本指南涵蓋已發布的 **0.0.1 beta 1，build 9**，並另外標明已驗證的build23開發版。**build23已通過完整軟體／打包gate與已安裝App的媒體工作區gate。**驗證source為 `b2c32b86e6f552cf6c37a830a8bd5dae4a5f12bb`，App執行檔SHA-256為 `4c719cc7cd9e78483c0aedf162a127732fae1323e79fb0bec5c83a11d4ff2f0e`。媒體檢查使用合成圖片／影片；真機影音／運動、正式更新、Developer ID簽署及公證不在這些gate內。build23仍不是公開下載；build22的檢查、截圖與模型結果保留為歷史證據，build16硬體結果也不代表build23已完成完整真機驗收。停用或標為實驗性的控制，不表示對應機身功能已支援。
+本指南涵蓋 **0.0.1 beta 2，build 24**，並標明用來驗收媒體工作區與任務分流的build23證據。build24透過tag `v0.0.1-beta.2`發布；後續 `main` 可能更新。超出本次有界檢查的真機影音／運動、Developer ID簽署及公證仍未完成。build22、build16與beta1紀錄保留為歷史證據。停用或標為實驗性的控制，不表示對應機身功能已支援。
 
 ## 安裝與首次啟動
 
-從 [beta 1 發行頁](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 下載 DMG 或 ZIP，把 **Pocket 3 Controller.app** 放入 **Applications**。需要 macOS 27 與 Apple Silicon；發行頁也提供 SHA-256 checksums。
+從 [beta 2 發行頁](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) 下載 DMG 或 ZIP，把 **Pocket 3 Controller.app** 放入 **Applications**。需要 macOS 27 與 Apple Silicon；發行頁也提供 SHA-256 checksums。
 
 此 Beta 使用本機開發憑證，尚未 Apple 公證。若 macOS 阻擋首次啟動，先確認下載來源，再依「系統設定 → 隱私權與安全性 → 仍要打開」提示允許該 App。目前沒有 Homebrew cask；其他 Mac 的首次啟動行為尚未全面驗證。
 

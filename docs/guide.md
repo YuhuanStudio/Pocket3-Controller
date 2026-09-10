@@ -4,12 +4,12 @@ English · [繁體中文](zh-Hant/guide.md) · [简体中文](zh-Hans/guide.md)
 
 [Documentation index](README.md) · [Product overview](../README.md)
 
-This guide covers published **0.0.1 beta 1, build 9** and separately labels verified development build 23. **Build 23 passed the complete software/package gate and the installed App media-workspace gate.** The verified source is `b2c32b86e6f552cf6c37a830a8bd5dae4a5f12bb` and the verified App executable SHA-256 is `4c719cc7cd9e78483c0aedf162a127732fae1323e79fb0bec5c83a11d4ff2f0e`. The media checks used synthetic image/video; physical camera/audio/movement, published updates, Developer ID signing and notarisation remain outside those gates. Build 23 is not a published download. Build 22's checks, screenshots and model results remain historical evidence, and its build 16 hardware result does not establish full build 23 hardware behaviour.
+This guide covers **0.0.1 beta 2, build 24** and identifies the build 23 evidence used to accept its new media and task-routing features. Build 24 is distributed through tag `v0.0.1-beta.2`; later `main` changes may be newer. Physical camera/audio/movement beyond the bounded checks, Developer ID signing and notarisation remain unfinished. Earlier build 22, build 16 and beta 1 records remain historical evidence.
 A disabled or experimental control is not a promise that its camera function is supported.
 
 ## Install and first launch
 
-Download the DMG or ZIP from the [beta 1 release](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+Download the DMG or ZIP from the [beta 2 release](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)
 and move **Pocket 3 Controller.app** into **Applications**. macOS 27 and Apple
 Silicon are required. The release page also provides SHA-256 checksums.
 

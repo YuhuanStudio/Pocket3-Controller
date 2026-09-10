@@ -6,17 +6,17 @@
 
 [![macOS 27+](https://img.shields.io/badge/macOS-27%2B-000000?logo=apple&logoColor=white)](#系統需求與建置)
 [![Apple Silicon](https://img.shields.io/badge/Apple-Silicon-555555?logo=apple&logoColor=white)](#系統需求與建置)
-[![0.0.1 beta 1](https://img.shields.io/badge/release-0.0.1%20beta%201-blue)](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+[![0.0.1 beta 2](https://img.shields.io/badge/release-0.0.1%20beta%202-blue)](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)
 
 [English](README.md) · 繁體中文 · [简体中文](README.zh-Hans.md)
 
-[下載 beta 1](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) · [文件](docs/zh-Hant/README.md) · [回報問題](https://github.com/YuhuanStudio/Pocket3-Controller/issues)
+[下載 beta 2](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) · [文件](docs/zh-Hant/README.md) · [回報問題](https://github.com/YuhuanStudio/Pocket3-Controller/issues)
 
 </div>
 
 <img src="docs/images/window-zh-Hant.png" alt="Pocket 3 Controller 主視窗：相機連線、預覽區、控制與狀態列；不含真實相機影像" width="100%">
 
-*目前開發介面：beta 2 build 16，已隱藏取景；公開下載為 beta 1 build 9。*
+*相機介面攝於 beta 2 開發期間，已隱去取景；build 24 的媒體工作區見完整指南。*
 
 ## 概觀
 
@@ -26,8 +26,8 @@ Pocket 3 Controller 讓 Mac 成為 Pocket 3 的操作介面：看預覽、按住
 
 | | |
 |---|---|
-| **目前下載** | **0.0.1 beta 1，build 9**，tag `v0.0.1-beta.1` |
-| **開發分支** | `main` 正在開發 **beta 2，build 23**；不是已發布版本 |
+| **目前下載** | **0.0.1 beta 2，build 24**，tag `v0.0.1-beta.2` |
+| **發布來源** | 以 `v0.0.1-beta.2` 重現；後續 `main` 可能更新 |
 | **平台** | Apple Silicon、macOS 27 或更新 |
 | **介面** | 原生 App、選單列、CLI、MCP stdio |
 | **控制路徑** | USB 預覽及手動 pan／tilt；BLE 提供另行配對的只讀回報 |
@@ -37,14 +37,14 @@ Pocket 3 Controller 讓 Mac 成為 Pocket 3 的操作介面：看預覽、按住
 
 ## 下載與安裝
 
-從已發布的 [0.0.1 beta 1](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 選擇：
+從已發布的 [0.0.1 beta 2](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) 選擇：
 
 | 檔案 | 用途 |
 |---|---|
-| [DMG](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/Pocket3Controller-0.0.1-beta.1.dmg) | 開啟磁碟映像，將 App 拖到 Applications |
-| [ZIP](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/Pocket3Controller-0.0.1-beta.1.zip) | 解壓後將 App 放到 Applications |
-| [SHA-256 checksums](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.1/checksums-0.0.1-beta.1.txt) | 比對下載檔案的完整性 |
-| [Release 說明](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) | 本版功能與已知限制 |
+| [DMG](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.2/Pocket3Controller-0.0.1-beta.2.dmg) | 開啟磁碟映像，將 App 拖到 Applications |
+| [ZIP](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.2/Pocket3Controller-0.0.1-beta.2.zip) | 解壓後將 App 放到 Applications |
+| [SHA-256 checksums](https://github.com/YuhuanStudio/Pocket3-Controller/releases/download/v0.0.1-beta.2/checksums-0.0.1-beta.2.txt) | 比對下載檔案的完整性 |
+| [Release 說明](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) | 本版功能與已知限制 |
 
 1. 把 **Pocket 3 Controller.app** 放入 Applications，再開啟 App。
 2. 用可傳輸資料的 USB 線連接 Pocket 3，在機身選擇 **Webcam** 模式。
@@ -98,7 +98,7 @@ AI 存取預設關閉。選擇「只允許觀察」後，外部 MCP／CLI 才能
 
 ## 介面
 
-以下截圖為目前 beta 2 開發介面（build 16），取景畫面已隱藏，不含 Pocket 3 實拍照片；公開 beta 1 安裝包仍為 build 9。
+以下相機截圖攝於 beta 2 開發期間，取景畫面已隱去，不含 Pocket 3 實拍照片；[完整指南](docs/zh-Hant/guide.md#build23已驗證開發版圖片指定影片影格與區域)另有 build 23 媒體介面，功能已納入 build 24。
 
 <table>
 <tr>
@@ -155,7 +155,7 @@ cd Pocket3-Controller
 open 'dist/Pocket 3 Controller.app'
 ```
 
-`main` 是 beta 2 開發版本。重現已發布 beta 1 時，在建置前使用 `git checkout v0.0.1-beta.1`。建置腳本會依序解析依賴、套用已有相容修補、組裝資源及本機簽署；不需要另外複製研究 checkout。
+重現已發布 beta 2 時，在建置前使用 `git checkout v0.0.1-beta.2`；`main` 可能包含後續開發。建置腳本會依序解析依賴、套用已有相容修補、組裝資源及本機簽署；不需要另外複製研究 checkout。
 
 ## 驗證
 
@@ -182,4 +182,4 @@ Copyright © 2026 Yuhuan Studio。專案自有來源尚未授予獨立開源授�
 
 YunAudio／YunUI 設計、uvc-util、Kaze 協定參考、Apple Core AI 支援及模型權重各自保留原授權；Swift 依賴授權隨 App 放在 `Contents/Resources/Licenses`。[第三方說明](ThirdParty/README.md) · [模型歸屬](ThirdParty/ModelWeights/NOTICE.md)
 
-[beta 1 公開驗證摘要](docs/releases/0.0.1-beta.1-verification.json)
+[beta 2 發行說明](docs/releases/0.0.1-beta.2.md) · [beta 1 歷史公開驗證摘要](docs/releases/0.0.1-beta.1-verification.json)

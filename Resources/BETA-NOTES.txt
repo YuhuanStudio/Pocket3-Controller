@@ -1,8 +1,10 @@
-Pocket 3 Controller — 0.0.1 beta 2（開發中，尚未發布）
+Pocket 3 Controller — 0.0.1 beta 2
 Yuhuan Studio
 
 需要 Apple Silicon 與 macOS 27。以 USB 接上 Pocket 3，並在機身選擇 Webcam 模式。
 App 內提供相機預覽、單張擷取、手動雲台、縮放、本機 AI、MCP 與 CLI。
+沒有相機時可分析本機圖片或指定影片影格、框選區域，並匯出 JSON／Markdown 結果。
+即時相機的「只允許觀察」與「協助取景」是分開的任務選擇。
 不需要讓 Mac 加入相機 Wi-Fi。
 
 本版限制
