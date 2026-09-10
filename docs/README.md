@@ -4,8 +4,7 @@ English · [繁體中文](zh-Hant/README.md) · [简体中文](zh-Hans/README.md
 
 [Back to the product overview](../README.md)
 
-The published download is **0.0.1 beta 1, build 9**. The `main` branch is preparing
-**beta 2, build 21**, with control-validation and offline AI work in progress. Start with the [release page](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1)
+The published download is **0.0.1 beta 2, build 24**. Later `main` changes may be newer. Start with the [release page](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)
 for the capabilities and limitations of the version you installed.
 
 ## Using the app
@@ -41,6 +40,7 @@ preview, controls, Bluetooth, local AI, MCP and troubleshooting.
 | Document | What it covers |
 |---|---|
 | [Release workflow](RELEASE.md) | Source provenance, package verification, GitHub assets and signed-feed publication |
+| [Beta 2 public verification](releases/0.0.1-beta.2-verification.json) | Exact source, public asset hashes, signed feed, update installation and remaining limits |
 | [Local development signing](LOCAL_SIGNING.md) | Stable local signing identity; it is not Developer ID or notarization |
 | [Test artifact policy](TEST_ARTIFACTS.md) | Temporary captures, preservation of reports and hash receipts for removed historical media |
 | [Rights and third-party notices](../NOTICE.md) | The project's source rights and each dependency's licence |

@@ -4,7 +4,7 @@
 
 ← [專案首頁](../../README.zh-Hant.md)
 
-目前下載是 **0.0.1 beta 1，build 9**；`main` 正在開發 **beta 2，build 21**。已安裝版本的功能範圍，以 [beta 1 發行頁](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 為準。
+目前下載是 **0.0.1 beta 2，build 24**；後續 `main` 可能更新。已安裝版本的功能範圍，以 [beta 2 發行頁](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) 為準。
 
 ## 使用 App
 
@@ -43,6 +43,7 @@
 
 | 文件 | 內容 |
 |---|---|
+| [beta 2公開驗證](../releases/0.0.1-beta.2-verification.json) | 確切來源、公開資產hash、signed feed、更新安裝與剩餘限制 |
 | [發布流程](../RELEASE.md) | 來源身分、安裝包驗證、GitHub assets 及 signed feed 發布 |
 | [本機開發簽署](../LOCAL_SIGNING.md) | 固定本機簽署身分；不等於 Developer ID 或公證 |
 | [測試產物政策](../TEST_ARTIFACTS.md) | 臨時擷取、保留報告，以及移除舊媒體後的 hash 紀錄 |

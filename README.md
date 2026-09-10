@@ -220,4 +220,4 @@ YunAudio / YunUI supply the shared design; uvc-util, Kaze and the model projects
 See [NOTICE.md](NOTICE.md) and the licences included in the app. The project's own source has no
 separate open-source licence. Pocket 3 Controller is not an official DJI product.
 
-[Beta 2 release notes](docs/releases/0.0.1-beta.2.md) · [Historical beta 1 verification summary](docs/releases/0.0.1-beta.1-verification.json)
+[Beta 2 release notes](docs/releases/0.0.1-beta.2.md) · [Public beta 2 verification summary](docs/releases/0.0.1-beta.2-verification.json) · [Historical beta 1 verification](docs/releases/0.0.1-beta.1-verification.json)

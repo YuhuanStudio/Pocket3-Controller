@@ -182,4 +182,4 @@ Copyright © 2026 Yuhuan Studio。專案自有來源尚未授予獨立開源授�
 
 YunAudio／YunUI 設計、uvc-util、Kaze 協定參考、Apple Core AI 支援及模型權重各自保留原授權；Swift 依賴授權隨 App 放在 `Contents/Resources/Licenses`。[第三方說明](ThirdParty/README.md) · [模型歸屬](ThirdParty/ModelWeights/NOTICE.md)
 
-[beta 2 發行說明](docs/releases/0.0.1-beta.2.md) · [beta 1 歷史公開驗證摘要](docs/releases/0.0.1-beta.1-verification.json)
+[beta 2 發行說明](docs/releases/0.0.1-beta.2.md) · [beta 2 公開驗證摘要](docs/releases/0.0.1-beta.2-verification.json) · [beta 1 歷史驗證](docs/releases/0.0.1-beta.1-verification.json)

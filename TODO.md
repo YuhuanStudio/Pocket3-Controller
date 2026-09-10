@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-10。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）為目前發布候選**；build23已完成媒體工作區軟體gate及有界真機觀察／縮放驗收，原生快速預設、點按對焦及機身設定寫入仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。
+更新：2026-09-10。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）已發布**；build23完成媒體工作區與有界真機觀察／縮放驗收，build24以相同功能做exact-source封版、更新安裝與公開簽章驗證。原生快速預設、點按對焦及機身設定寫入仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。
 
 ## 相機關閉期間：軟體與 AI
 
@@ -23,7 +23,7 @@
 
 ## beta 1 發布與整理
 
-- [ ] beta 2 build24 exact-source封版：完整gate、beta1→candidate更新安裝、annotated tag、GitHub prerelease四項資產、公開下載hash／簽章與signed appcast。發布完成後將本項改為證據連結，不移動beta1 tag。
+- [x] beta 2 build24已發布：exact-source完整gate、beta1→candidate實際Sparkle更新安裝、annotated tag、GitHub prerelease四項資產、未登入公開下載hash、公開Ed25519 feed／ZIP驗簽及signed appcast均通過；beta1 tag與資產未移動。[Release](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)、[公開驗證摘要](docs/releases/0.0.1-beta.2-verification.json)
 
 - [x] 使用者選定產品名稱 Pocket 3 Controller、GitHub 儲存庫名稱 `YuhuanStudio/Pocket3-Controller`；內部 bundle ID、簽署身分與設定沿用。
 - [x] build 8 完整軟體 gate：397 項 Release 測試、59 張 UI、三語／Yun 共用設計、搬移後模型推論、更新簽章、ZIP／DMG 驗證通過。[本版 gate](artifacts/beta1-2026-09-09/software/artifacts/verification-gate.json)

@@ -4,7 +4,7 @@
 
 ← [项目首页](../../README.zh-Hans.md)
 
-目前下载是 **0.0.1 beta 1，build 9**；`main` 正在开发 **beta 2，build 21**。已安装版本的功能范围，以 [beta 1 发行页](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.1) 为准。
+目前下载是 **0.0.1 beta 2，build 24**；后续 `main` 可能更新。已安装版本的功能范围，以 [beta 2 发行页](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2) 为准。
 
 ## 使用 App
 
@@ -43,6 +43,7 @@
 
 | 文件 | 内容 |
 |---|---|
+| [beta 2公开验证](../releases/0.0.1-beta.2-verification.json) | 确切源码、公开资产hash、signed feed、更新安装及剩余限制 |
 | [发布流程](../RELEASE.md) | 来源身份、安装包验证、GitHub assets 及 signed feed 发布 |
 | [本地开发签名](../LOCAL_SIGNING.md) | 固定本地签名身份；不等于 Developer ID 或公证 |
 | [测试产物政策](../TEST_ARTIFACTS.md) | 临时获取、保留报告，以及移除旧媒体后的 hash 记录 |

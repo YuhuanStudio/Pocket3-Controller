@@ -1,0 +1,92 @@
+{
+  "release": "0.0.1-beta.2",
+  "buildVersion": "24",
+  "sourceCommit": "33d9a693255afa8a8b93a71e086cd4cc782a5f4e",
+  "tag": "v0.0.1-beta.2",
+  "tagCommitVerified": true,
+  "appExecutableSHA256": "9bafcb7636e8c1d9f9fbe0b661892ad65fe730f6fb49faa6370255e2fe2734e0",
+  "softwareGate": {
+    "passed": true,
+    "runID": "00a3c070-a037-478d-9317-f08de370d066",
+    "testsListed": 537,
+    "testsExecuted": 534,
+    "optInTestsSkipped": 3,
+    "uiCaptures": 59,
+    "threeLanguages": true,
+    "sharedYunFilesVerified": 7,
+    "copiedAppMLXInference": true,
+    "copiedAppCoreAIInference": true,
+    "mediaWorkspaceGate": true,
+    "zipAndDMGPayloadVerified": true
+  },
+  "updateInstallation": {
+    "passed": true,
+    "runID": "ad9f119fee014330917c7e58ee97aca1",
+    "fromBuild": "9",
+    "toBuild": "24",
+    "scope": "isolated re-signed beta 1 and candidate copies with a loopback signed feed",
+    "archiveDownloaded": true,
+    "installedAndRelaunched": true,
+    "installedCandidateBytesMatch": true,
+    "preferencesPreserved": true,
+    "freshIPC": true,
+    "cleanupComplete": true,
+    "cameraUsed": false
+  },
+  "publicRelease": {
+    "url": "https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2",
+    "publishedAt": "2026-09-10T13:31:23Z",
+    "draft": false,
+    "prerelease": true,
+    "assets": [
+      {
+        "file": "Pocket3Controller-0.0.1-beta.2.zip",
+        "bytes": 39663220,
+        "sha256": "b6bf5d903f98a835907c9e523e22708c26562df931d478c4946680d59e3a7a83"
+      },
+      {
+        "file": "Pocket3Controller-0.0.1-beta.2.dmg",
+        "bytes": 39592960,
+        "sha256": "cabf20a605b20715046c201576cd6c544b166753232324112f80b0dd729eaacf"
+      },
+      {
+        "file": "release-notes.md",
+        "bytes": 36804,
+        "sha256": "f83eb49f2294a0a45a8bed65d0e5fec39bff150dc619bc69c35706db748bf2c4"
+      },
+      {
+        "file": "checksums-0.0.1-beta.2.txt",
+        "bytes": 285,
+        "sha256": "72976e19a5cee947a34393ea4b79e25942fde21a0fe0582fccb819abf7df92be"
+      }
+    ],
+    "unauthenticatedDownloadsMatchPreparedAssets": true
+  },
+  "signedPublicFeedAndZIP": {
+    "feedURL": "https://raw.githubusercontent.com/YuhuanStudio/Pocket3-Controller/main/updates/beta-appcast.xml",
+    "feedBytes": 42799,
+    "feedSHA256": "4c9b2d68a54c37784c2434a712580a18c68014199850126cd19c3331ce20bd22",
+    "feedVersions": [24, 9],
+    "archiveVerified": true,
+    "feedVerified": true,
+    "privateKeyAccess": false
+  },
+  "installedApp": {
+    "buildVersion": "24",
+    "matchesVerifiedBundle": true,
+    "cameraUsedDuringInstallation": false,
+    "phase": "idle",
+    "frames": 0,
+    "access": "manual",
+    "motionActive": false
+  },
+  "notVerified": [
+    "Developer ID and Apple notarisation",
+    "cross-Mac quarantine and first-launch Gatekeeper behaviour",
+    "production-feed update through the unmodified production AppUpdateController UI",
+    "native rapid recenter/flip and App tap autofocus",
+    "complete physical range, speed and stopping calibration",
+    "all advertised video encodings and high-frame-rate modes"
+  ],
+  "privateCameraImagesIncluded": false
+}
