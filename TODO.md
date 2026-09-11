@@ -87,6 +87,7 @@
 
 - [x] 恢復1080×1920@30 NV12，Roll原始值0→1→0有精確穩定回讀、不同的新影格與恢復結果。[單步實測](artifacts/hardware-roll-2026-09-09/one-step/result.json)
 - [ ] Roll移動中停止、物理方向／角度與獨立AI驗證仍未完成；`rollStopValidated`不由Pan/Tilt或靜止保持自動開啟。
+- [x] Roll metrics-only raw baseline：0→1→0精確readback、兩次Stop verified、manual cleanup完成且零影像輸出。這證明setter/readback/restore，不解除moving-stop、物理方向或angle calibration gate。
 - [x] 不改Mac網路，重新配對同一BLE peer，取得電池100%／未充電及新鮮姿態。[遙測](artifacts/hardware-roll-2026-09-09/live-telemetry.json)
 - [x] BLE `00/99`只讀通道取得實際相機回覆：AF-C、WB Auto、曝光Auto／EV0。[三項查詢](artifacts/hardware-roll-2026-09-09/properties/result.json)
 - [x] 一般面板的只讀設定／讀取按鈕及5秒過期處理已完成，build 7 軟體 gate 和三項實機讀值通過。
