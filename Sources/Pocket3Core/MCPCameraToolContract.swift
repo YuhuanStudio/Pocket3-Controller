@@ -12,6 +12,7 @@ public enum MCPCameraToolContract {
     public static let pauseName = "camera_pause"
     public static let compareFramesName = "camera_compare_frames"
     public static let focusStatusName = "camera_focus_status"
+    public static let formatInventoryName = "camera_format_inventory"
     public static let directions = ["left", "right", "up", "down", "home", "front", "back"]
     public static let minimumAngle = Double(Int32.min) / 3600
     public static let maximumAngle = Double(Int32.max) / 3600
@@ -55,10 +56,10 @@ public enum MCPCameraToolContract {
 
     public static func operation(name: String, arguments: JSONValue) throws -> String {
         switch name {
-        case statusName, stopName, pauseName, compareFramesName, focusStatusName:
+        case statusName, stopName, pauseName, compareFramesName, focusStatusName, formatInventoryName:
             let fields = try object(arguments)
             guard fields.isEmpty else { throw BridgeFailure("invalid_camera_arguments", "This tool accepts no arguments") }
-            return name == statusName ? "status" : name == pauseName ? "pause" : name == compareFramesName ? "compare-frames" : name == focusStatusName ? "focus-status" : "stop"
+            return name == statusName ? "status" : name == pauseName ? "pause" : name == compareFramesName ? "compare-frames" : name == focusStatusName ? "focus-status" : name == formatInventoryName ? "format-inventory" : "stop"
         case connectName:
             let fields = try object(arguments)
             guard Set(fields.keys).isSubset(of: ["deviceID", "modeID", "pixelFormat", "outputPolicy"]),

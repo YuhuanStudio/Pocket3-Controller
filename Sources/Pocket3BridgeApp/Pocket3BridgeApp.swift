@@ -189,6 +189,27 @@ final class AppModel {
                     // Read the exact active AVFoundation input capability. This
                     // never requests focus, camera access escalation or BLE.
                     return ServiceReply(id: request.id, result: try .encode(await service.capture.focusCapabilities()))
+                case "format-inventory":
+                    // Discovery reads the selected external camera's advertised
+                    // AVFoundation formats only; it creates no capture session.
+                    let status = await service.status()
+                    // Match the CLI's discovery rule: an explicit selection
+                    // wins, otherwise a single currently attached Pocket 3 is
+                    // unambiguous. Multiple devices still require a selection.
+                    guard let deviceID = status.selected?.id ?? (status.devices.count == 1 ? status.devices[0].id : nil) else {
+                        throw BridgeFailure("camera_not_selected", "Choose a Pocket 3 before reading its format inventory")
+                    }
+                    let variants = CaptureMode.availableInputFormats(deviceID: deviceID)
+                    let modes = CaptureMode.available(deviceID: deviceID).map { mode in
+                        JSONValue.object(["id": .string(mode.id), "width": .number(Double(mode.width)),
+                            "height": .number(Double(mode.height)), "frameRate": .number(mode.frameRate),
+                            "portrait": .bool(mode.isPortrait), "verification": .string("advertised_only"),
+                            "supportedInputFormats": .array((variants[mode.id] ?? []).map { value in
+                                .object(["id": .string(value.rawValue), "name": .string(value.title),
+                                         "fourCC": value.fourCC.map(JSONValue.string) ?? .null])
+                            })])
+                    }
+                    return ServiceReply(id: request.id, result: .object(["deviceID": .string(deviceID), "formats": .array(modes)]))
                 case "validation-focus-status", "validation-focus-point":
                     guard CommandLine.arguments.contains("--hardware-validation") else { throw BridgeFailure("validation_disabled", "Focus validation requires a development launch") }
                     let capabilities = await service.capture.focusCapabilities()
