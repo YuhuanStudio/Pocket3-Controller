@@ -63,7 +63,9 @@ def main():
 
     try:
         before = call("status"); initial = workspace()
-        check(before["phase"] == "idle" and before["capture"]["frames"] == 0 and not before["motionActive"], "Requires idle camera with zero frames")
+        # A privacy-paused bridge is equally safe: no capture session frames are
+        # retained and the offline workspace never reconnects the camera.
+        check(before["phase"] in ["idle", "paused"] and before["capture"]["frames"] == 0 and not before["motionActive"], "Requires idle or privacy-paused camera with zero frames")
         check(initial["source"] == "camera" and initial["frame"] is None and not initial["busy"] and not initial["aiBusy"], "Requires unused, idle file workspace")
         report.update(buildVersion=before["buildVersion"], helperSHA256=hashlib.sha256(args.binary.read_bytes()).hexdigest())
         environment = dict(os.environ); environment.setdefault("DEVELOPER_DIR", "/Applications/Xcode-beta.app/Contents/Developer")
@@ -90,6 +92,20 @@ def main():
         workspace("import", "--image", str(fixtures / "media-two-scenes.mp4")); video = settled()
         check(video["video"] and video["frame"]["timestampSource"] == "local_video_import", "Video did not use file import")
         check(1.9 <= video["video"]["durationSeconds"] <= 2.1, "Unexpected generated clip duration")
+        # Compare deliberately distinct synthetic scenes.  The IPC result is
+        # scalar-only: this verifies the local comparison path without writing
+        # a decoded video frame, still image, or source path into the report.
+        workspace("seek", "--seconds", "0.25"); baseline = settled()
+        workspace("compare"); compared = settled(); report["videoFrameComparison"] = compared["frameComparison"]
+        comparison = compared["frameComparison"]
+        check(comparison is not None, "Video frame comparison produced no observation")
+        check(comparison["firstFrameID"] == baseline["frame"]["id"], "Comparison baseline was not the selected frame")
+        check(.9 <= comparison["intervalSeconds"] <= 1.1, "Comparison did not select the next second")
+        metrics = comparison["metrics"]
+        check(metrics["sampledPixels"] > 0 and metrics["meanAbsoluteLumaDifference"] > 10,
+              "Distinct synthetic scenes did not produce a meaningful scalar difference")
+        check(not any(key in comparison for key in ["imageData", "pixelData", "path", "sourceURL"]),
+              "Comparison IPC exposed image or path data")
         workspace("seek", "--seconds", "1.5"); selected = settled(); actual = selected["frame"]["presentationTime"]
         check(1 <= actual < 2 and abs(actual - 1.5) <= 1/30 + 1e-6, "Seek did not return a FRAME B timestamp")
         ready_to_run(); workspace("ocr"); ocr = settled(); report["videoOCR"] = ocr
@@ -115,7 +131,7 @@ def main():
         check(not cancelled["exportAvailable"] and not cancelled["answer"], "Cancelled seek retained stale export")
         workspace("clear"); workspace("camera"); final = workspace(); after = call("status")
         check(final["source"] == "camera" and final["frame"] is None and not final["exportAvailable"], "File workspace did not clear")
-        check(after["phase"] == "idle" and after["capture"]["frames"] == 0 and not after["motionActive"] and after["access"] == before["access"] and after["capture"]["sessionID"] == before["capture"]["sessionID"], "Camera state changed during file-only smoke")
+        check(after["phase"] == before["phase"] and after["capture"]["frames"] == 0 and not after["motionActive"] and after["access"] == before["access"] and after["capture"]["sessionID"] == before["capture"]["sessionID"], "Camera state changed during file-only smoke")
         report.update(cameraStateUnchanged=True, passed=True)
     except Exception as error:
         report["error"] = str(error)

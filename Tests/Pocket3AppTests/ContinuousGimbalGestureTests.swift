@@ -23,9 +23,13 @@ private actor GesturePreparationGate {
 }
 private enum GestureTestError: Error { case timeout }
 @MainActor private func eventuallyGesture(_ condition: @escaping @MainActor () async -> Bool) async throws {
-    for _ in 0..<1000 {
+    // The controller's own heartbeat is 50 ms. Give a loaded full-suite main
+    // actor several heartbeat opportunities without turning this into an
+    // unbounded poll or relying on a one-millisecond scheduler guarantee.
+    let deadline = ContinuousClock.now + .seconds(3)
+    while ContinuousClock.now < deadline {
         if await condition() { return }
-        try await Task.sleep(for: .milliseconds(1))
+        try await Task.sleep(for: .milliseconds(5))
     }
     throw GestureTestError.timeout
 }
