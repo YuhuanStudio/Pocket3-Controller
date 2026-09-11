@@ -173,7 +173,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 - [ ] 完整宣告視角範圍、各姿態、物理角度／速度、平滑度、停止延遲與尾移校準；不以一次大角度往返或穩定 USB 回讀宣稱全範圍／機械停止通過。
 - [x] USB small absolute target baseline：metrics-only pan probe從raw0請求3600、穩定readback3960（tolerance內）；tilt probe target/readback均3600、pan−360；另5° nominal pan probe target/readback均17640／tilt3600。三者verified=true且之後pause。這只證明兩軸有界目標可到達，不校準機械角度或全範圍。
 - [ ] 收緊後的完整控制報告：每軸至少20次往返、中途停止、競爭控制、快速拔插／喚醒及動作後新影格。v3錯誤通過標記已撤銷；v4曾24次保持通過但首個目標未到位，整份仍未接受。
-- [x] 20-trial trajectory suite safety gate：新增metrics-only suite，首個right trial收到24 samples但Stop target pan1440／readback0、`verified=false`，因此未發其餘19輪並完成manual/pause cleanup。這保留物理stop failure，不以單次service hold替代完整 acceptance。
+- [x] 20-trial trajectory suite safety gate：新增metrics-only suite，首個right trial的24 samples實際顯示pan 0→7920、反向後回落至1440，單次USB writes約0.4–2.6ms；但final Stop target pan1440／readback0、`verified=false`，因此未發其餘19輪並完成manual/pause cleanup。這保留physical stop failure，不以單次service hold替代完整 acceptance。
 - [x] metrics-only USB trajectory baseline：新驗證器不輸出照片；right、left、up各完成24個readback sample／verified Stop／manual cleanup＋pause。probe每次前600ms朝指定方向、後600ms反向後hold，因此最終raw position不作左右或物理角度判斷；這只驗服務scheduler reversal→hold流程，不驗尾移。
 - [x] USB trajectory control-read recovery：down首輪第6 sample的`control_read_superseded`已定位為periodic status read搶占control feedback；motion active時status改用既有capability。修正後down完成24 samples／無failure／Stop verified／未存影像。四方向metrics lifecycle已通過，物理角度／尾移仍待驗收。
 - [ ] 完成最新candidate的直幅方向／完整內容、黑邊、視窗縮放與切換重連，以及尚未覆蓋的格式組合。公開beta1的NV12橫幅子矩陣已通過；早期五種直幅的通過受當次機身方向限制，不涵蓋全部模式。未充分暖機的FPS失敗保留，不當作已證明不相容。
