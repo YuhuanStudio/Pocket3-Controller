@@ -35,7 +35,10 @@ struct BluetoothCameraSettingsView: View {
         HStack(spacing: Yun.Space.sm) {
             Text(label).foregroundStyle(Yun.Palette.textSecondary)
             Spacer(minLength: 0)
-            Text(value).foregroundStyle(Yun.Palette.textPrimary).lineLimit(1)
+            Text(value)
+                .foregroundStyle(Yun.Palette.textPrimary)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
         }.font(Yun.Text.caption)
     }
     private func observation(_ property: CameraSettingsProperty) -> CameraSettingsObservation? {
