@@ -32,6 +32,9 @@ char *p3_uvc_session_set_roll(P3UVCSession *session, int32_t rawValue);
 void p3_uvc_session_close(P3UVCSession *session);
 // One-shot location wrappers retained for C/CLI compatibility.
 char *p3_uvc_devices(void);
+// Read-only IORegistry inventory. Does not create a UVCController, open an
+// interface, claim a pipe, or issue any USB request.
+char *p3_uvc_stream_interfaces(uint32_t location);
 char *p3_uvc_status(uint32_t location);
 char *p3_uvc_set_position(uint32_t location, int32_t pan, int32_t tilt, const char *expectedRegistryID);
 void p3_uvc_free(char *value);

@@ -381,3 +381,5 @@ recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload�
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
+
+新增`pocket3 uvc-stream-interfaces 0x01100000`只讀CLI已在真機回傳VC interface 0與VS interface 1，兩者alternate setting為0、各宣告一個endpoint；不存在的location回傳`deviceFound=false`與空interface清單。它只呼叫IORegistry property/child traversal，不建立UVCController或interface plugin，也沒有中斷取像。[真機inventory](../artifacts/hardware-complete-2026-09-11/uvc-stream-interfaces-live.json)、[不存在位置反例](../artifacts/hardware-complete-2026-09-11/uvc-stream-interfaces-missing.json)

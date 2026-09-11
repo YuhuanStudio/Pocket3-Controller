@@ -60,6 +60,18 @@ static uint32_t registryNumber(io_service_t service, CFStringRef key) {
     if (value) CFRelease(value);
     return (uint32_t)number;
 }
+static NSString *registryString(io_service_t service, CFStringRef key) {
+    CFTypeRef value = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0);
+    NSString *result = nil;
+    if (value && CFGetTypeID(value) == CFStringGetTypeID()) result = [(__bridge NSString *)value copy];
+    if (value) CFRelease(value);
+    return result;
+}
+static BOOL isPocket3Service(io_service_t service, uint32_t location) {
+    return registryNumber(service, CFSTR("locationID")) == location
+        && registryNumber(service, CFSTR("idVendor")) == 0x2ca3
+        && registryNumber(service, CFSTR("idProduct")) == 0x0023;
+}
 static NSString *attachmentIdentity(uint32_t location) {
     io_iterator_t iterator = IO_OBJECT_NULL;
     if (IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOUSBHostDevice"), &iterator) != KERN_SUCCESS) return nil;
@@ -191,6 +203,49 @@ char *p3_uvc_devices(void) {
                 [items addObject:@{@"name":[c deviceName], @"location":@([c locationId]), @"vendor":@([c vendorId]), @"product":@([c productId])}];
         }
         return json(items);
+    }
+}
+char *p3_uvc_stream_interfaces(uint32_t location) {
+    @autoreleasepool {
+        io_iterator_t devices = IO_OBJECT_NULL;
+        if (IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOUSBHostDevice"), &devices) != KERN_SUCCESS) {
+            return json(@{ @"deviceFound": @NO, @"requestedLocation": @(location), @"error": @"usb_registry_unavailable" });
+        }
+        NSMutableArray *interfaces = [NSMutableArray array];
+        BOOL found = NO;
+        io_service_t device;
+        while ((device = IOIteratorNext(devices))) {
+            if (!isPocket3Service(device, location)) { IOObjectRelease(device); continue; }
+            found = YES;
+            io_iterator_t children = IO_OBJECT_NULL;
+            if (IORegistryEntryGetChildIterator(device, kIOServicePlane, &children) == KERN_SUCCESS) {
+                io_service_t child;
+                while ((child = IOIteratorNext(children))) {
+                    if (IOObjectConformsTo(child, "IOUSBHostInterface")) {
+                        uint32_t klass = registryNumber(child, CFSTR("bInterfaceClass"));
+                        uint32_t subclass = registryNumber(child, CFSTR("bInterfaceSubClass"));
+                        if (klass == 14 && (subclass == 1 || subclass == 2)) {
+                            NSString *name = registryString(child, CFSTR("kUSBString"));
+                            [interfaces addObject:@{
+                                @"number": @(registryNumber(child, CFSTR("bInterfaceNumber"))),
+                                @"alternateSetting": @(registryNumber(child, CFSTR("bAlternateSetting"))),
+                                @"interfaceClass": @(klass), @"interfaceSubclass": @(subclass),
+                                @"interfaceProtocol": @(registryNumber(child, CFSTR("bInterfaceProtocol"))),
+                                @"declaredEndpointCount": @(registryNumber(child, CFSTR("bNumEndpoints"))),
+                                @"name": name ?: @""
+                            }];
+                        }
+                    }
+                    IOObjectRelease(child);
+                }
+                IOObjectRelease(children);
+            }
+            IOObjectRelease(device);
+            break;
+        }
+        IOObjectRelease(devices);
+        return json(@{ @"deviceFound": @(found), @"requestedLocation": @(location),
+                       @"interfaces": interfaces, @"access": @"ioregistry_read_only" });
     }
 }
 char *p3_uvc_session_status(P3UVCSession *session) {
