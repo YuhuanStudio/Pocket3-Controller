@@ -377,3 +377,7 @@ recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload�
 ## Build 25：HEVC 機內錄影唯讀基準（2026-09-11）
 
 在既有paired session只讀訂閱`cam_video_param_v2`，單次subscription已送出、property push成功、沒有matching ACK；回覆value長度10，解碼為4K（`0x10`）、30 fps（`0x03`）、HEVC（`compression=0x01`）。這確認機身目前的HEVC baseline，沒有送`02/AB`或任何設定寫入。後續developer writer的HEVC no-op必須以完整fresh raw baseline作零寫入驗證；H.264→HEVC→H.264的受控測試仍等追蹤關閉與新版App重啟。[唯讀結果](../artifacts/hardware-complete-2026-09-11/hevc-current-readonly-property.json)
+
+## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
+
+以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
