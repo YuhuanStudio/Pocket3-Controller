@@ -316,6 +316,10 @@ USB前後位置亦相同，cleanup target／observed保持−14040／6120且veri
 
 檢視結果並再次確認同連線／raw200後，另以manual明確恢復100，`completed/verified=true`。[獨立恢復](../artifacts/mcp-zoom-cancellation/59d10e7c-ccc3-4a09-9094-54486775c469/explicit-restoration.json)。這只驗一個已開始動作後的MCP取消，不包括早於SDK request登記的取消、EOF、所有重連競爭、物理煞停延遲或完整倍率校準。
 
+## 硬體重新接回的唯讀 inventory
+
+`Scripts/hardware-resume-inventory.py --wait-seconds 60` 只會等待一台已列舉的 Pocket 3，讀取 App `status` 與 `formats`，再寫出 device、power、format counts 與 advertised input path 的 JSON。它不會 connect preview、啟動 Bluetooth、改 Wi-Fi、送任何 UVC/DUML 寫入、讀音訊或保存影像。輸出的 format 仍是 `advertised_only`，不能替代新影格或實體控制驗收。
+
 ## 2026-09-09 build19：明確 H.264 輸出的有界測試
 
 開發限定`POCKET3_CAPTURE_OUTPUT=h264`與`--hardware-validation`現在使用Apple明列的`AVVideoCodecKey`，在activeFormat配置後檢查`availableVideoCodecTypes`包含avc1，才指定H.264及要求尺寸。普通啟動仍為BGRA。這是[AVFoundation輸出設定](https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/availablevideocodectypes)，不保證裝置原生直通，可能由主機重新編碼。

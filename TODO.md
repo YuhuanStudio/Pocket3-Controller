@@ -172,6 +172,9 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 
 ## 相機重新開啟後的必要驗收
 
+- [x] 硬體重新接回 inventory 工具：`Scripts/hardware-resume-inventory.py`只等候一台裝置並紀錄status/power/advertised formats；不啟動preview、BLE、Wi-Fi、寫入或媒體。它不把format宣告當stream/control pass。
+
+
 - [x] **build11 Zoom moving-stop 新規則實機讀回通過。** 從100請求400，讀到194、再200且仍moving時Stop；hold target／observed均200，內部11筆／0.847秒、其後8筆獨立讀回／0.899秒均穩定，原請求以CancellationError結束。之後明確恢復100亦verified。[Stop結果](artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/result.json)、[恢復](artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/restoration.json)。只驗本次有界途中停止，不涵蓋倍率、物理煞停延遲、完整UI拖曳／所有視角。
 - [ ] Zoom 最新整合版的持續拖曳、取消／Stop、重連、gimbal 接管與新影格／視覺效果；校準倍率另行驗證。
 - [ ] 使用者要求的機身搖桿 double／triple **原生快速回中與前後切換**。單次 FE08 已提交但3秒無回覆、30筆姿態無變化；FE09未由此得到成功證據，慢速 USB approach 不作產品替代。[FE08](artifacts/hardware-resumed/native-recenter-result.json)
