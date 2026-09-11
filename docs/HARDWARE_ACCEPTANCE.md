@@ -278,6 +278,8 @@ build17將**命令前取得基線的等待上限**設為3秒；半秒穩定、�
 
 實機透過`pmset -g assertions`確認：取像時App PID持有一份名為`Pocket 3 active camera capture`的`PreventUserIdleSystemSleep`；`validation-pause`後App活動為空，重新連接同相機後恰有一份新活動。各窗口均沒有App的`PreventUserIdleDisplaySleep`。capture session確實更新，最終4K30 NV12約29.999fps、新影格age約0.00143秒、manual且motion inactive，縮放讀回100。[實機生命週期](../artifacts/capture-activity-build18/live-activity-lifecycle.json)、[最終取像](../artifacts/capture-activity-build18/final-status.json)
 
+2026-09-11最新完整影音驗收以1080p30 NV12與48kHz雙聲道執行1,800.91秒：1,720個scalar sample、零failure，最終29.97fps、影格age 0.0038秒、resident 329.6MB；完成後明確pause，frames歸零。驗證器不保存相機影像或音訊內容，僅保留大小、時間、格式、記憶體與數量指標。[報告](../artifacts/hardware-complete-2026-09-11/stream-audio-full/)
+
 本輪沒有拍照、修改系統睡眠偏好、要求螢幕亮起或切換Mac網路。這是活動建立／釋放及新連線的實測；**未實際讓顯示器關閉或整機睡眠，也未進行Mac Studio遠端桌面手勢／斷線驗收**。App仍是登入後的使用者服務，不是登入前daemon。
 
 ## 2026-09-09 build18：完整配對後真正提交 FE08

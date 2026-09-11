@@ -99,6 +99,7 @@
 - [x] 公開beta1的橫幅NV12補驗：720p30、1080p24、4K30均取得新影格；1080p30另有本版smoke。這是已完成的子矩陣，不覆蓋所有格式、方向／黑邊或後續candidate。[矩陣](artifacts/public-beta1/nv12-landscape-matrix/b765fe71-749f-4261-a966-126179c87fea/result.json)、[build9 smoke](artifacts/public-beta1/hardware-smoke/result.json)
 - [ ] 當前直幅輸出含機內影像的上下黑邊，方向／完整直幅內容仍待核對，不能僅憑1920高metadata算完成。
 - [x] 最新 USB audio metrics：1080p30短期20.90秒、48kHz stereo／2 channels、約30fps、零failure；只保存scalar metrics。這不替代30分鐘影音acceptance或機內音訊設定控制。
+- [x] 最新完整 USB audiovisual acceptance：1080p30＋48kHz stereo持續1,800.91秒、1,720 sample、零failure；最終29.97fps、frame age 0.0038s、resident 329.6MB，pause後0 frames。只保存scalar metrics，不替代機內audio setter或其他格式組合。
 
 目前可用主路徑是 **USB 取像＋USB 按住／拖曳位置控制**。Mac 必須保留原有網路與網際網路連線；App 不要求加入相機 Wi-Fi，開發 join RPC 亦拒絕該操作。BLE 配對、電池與姿態有實測證據，原生馬達控制及快速預設仍未完成。速度拉條已移除；拖曳距離控制輸入幅度，UVC raw 速率不宣稱為校準物理速度。
 
