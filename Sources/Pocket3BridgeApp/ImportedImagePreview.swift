@@ -148,6 +148,15 @@ struct ObservationPrivateText: View {
                         Button("−1 s") { model.imageWorkspace.seek(to: max(video.metadata.startSeconds, model.imageWorkspace.videoSeekTime - 1)) }
                         Button("+1 s") { model.imageWorkspace.seek(to: min(video.metadata.lastSeekSeconds, model.imageWorkspace.videoSeekTime + 1)) }
                     }.buttonStyle(YunButtonStyle(.ghost, small: true))
+                    Button(loc("Compare +1 s")) { model.imageWorkspace.compareNextSecond() }
+                        .buttonStyle(YunButtonStyle(.secondary, small: true))
+                        .disabled(!model.imageWorkspace.ready || model.imageWorkspace.isComparingFrames || model.imageWorkspace.videoSeekTime >= video.metadata.lastSeekSeconds)
+                    if model.imageWorkspace.isComparingFrames { ProgressView().controlSize(.mini) }
+                    if let comparison = model.imageWorkspace.frameComparison {
+                        Text(String(format: loc("Frame change · %.3f luma · %.1f%% samples"), comparison.metrics.meanAbsoluteLumaDifference, comparison.metrics.darkPixelChangeFraction * 100))
+                            .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             if model.imageWorkspace.ready {

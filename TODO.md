@@ -47,7 +47,7 @@
 - [x] AVFoundation↔direct capture ownership policy：stop＋frame queue drain、direct exclusive acquire/release、AVF restart證據與generation permit已完成純狀態機及actor tests；尚未接真實VS transport。
 - [x] H.264 VideoToolbox實際roundtrip：合成64×48 BGRA像素經本機VTCompressionSession壓成H.264，提取SPS/PPS與4-byte access unit後由新decoder同步解回BGRA，尺寸與generation通過；沒有Pocket 3、USB、檔案或網路。
 - [x] HEVC/H.265 VideoToolbox實際roundtrip：相同合成BGRA經HEVC encoder壓縮，提取VPS/SPS/PPS與4-byte access unit後由新decoder同步解回BGRA；不依賴Pocket 3 USB descriptor。
-- [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；已新增privacy-preserving BGRA frame comparison並接入MCP `camera_compare_frames`（同session兩fresh frames、scalar差異、零像素持久化）。實機frame10→11間隔44ms／51840 samples通過；尚未接到workspace scene timeline或live UI；選單張影片影格不視為已完成連續影片理解。
+- [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；已新增privacy-preserving BGRA frame comparison並接入MCP `camera_compare_frames`（同session兩fresh frames、scalar差異、零像素持久化）及本機video workspace `Compare +1 s`（seek/replace/cancel revision fence）。實機frame10→11間隔44ms／51840 samples通過；尚待synthetic video UI flow與scene timeline；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
 

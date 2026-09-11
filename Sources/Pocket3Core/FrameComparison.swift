@@ -54,4 +54,9 @@ public struct FrameComparisonObservation: Codable, Sendable, Equatable {
     public let secondFrameID: String
     public let intervalSeconds: Double
     public let metrics: FrameComparisonMetrics
+    public init(sessionID: String, firstFrameID: String, secondFrameID: String,
+                intervalSeconds: Double, metrics: FrameComparisonMetrics) {
+        self.sessionID = sessionID; self.firstFrameID = firstFrameID; self.secondFrameID = secondFrameID
+        self.intervalSeconds = intervalSeconds; self.metrics = metrics
+    }
 }

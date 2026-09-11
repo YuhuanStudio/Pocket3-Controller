@@ -57,6 +57,7 @@ enum ImageObservationResponse: Sendable {
     private(set) var responseFrameID: String?
     private(set) var responseSourceFrameID: String?
     private(set) var resultSnapshot: AnalysisExportSnapshot?
+    private(set) var frameComparison: FrameComparisonObservation?
     private(set) var region: NormalizedImageRegion?
     var selectingRegion = false
     var videoSeekTime: Double = 0
@@ -64,6 +65,7 @@ enum ImageObservationResponse: Sendable {
     private(set) var isImporting = false
     private(set) var isAnalyzing = false
     private(set) var isCancelling = false
+    private(set) var isComparingFrames = false
     private(set) var error: String?
     var question = ""
     var action: ImageObservationAction = .ask
@@ -96,7 +98,7 @@ enum ImageObservationResponse: Sendable {
         importID = UUID(); let id = importID
         let oldVideo = asset?.videoSource
         asset = nil; preview = nil; error = nil; isImporting = true
-        region = nil; selectingRegion = false; videoSeekTime = 0
+        region = nil; selectingRegion = false; videoSeekTime = 0; frameComparison = nil
         importTask = Task { [self] in
             defer { if importID == id { isImporting = false; importTask = nil } }
             var importedVideo: ImportedVideoSource?
@@ -141,6 +143,28 @@ enum ImageObservationResponse: Sendable {
                     self.error = AppErrorPresentation.message(error, fallback: .videoTime)
                 }
             }
+        }
+    }
+
+    func compareNextSecond() {
+        guard ready, !isComparingFrames, let current = asset, let video = current.videoSource else { return }
+        let target = min(video.metadata.lastSeekSeconds, current.frame.info.presentationTime + 1)
+        guard target > current.frame.info.presentationTime else { return }
+        revision += 1; let requestedRevision = revision, baselineID = current.frame.info.id
+        frameComparison = nil; error = nil; isComparingFrames = true
+        Task { [self] in
+            defer { if revision == requestedRevision { isComparingFrames = false } }
+            do {
+                let next = try await video.frame(at: target)
+                let metrics = try await Task.detached { try FrameComparison.compare(current.frame.pixelBuffer, next.pixelBuffer) }.value
+                try Task.checkCancellation()
+                guard revision == requestedRevision, asset?.frame.info.id == baselineID, asset?.videoSource === video,
+                      current.frame.info.sessionID == next.info.sessionID else { return }
+                frameComparison = FrameComparisonObservation(sessionID: current.frame.info.sessionID,
+                    firstFrameID: current.frame.info.id, secondFrameID: next.info.id,
+                    intervalSeconds: next.info.presentationTime - current.frame.info.presentationTime, metrics: metrics)
+            } catch is CancellationError {}
+            catch { if revision == requestedRevision { self.error = AppErrorPresentation.message(error, fallback: .videoTime) } }
         }
     }
 
@@ -203,6 +227,7 @@ enum ImageObservationResponse: Sendable {
         if asset?.videoSource != nil { videoSeekTime = asset?.frame.info.presentationTime ?? 0 }
         analysisTask?.cancel()
         isCancelling = isAnalyzing
+        frameComparison = nil; isComparingFrames = false
         if clearResult { response = nil; responseFrameID = nil; responseSourceFrameID = nil; resultSnapshot = nil; error = nil }
     }
     func clear() {
