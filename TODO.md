@@ -171,7 +171,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 - [ ] 使用者要求的機身搖桿 double／triple **原生快速回中與前後切換**。單次 FE08 已提交但3秒無回覆、30筆姿態無變化；FE09未由此得到成功證據，慢速 USB approach 不作產品替代。[FE08](artifacts/hardware-resumed/native-recenter-result.json)
 - [ ] App 預覽 **tap AF** 的可用傳輸。使用者已確認 Pocket 3 **機身在 Webcam 模式可點按 AF**；當次 USB／AVFoundation 卻回報 point／auto／continuous 均 false。缺的是 host 控制路徑，不是機身 AF，也不能以 MF 拉條替代。[AVF 能力](artifacts/hardware-resumed/focus-capabilities.json)
 - [ ] 完整宣告視角範圍、各姿態、物理角度／速度、平滑度、停止延遲與尾移校準；不以一次大角度往返或穩定 USB 回讀宣稱全範圍／機械停止通過。
-- [x] USB small absolute target baseline：metrics-only pan probe從raw0請求3600、穩定readback3960（tolerance內）；tilt probe target/readback均3600、pan−360，兩者verified=true且之後pause。這只證明兩軸小目標可到達，不校準機械角度或全範圍。
+- [x] USB small absolute target baseline：metrics-only pan probe從raw0請求3600、穩定readback3960（tolerance內）；tilt probe target/readback均3600、pan−360；另5° nominal pan probe target/readback均17640／tilt3600。三者verified=true且之後pause。這只證明兩軸有界目標可到達，不校準機械角度或全範圍。
 - [ ] 收緊後的完整控制報告：每軸至少20次往返、中途停止、競爭控制、快速拔插／喚醒及動作後新影格。v3錯誤通過標記已撤銷；v4曾24次保持通過但首個目標未到位，整份仍未接受。
 - [x] 20-trial trajectory suite safety gate：新增metrics-only suite，首個right trial收到24 samples但Stop target pan1440／readback0、`verified=false`，因此未發其餘19輪並完成manual/pause cleanup。這保留物理stop failure，不以單次service hold替代完整 acceptance。
 - [x] metrics-only USB trajectory baseline：新驗證器不輸出照片；right、left、up各完成24個readback sample／verified Stop／manual cleanup＋pause。probe每次前600ms朝指定方向、後600ms反向後hold，因此最終raw position不作左右或物理角度判斷；這只驗服務scheduler reversal→hold流程，不驗尾移。
