@@ -65,6 +65,12 @@ extension AppModel {
             window.styleMask = [.borderless]; window.isReleasedWhenClosed = false
             window.setContentSize(host.view.fittingSize)
             transient = window; window.orderFront(nil)
+        } else if surface == "gimbal-range-fixture" {
+            let host = NSHostingController(rootView: GimbalRangeFixture.view())
+            window = NSWindow(contentViewController: host)
+            window.styleMask = [.borderless]; window.isReleasedWhenClosed = false
+            window.setContentSize(host.view.fittingSize)
+            transient = window; window.orderFront(nil)
         } else if surface == "telemetry-fixture" {
             let host = NSHostingController(rootView: try BluetoothTelemetryFixture.view(state: request.arguments["page"].string ?? "full"))
             window = NSWindow(contentViewController: host)
@@ -130,7 +136,7 @@ extension AppModel {
         guard let data = bitmap.representation(using: .png, properties: [:]) else { throw BridgeFailure("render_failed", "Unable to encode the window") }
         try FileManager.default.createDirectory(at: URL(fileURLWithPath: path).deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: URL(fileURLWithPath: path), options: .atomic)
-        return ServiceReply(id: request.id, result: .object(["saved": .string(path), "width": .number(Double(bitmap.pixelsWide)), "height": .number(Double(bitmap.pixelsHigh)), "chromeIntegrated": .bool(WindowChrome.isIntegrated(window)), "surface": .string(surface), "simulation": .bool(["telemetry-fixture", "roll-fixture", "settings-readback-fixture"].contains(surface)), "cameraPhase": .string(status?.phase ?? "unknown"), "cameraPreviewIncluded": .bool(capturePreview != nil), "importedImageIncluded": .bool(false), "privateObservationContentIncluded": .bool(false), "layout": try .encode(layoutBounds), "method": .string("AppKit window rendering; imported images and private observation content omitted; sensor preview omitted by default")]))
+        return ServiceReply(id: request.id, result: .object(["saved": .string(path), "width": .number(Double(bitmap.pixelsWide)), "height": .number(Double(bitmap.pixelsHigh)), "chromeIntegrated": .bool(WindowChrome.isIntegrated(window)), "surface": .string(surface), "simulation": .bool(["telemetry-fixture", "roll-fixture", "gimbal-range-fixture", "settings-readback-fixture"].contains(surface)), "cameraPhase": .string(status?.phase ?? "unknown"), "cameraPreviewIncluded": .bool(capturePreview != nil), "importedImageIncluded": .bool(false), "privateObservationContentIncluded": .bool(false), "layout": try .encode(layoutBounds), "method": .string("AppKit window rendering; imported images and private observation content omitted; sensor preview omitted by default")]))
     }
 
     private func interfaceScrollViews(in view: NSView) -> [NSScrollView] {
