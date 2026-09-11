@@ -210,6 +210,18 @@ final class AppModel {
                             })])
                     }
                     return ServiceReply(id: request.id, result: .object(["deviceID": .string(deviceID), "formats": .array(modes)]))
+                case "body-status":
+                    // Do not touch `wireless`: accessing that lazy property
+                    // creates a CoreBluetooth discovery object. MCP reads only
+                    // telemetry the person has already explicitly initialized.
+                    let bodyStatus = try await MainActor.run { () throws -> JSONValue in
+                        if let wirelessStorage = self.wirelessStorage {
+                            return .object(["initialized": .bool(true),
+                                "discovery": try .encode(wirelessStorage.discovery)])
+                        }
+                        return .object(["initialized": .bool(false), "discovery": .null])
+                    }
+                    return ServiceReply(id: request.id, result: bodyStatus)
                 case "validation-focus-status", "validation-focus-point":
                     guard CommandLine.arguments.contains("--hardware-validation") else { throw BridgeFailure("validation_disabled", "Focus validation requires a development launch") }
                     let capabilities = await service.capture.focusCapabilities()

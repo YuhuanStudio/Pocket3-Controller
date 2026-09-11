@@ -10,6 +10,7 @@ import Testing
         #expect(try MCPCameraToolContract.operation(name: "camera_compare_frames", arguments: .object([:])) == "compare-frames")
         #expect(try MCPCameraToolContract.operation(name: "camera_focus_status", arguments: .object([:])) == "focus-status")
         #expect(try MCPCameraToolContract.operation(name: "camera_format_inventory", arguments: .object([:])) == "format-inventory")
+        #expect(try MCPCameraToolContract.operation(name: "camera_body_status", arguments: .object([:])) == "body-status")
         #expect(try MCPCameraToolContract.operation(name: "camera_connect", arguments: .object([
             "modeID": .string("1920x1080@30"), "pixelFormat": .string("nv12"), "outputPolicy": .string("h264")])) == "connect")
         #expect(try MCPCameraToolContract.operation(name: "camera_connect", arguments: .object(["outputPolicy": .string("hevc")])) == "connect")
@@ -29,12 +30,12 @@ import Testing
     }
 
     @Test func allToolsRequireObjectsAndStatusStopAcceptNoFields() {
-        for name in ["camera_status", "capture_frame", "move_gimbal", "stop_gimbal", "camera_connect", "camera_pause", "camera_compare_frames", "camera_focus_status", "camera_format_inventory"] {
+        for name in ["camera_status", "capture_frame", "move_gimbal", "stop_gimbal", "camera_connect", "camera_pause", "camera_compare_frames", "camera_focus_status", "camera_format_inventory", "camera_body_status"] {
             for arguments in [JSONValue.null, .array([]), .string("{}"), .number(1), .bool(false)] {
                 #expect(throws: BridgeFailure.self) { try MCPCameraToolContract.operation(name: name, arguments: arguments) }
             }
         }
-        for name in ["camera_status", "stop_gimbal", "camera_pause", "camera_compare_frames", "camera_focus_status", "camera_format_inventory"] {
+        for name in ["camera_status", "stop_gimbal", "camera_pause", "camera_compare_frames", "camera_focus_status", "camera_format_inventory", "camera_body_status"] {
             #expect(throws: BridgeFailure.self) {
                 try MCPCameraToolContract.operation(name: name, arguments: .object(["unknown": .null]))
             }

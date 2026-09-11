@@ -128,6 +128,7 @@ MCP helper 使用 stdio，透過同使用者私有 Unix socket 呼叫已開啟�
 |---|---|
 | `camera_status` | 讀取選定相機、權限、能力及影格新鮮度，不自動開啟相機 |
 | `camera_format_inventory` | 列出所選 Pocket 3 宣告的模式與輸入 path；不啟動取像，宣告不代表串流已驗證 |
+| `camera_body_status` | 讀取 App 已有的 Bluetooth discovery snapshot；不掃描、配對、加入 Wi‑Fi 或寫入設定 |
 | `camera_connect` | 明確啟動本機 USB 預覽，保留 manual access |
 | `camera_pause` | 釋放 USB 預覽與當次 session |
 | `camera_compare_frames` | 比較同一 session 的兩張新影格，只回傳 scalar 差異，不輸出影像 |
