@@ -373,3 +373,7 @@ build25 隨後加入 scalar-only negotiation snapshot，並以新診斷只重測
 使用者停止追蹤後，下一次GATT連接與protocol pairing成功，session為`3B039472-FC64-4E49-8BF1-6E432DE4C25B`。在recorder已arm後，使用者依指示重新開啟追蹤；20秒window正常結束，收到148筆camera-domain frame：`02/80` 119筆、`02/DC` 29筆，兩種payload在窗口內各只有一個值，`89/A5/A6`仍未出現；前後`04/05` pose mode/limit raw也都是128/0。這證明已測的Camera set02候選沒有暴露狀態變化，但不能證明機內追蹤未運作或沒有其他domain事件。[完整事件](../artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)、[窗口後狀態](../artifacts/hardware-complete-2026-09-11/activetrack-window-1-after.json)
 
 recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload變更**：每個route獨立sequence admission，route+payload SHA-256排除重複高頻telemetry，相同值另計`unchangedFrameCount`，A→B→A仍保留三個狀態。需在新版App、追蹤off/on的下一輪窗口取得實機差異。
+
+## Build 25：HEVC 機內錄影唯讀基準（2026-09-11）
+
+在既有paired session只讀訂閱`cam_video_param_v2`，單次subscription已送出、property push成功、沒有matching ACK；回覆value長度10，解碼為4K（`0x10`）、30 fps（`0x03`）、HEVC（`compression=0x01`）。這確認機身目前的HEVC baseline，沒有送`02/AB`或任何設定寫入。後續developer writer的HEVC no-op必須以完整fresh raw baseline作零寫入驗證；H.264→HEVC→H.264的受控測試仍等追蹤關閉與新版App重啟。[唯讀結果](../artifacts/hardware-complete-2026-09-11/hevc-current-readonly-property.json)
