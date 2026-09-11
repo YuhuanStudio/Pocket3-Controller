@@ -169,6 +169,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 - [ ] App 預覽 **tap AF** 的可用傳輸。使用者已確認 Pocket 3 **機身在 Webcam 模式可點按 AF**；當次 USB／AVFoundation 卻回報 point／auto／continuous 均 false。缺的是 host 控制路徑，不是機身 AF，也不能以 MF 拉條替代。[AVF 能力](artifacts/hardware-resumed/focus-capabilities.json)
 - [ ] 完整宣告視角範圍、各姿態、物理角度／速度、平滑度、停止延遲與尾移校準；不以一次大角度往返或穩定 USB 回讀宣稱全範圍／機械停止通過。
 - [ ] 收緊後的完整控制報告：每軸至少20次往返、中途停止、競爭控制、快速拔插／喚醒及動作後新影格。v3錯誤通過標記已撤銷；v4曾24次保持通過但首個目標未到位，整份仍未接受。
+- [x] metrics-only USB trajectory baseline：新驗證器不輸出照片；right短 trajectory 實機取得24個readback sample，Stop verified，pan 0→−360／tilt不變，manual cleanup與pause完成。這只驗服務的raw target→hold流程，不驗物理角度、方向或尾移。
 - [ ] 完成最新candidate的直幅方向／完整內容、黑邊、視窗縮放與切換重連，以及尚未覆蓋的格式組合。公開beta1的NV12橫幅子矩陣已通過；早期五種直幅的通過受當次機身方向限制，不涵蓋全部模式。未充分暖機的FPS失敗保留，不當作已證明不相容。
 - [ ] UYVY 選項對應的 H.264 路徑與4K高幀率：多種 AVF output policy、延長20秒及解鎖環境仍無 sample callback；繼續核對 OBS 的實際影像及其他路徑，不能把選單宣告當可用。[解鎖對照](artifacts/hardware-resumed/uyvy-unlocked-20s.json)、[協議／格式證據](docs/HARDWARE_ACCEPTANCE.md)
 - [x] build19明確AVVideoCodecKey=h264診斷已測：NV12 1080p30在6秒取得138個avc1 block buffers、零pixel buffer；UYVY 1080p30／4K30／4K60同窗口均零sample。這證明診斷輸出路徑工作，不代表UYVY／4K60或原生wire H264可用；沒有為此加入無助於零輸入問題的解碼器。已清除診斷環境並恢復4K30 NV12／BGRA。[結果](artifacts/h264-output-build19/result.json)、[恢復](artifacts/h264-output-build19/normal-restored-settled.json)
