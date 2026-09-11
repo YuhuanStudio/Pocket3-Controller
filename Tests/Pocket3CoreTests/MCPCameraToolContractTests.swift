@@ -3,9 +3,12 @@ import Testing
 @testable import Pocket3Core
 
 @Suite struct MCPCameraToolContractTests {
-    @Test func validCallsMapToOnlyTheFourNormalServiceOperations() throws {
+    @Test func validCallsMapToNormalServiceOperations() throws {
         #expect(try MCPCameraToolContract.operation(name: "camera_status", arguments: .object([:])) == "status")
         #expect(try MCPCameraToolContract.operation(name: "stop_gimbal", arguments: .object([:])) == "stop")
+        #expect(try MCPCameraToolContract.operation(name: "camera_pause", arguments: .object([:])) == "pause")
+        #expect(try MCPCameraToolContract.operation(name: "camera_connect", arguments: .object([
+            "modeID": .string("1920x1080@30"), "pixelFormat": .string("nv12"), "outputPolicy": .string("h264")])) == "connect")
         #expect(try MCPCameraToolContract.operation(name: "capture_frame", arguments: .object([:])) == "snapshot")
         #expect(try MCPCameraToolContract.captureDimension(arguments: .object([:])) == 1920)
         for size in [320, 1280, 3840] {
@@ -22,16 +25,29 @@ import Testing
     }
 
     @Test func allToolsRequireObjectsAndStatusStopAcceptNoFields() {
-        for name in ["camera_status", "capture_frame", "move_gimbal", "stop_gimbal"] {
+        for name in ["camera_status", "capture_frame", "move_gimbal", "stop_gimbal", "camera_connect", "camera_pause"] {
             for arguments in [JSONValue.null, .array([]), .string("{}"), .number(1), .bool(false)] {
                 #expect(throws: BridgeFailure.self) { try MCPCameraToolContract.operation(name: name, arguments: arguments) }
             }
         }
-        for name in ["camera_status", "stop_gimbal"] {
+        for name in ["camera_status", "stop_gimbal", "camera_pause"] {
             #expect(throws: BridgeFailure.self) {
                 try MCPCameraToolContract.operation(name: name, arguments: .object(["unknown": .null]))
             }
         }
+    }
+
+    @Test func connectRejectsMalformedOrInventedOutputChoices() {
+        for arguments in [
+            JSONValue.object(["deviceID": .string("")]),
+            .object(["pixelFormat": .string("avc1")]),
+            .object(["outputPolicy": .string("hevc")]),
+            .object(["modeID": .number(1)]),
+            .object(["unexpected": .bool(true)])
+        ] {
+            #expect(throws: BridgeFailure.self) { try MCPCameraToolContract.operation(name: "camera_connect", arguments: arguments) }
+        }
+        #expect(MCPCameraToolContract.connectSchema["additionalProperties"] == .bool(false))
     }
 
     @Test func explicitMalformedImageSizeNeverBecomesTheDefault() {

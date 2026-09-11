@@ -8,6 +8,8 @@ public enum MCPCameraToolContract {
     public static let captureName = "capture_frame"
     public static let moveName = "move_gimbal"
     public static let stopName = "stop_gimbal"
+    public static let connectName = "camera_connect"
+    public static let pauseName = "camera_pause"
     public static let directions = ["left", "right", "up", "down", "home", "front", "back"]
     public static let minimumAngle = Double(Int32.min) / 3600
     public static let maximumAngle = Double(Int32.max) / 3600
@@ -19,6 +21,15 @@ public enum MCPCameraToolContract {
         "properties": .object(["maxDimension": .object([
             "type": .string("integer"), "minimum": .number(320), "maximum": .number(3840)
         ])]), "additionalProperties": .bool(false)
+    ])
+    public static let connectSchema: JSONValue = .object([
+        "type": .string("object"),
+        "properties": .object([
+            "deviceID": .object(["type": .string("string")]),
+            "modeID": .object(["type": .string("string")]),
+            "pixelFormat": .object(["type": .string("string"), "enum": .array(["automatic", "nv12", "uyvy"].map(JSONValue.string))]),
+            "outputPolicy": .object(["type": .string("string"), "enum": .array(["bgra", "h264"].map(JSONValue.string))])
+        ]), "additionalProperties": .bool(false)
     ])
     private static let angleSchema: JSONValue = .object([
         "type": .string("number"), "minimum": .number(minimumAngle), "maximum": .number(maximumAngle),
@@ -42,10 +53,20 @@ public enum MCPCameraToolContract {
 
     public static func operation(name: String, arguments: JSONValue) throws -> String {
         switch name {
-        case statusName, stopName:
+        case statusName, stopName, pauseName:
             let fields = try object(arguments)
             guard fields.isEmpty else { throw BridgeFailure("invalid_camera_arguments", "This tool accepts no arguments") }
-            return name == statusName ? "status" : "stop"
+            return name == statusName ? "status" : name == pauseName ? "pause" : "stop"
+        case connectName:
+            let fields = try object(arguments)
+            guard Set(fields.keys).isSubset(of: ["deviceID", "modeID", "pixelFormat", "outputPolicy"]),
+                  fields["deviceID"].map({ $0.string != nil && !$0.string!.isEmpty }) ?? true,
+                  fields["modeID"].map({ $0.string != nil && !$0.string!.isEmpty }) ?? true,
+                  fields["pixelFormat"].map({ ["automatic", "nv12", "uyvy"].contains($0.string ?? "") }) ?? true,
+                  fields["outputPolicy"].map({ ["bgra", "h264"].contains($0.string ?? "") }) ?? true else {
+                throw BridgeFailure("invalid_camera_arguments", "camera_connect accepts optional deviceID/modeID/pixelFormat/outputPolicy values")
+            }
+            return "connect"
         case captureName:
             _ = try captureDimension(arguments: arguments)
             return "snapshot"
