@@ -78,7 +78,7 @@ public enum Pocket3CameraStatusParser {
             shootingMode: Pocket3ShootingMode(rawValue: modeRaw),
             storageTotalMiB: u32(payload, 5), storageFreeMiB: u32(payload, 9),
             remainingRecordSeconds: videoLike ? u16(payload, 17) : nil,
-            elapsedRecordSeconds: u16(payload, 29))
+            elapsedRecordSeconds: videoLike ? u16(payload, 29) : nil)
     }
 
     public static func parseStorage(_ frame: DUMLFrame, sessionID: UUID, peripheralID: UUID,

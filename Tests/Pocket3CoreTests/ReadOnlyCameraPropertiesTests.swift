@@ -105,6 +105,13 @@ import Testing
         let lens = try #require(observation(.lensState, value: Data([0xfe])))
         guard case .lensState(let lensValue) = lens.readOnlyValue else { Issue.record("unknown lens missing"); return }
         #expect(lensValue.focusMode == nil && lensValue.focusModeRaw == 0xfe && lens.value == nil)
+        for writerCode in [UInt8(0x01), UInt8(0x02)] {
+            let writerLens = try #require(observation(.lensState, value: Data([writerCode])))
+            guard case .lensState(let value) = writerLens.readOnlyValue else {
+                Issue.record("writer code lens readback missing"); continue
+            }
+            #expect(value.focusMode == nil && value.focusModeRaw == writerCode && writerLens.value == nil)
+        }
 
         var photoBytes = Data(repeating: 0, count: 13)
         photoBytes[1] = 0xfe; photoBytes[3] = 0xfd; photoBytes[7] = 0xfc

@@ -395,8 +395,8 @@ public enum CameraReadOnlyPropertyDecoder {
         case .lensState:
             guard bytes.count >= 1 else { return nil }
             let focus: CameraFocusMode? = switch bytes[0] {
-            case 0x01, 0xB1: .single
-            case 0x02, 0xB2: .continuous
+            case 0xB1: .single
+            case 0xB2: .continuous
             default: nil
             }
             return .lensState(CameraLensStateReadback(raw: value, focusModeRaw: bytes[0],

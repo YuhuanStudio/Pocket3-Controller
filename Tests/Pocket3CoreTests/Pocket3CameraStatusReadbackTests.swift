@@ -38,10 +38,11 @@ private func cameraStatusFrame(payload: Data, flags: UInt8 = 0, source: UInt8 = 
         var payload = Data(repeating: 0, count: 58)
         payload[0] = 1; payload[57] = 0xFE
         payload[17] = 0xFF; payload[18] = 0xFF
+        payload[29] = 0x2A
         let result = try #require(Pocket3CameraStatusParser.parse(cameraStatusFrame(payload: payload),
             sessionID: UUID(), peripheralID: UUID(), receivedAt: Date(), receivedUptime: 2))
         #expect(result.shootingModeRaw == 0xFE && result.shootingMode == nil)
-        #expect(result.videoLike == false && result.remainingRecordSeconds == nil)
+        #expect(result.videoLike == false && result.remainingRecordSeconds == nil && result.elapsedRecordSeconds == nil)
     }
 
     @Test func independentStorageUsesConfirmedOffsetsAndStrictRoute() throws {
