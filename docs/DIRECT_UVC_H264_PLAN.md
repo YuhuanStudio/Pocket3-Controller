@@ -35,7 +35,7 @@ decoded buffer沿用`FrameStore`與`CaptureCallbackFence`，generation不符就�
 
 ## 實作與驗收階段
 
-目前進度：第1階段的純資料模組已完成，包含26-byte negotiation codec／固定mode catalog、UVC payload與access-unit assembler、H.264 Annex-B／AVCC normalizer及parameter-set／IDR readiness。24項focused tests通過；尚未開啟VS interface、送PROBE/COMMIT或呼叫VideoToolbox。
+目前進度：第1階段的純資料模組已完成，包含26-byte negotiation codec／固定mode catalog、UVC payload與access-unit assembler、H.264 Annex-B／AVCC normalizer及parameter-set／IDR readiness。另已加入HEVC Annex-B／HVCC normalizer、VPS/SPS/PPS＋IRAP readiness，及H.264/HEVC共用的同步VideoToolbox decoder foundation。AVFoundation↔direct ownership reducer亦已完成，要求AVF stop＋queue drain後才能取得direct owner，且direct pipe/interface/object全釋放後才能重啟AVF。尚未開啟VS interface、送PROBE/COMMIT或取得實際decode frame。
 
 1. 純資料：descriptor selection、26-byte control、UVC payload、FID/EOF/loss、Annex B/AVCC與SPS/PPS/IDR測試。
 2. raw transport：只取得VS ownership與scalar diagnostics；busy、拔除、timeout、取消、cleanup必須通過。
