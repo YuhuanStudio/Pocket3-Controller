@@ -153,6 +153,9 @@
   open in order to send/receive control requests.
 */
 - (BOOL) isInterfaceOpen;
+// Internal lifecycle primitive shared by the legacy helper category and the
+// controller implementation. It never uses USBInterfaceOpenSeize.
+- (BOOL) openInterfaceIfNeeded;
 
 /*!
   @method setIsInterfaceOpen:

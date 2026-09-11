@@ -504,8 +504,6 @@ uvc_control_t     UVCControllerControls[] = {
 */
 - (BOOL) sendControlRequest:(IOUSBDevRequest)controlRequest;
 - (IOReturn) sendTimedControlRequest:(IOUSBDevRequestTO)controlRequest;
-// Opens or temporarily borrows the interface without creating explicit intent.
-- (BOOL) openInterfaceIfNeeded;
 
 /*!
   @method setData:withLength:forSelector:atUnitId:
