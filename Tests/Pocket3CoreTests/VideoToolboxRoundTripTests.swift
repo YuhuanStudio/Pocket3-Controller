@@ -133,6 +133,19 @@ private func encodedBytes(from sample: CMSampleBuffer) throws -> Data {
 
 @Suite("Synthetic VideoToolbox round trip", .serialized)
 struct VideoToolboxRoundTripTests {
+    @Test func avc1SampleAdapterCopiesAndDecodesH264WithoutCameraAccess() throws {
+        let width = 64, height = 48
+        let sample = try encodedSample(codec: kCMVideoCodecType_H264, width: width, height: height)
+        let extracted = try AVC1SampleAdapter.extract(sample)
+        #expect(extracted.parameterSets.codec == .h264 && !extracted.accessUnit.isEmpty)
+        #expect(extracted.dimensions.width == width && extracted.dimensions.height == height)
+        let decoder = AVC1SampleDecoder()
+        let result = try decoder.decode(sample)
+        let buffer = try #require(result.pixelBuffer)
+        #expect(CVPixelBufferGetWidth(buffer) == width && CVPixelBufferGetHeight(buffer) == height)
+        decoder.invalidate()
+    }
+
     @Test func h264SyntheticFrameRoundTripsToBGRA() throws {
         let width = 64, height = 48
         let sample = try encodedSample(codec: kCMVideoCodecType_H264, width: width, height: height)

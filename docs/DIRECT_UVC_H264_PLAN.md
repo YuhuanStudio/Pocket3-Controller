@@ -39,6 +39,8 @@ decoded buffer沿用`FrameStore`與`CaptureCallbackFence`，generation不符就�
 
 第一個真實VS lifecycle診斷已加入：`uvc-stream-open-diagnostic`僅以一般`USBInterfaceOpen`嘗試VS interface 1，成功就立刻close，不會seize、改alternate setting、發UVC request或讀pipe。2026-09-11在沒有本App AVFoundation capture時，Pocket 3回`busy`（open `-536870203`），因此沒有取得endpoint或開始stream。這是現有macOS UVC client ownership的明確邊界；下一步是以App的AVFoundation stop/drain evidence觸發一次受控handoff，不能在busy狀態繼續嘗試或使用seize。
 
+macOS SDK查核後已撤回「App首選IOUSBHostInterface」的假設：該類別是kernel/DriverKit function-driver API，不能作為一般App的user-space替代。可行的立即路徑是`AVCaptureVideoDataOutput`的H.264 encoded-output：build25以`POCKET3_CAPTURE_OUTPUT=h264`實測1080p30，782個`avc1` block-buffer samples經`AVC1SampleAdapter`複製SPS/PPS/AVCC access unit，再由既有VideoToolbox decoder交回1920×1080 BGRA FrameStore，10秒後28.45fps、零runtime error；pause後frames歸零。這是host轉碼輸出，不宣稱input `420v`或USB wire為H.264，也不等同direct VS ownership。
+
 1. 純資料：descriptor selection、26-byte control、UVC payload、FID/EOF/loss、Annex B/AVCC與SPS/PPS/IDR測試。
 2. raw transport：只取得VS ownership與scalar diagnostics；busy、拔除、timeout、取消、cleanup必須通過。
 3. 同步1080p30 VideoToolbox→FrameStore；不保存畫面，先驗尺寸/FPS/freshness/memory bounds。

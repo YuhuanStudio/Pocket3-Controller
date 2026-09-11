@@ -338,6 +338,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     private let frameQueue = DispatchQueue(label: "studio.yuhuan.pocket3.frames", qos: .userInitiated)
     private var audioInput: AVCaptureDeviceInput?
     private var audioOutput: AVCaptureAudioDataOutput?
+    private var avc1Decoder: AVC1SampleDecoder?
     private var sessionObservers: [NSObjectProtocol] = []
     private let captureActivity = CaptureActivityLease()
     private let lifecycleLock: NSLock
@@ -621,6 +622,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     }
     private func stopOnQueue() {
         captureActivity.stop()
+        avc1Decoder?.invalidate(); avc1Decoder = nil
         // Invalidate first: even a callback already computing outside the lock
         // cannot commit after this point. Detach delegates before stop/removal.
         callbackFence.invalidateAll()
@@ -697,13 +699,21 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
             let inputSubType = inputDescription.map(CMFormatDescriptionGetMediaSubType)
             let mediaSubType = description.map(CMFormatDescriptionGetMediaSubType)
             let hasBlockBuffer = CMSampleBufferGetDataBuffer(sample) != nil
-            let metadata = pixel.map { CaptureVideoMetadata(buffer: $0,
+            let decodedPixel: CVPixelBuffer?
+            if pixel == nil, mediaSubType == kCMVideoCodecType_H264, hasBlockBuffer {
+                do {
+                    if avc1Decoder == nil { avc1Decoder = AVC1SampleDecoder() }
+                    decodedPixel = try avc1Decoder?.decode(sample).pixelBuffer
+                } catch { decodedPixel = nil }
+            } else { decodedPixel = nil }
+            let deliveredPixel = pixel ?? decodedPixel
+            let metadata = deliveredPixel.map { CaptureVideoMetadata(buffer: $0,
                 pts: CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample)), inputMediaSubType: inputSubType,
                 receivedAt: receivedAt, receivedUptime: receivedUptime) }
             callbackFence.commit(binding) {
                 store.recordVideoSample(hasImageBuffer: pixel != nil, hasBlockBuffer: hasBlockBuffer,
                     mediaSubType: mediaSubType, inputMediaSubType: inputSubType)
-                if let pixel, let metadata { store.receive(pixel, metadata: metadata) }
+                if let deliveredPixel, let metadata { store.receive(deliveredPixel, metadata: metadata) }
             }
         } else if binding.kind == .audio,
                   let desc = description, let fmt = CMAudioFormatDescriptionGetStreamBasicDescription(desc)?.pointee,
