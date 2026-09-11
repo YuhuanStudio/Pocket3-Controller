@@ -450,6 +450,9 @@ public actor CameraService {
             if generation == lifecycleGeneration {
                 // Cleanup clears buffers and live counters; retain only the
                 // failed attempt's scalar diagnostics for doctor/status.
+                if captureStarted, (error as? BridgeFailure)?.code == "no_frame" {
+                    capture.store.recordCallbackTimeout()
+                }
                 lastCaptureAttempt = captureStarted ? capture.store.sampleDiagnostics()
                     : capture.lastFailedStartDiagnostics() ?? CaptureSampleDiagnostics()
                 await capture.stop(); phase = "error"; lastError = error.localizedDescription; log("connect", error.localizedDescription, error: true, presentationKey: "camera.connection_failed")

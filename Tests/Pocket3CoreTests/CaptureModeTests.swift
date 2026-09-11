@@ -3,6 +3,11 @@ import Testing
 @testable import Pocket3Core
 
 @Suite struct CaptureModeTests {
+    @Test func hostSubtypeLabelsDoNotPretendToBeUSBWireFormats() {
+        #expect(CapturePixelFormat.nv12.title == "420v host path (MJPEG UVC)")
+        #expect(CapturePixelFormat.uyvy.title == "2vuy host path (H.264 UVC)")
+        #expect(CapturePixelFormat.nv12.fourCC == "420v" && CapturePixelFormat.uyvy.fourCC == "2vuy")
+    }
     @Test func timingNoiseDoesNotCreateDuplicateOrFractionalIntegerModes() {
         let exact = CaptureMode.default1080p30
         let advertised = CaptureMode(width: 1920, height: 1080, frameRate: 30.000030)

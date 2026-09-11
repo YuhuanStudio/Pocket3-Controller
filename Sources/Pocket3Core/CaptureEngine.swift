@@ -58,6 +58,25 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
     public var interruptionCount = 0
     public var interruptionEndedCount = 0
     public var interrupted = false
+    public var activeFormatFourCC: String?
+    public var activeFormatWidth: Int?
+    public var activeFormatHeight: Int?
+    public var requestedFrameRate: Double?
+    public var requestedFrameDurationSeconds: Double?
+    public var activeMinFrameDurationSeconds: Double?
+    public var activeMaxFrameDurationSeconds: Double?
+    public var sessionPreset: String?
+    public var outputVideoSettingsWasNil: Bool?
+    public var outputVideoSettingsKeys: [String]?
+    public var outputVideoSettingsValueTypes: [String: String]?
+    public var connectionEnabled: Bool?
+    public var connectionActive: Bool?
+    public var inputPortFourCC: String?
+    public var sessionRunning: Bool?
+    public var deviceConnected: Bool?
+    public var callbackWaitTimedOut: Bool?
+    public var noVideoSample: Bool?
+    public var callbackTimeoutCount: Int?
     public init() {}
 }
 
@@ -92,6 +111,25 @@ enum CaptureOutputPolicy: String, Sendable {
     func validateAvailableCodecs(_ codecs: [String]) throws {
         guard self != .h264 || codecs.contains(AVVideoCodecType.h264.rawValue) else {
             throw BridgeFailure("output_codec_unavailable", "目前擷取格式未提供 H.264 診斷輸出")
+        }
+    }
+}
+
+enum CaptureNegotiationSanitizer {
+    static func seconds(_ time: CMTime) -> Double? {
+        let value = CMTimeGetSeconds(time)
+        return value.isFinite && value > 0 ? value : nil
+    }
+    static func valueTypes(_ settings: [String: Any]) -> [String: String] {
+        settings.mapValues { value in
+            switch value {
+            case is String: "string"
+            case is Bool: "boolean"
+            case is Int, is Int8, is Int16, is Int32, is Int64,
+                 is UInt, is UInt8, is UInt16, is UInt32, is UInt64: "integer"
+            case is Float, is Double: "number"
+            default: "unsupported"
+            }
         }
     }
 }
@@ -214,6 +252,36 @@ public final class FrameStore: @unchecked Sendable {
             diagnostics.requestedOutputPolicy = policy
             diagnostics.availableVideoOutputPixelFormats = pixelFormats.map(CapturePixelFormat.fourCCString)
             diagnostics.availableVideoOutputCodecs = codecs
+        }
+    }
+    public func recordNegotiation(activeFormat: CMFormatDescription, requestedFrameRate: Double,
+                                  requestedFrameDuration: CMTime, activeMinFrameDuration: CMTime,
+                                  activeMaxFrameDuration: CMTime,
+                                  sessionPreset: String, outputVideoSettings: [String: Any]?,
+                                  connectionEnabled: Bool?, connectionActive: Bool?,
+                                  inputPortFormat: CMFormatDescription?, sessionRunning: Bool,
+                                  deviceConnected: Bool) {
+        let dimensions = CMVideoFormatDescriptionGetDimensions(activeFormat)
+        lock.withLock {
+            diagnostics.activeFormatFourCC = CapturePixelFormat.fourCCString(CMFormatDescriptionGetMediaSubType(activeFormat))
+            diagnostics.activeFormatWidth = Int(dimensions.width); diagnostics.activeFormatHeight = Int(dimensions.height)
+            diagnostics.requestedFrameRate = requestedFrameRate; diagnostics.sessionPreset = sessionPreset
+            diagnostics.requestedFrameDurationSeconds = CaptureNegotiationSanitizer.seconds(requestedFrameDuration)
+            diagnostics.activeMinFrameDurationSeconds = CaptureNegotiationSanitizer.seconds(activeMinFrameDuration)
+            diagnostics.activeMaxFrameDurationSeconds = CaptureNegotiationSanitizer.seconds(activeMaxFrameDuration)
+            diagnostics.outputVideoSettingsWasNil = outputVideoSettings == nil
+            diagnostics.outputVideoSettingsKeys = outputVideoSettings?.keys.sorted()
+            diagnostics.outputVideoSettingsValueTypes = outputVideoSettings.map(CaptureNegotiationSanitizer.valueTypes)
+            diagnostics.connectionEnabled = connectionEnabled; diagnostics.connectionActive = connectionActive
+            diagnostics.inputPortFourCC = inputPortFormat.map { CapturePixelFormat.fourCCString(CMFormatDescriptionGetMediaSubType($0)) }
+            diagnostics.sessionRunning = sessionRunning; diagnostics.deviceConnected = deviceConnected
+        }
+    }
+    public func recordCallbackTimeout() {
+        lock.withLock {
+            diagnostics.callbackTimeoutCount = (diagnostics.callbackTimeoutCount ?? 0) + 1
+            diagnostics.callbackWaitTimedOut = true
+            diagnostics.noVideoSample = diagnostics.videoSampleCount == 0
         }
     }
     public func recordRuntimeError(avFoundationCode: Int?) {
@@ -501,12 +569,32 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                         }) else { throw CancellationError() }
                         try outputPolicy.validateAvailableCodecs(outputCodecs)
                         output.videoSettings = outputPolicy.settings(width: Int(width), height: Int(height))
+                        let videoConnection = output.connection(with: .video)
+                        let portFormat = input.ports.first(where: { $0.mediaType == .video })?.formatDescription
+                        store.recordNegotiation(activeFormat: device.activeFormat.formatDescription,
+                            requestedFrameRate: mode.frameRate, requestedFrameDuration: duration,
+                            activeMinFrameDuration: device.activeVideoMinFrameDuration,
+                            activeMaxFrameDuration: device.activeVideoMaxFrameDuration,
+                            sessionPreset: session.sessionPreset.rawValue,
+                            outputVideoSettings: output.videoSettings,
+                            connectionEnabled: videoConnection?.isEnabled, connectionActive: videoConnection?.isActive,
+                            inputPortFormat: portFormat, sessionRunning: session.isRunning,
+                            deviceConnected: device.isConnected)
                         guard callbackFence.activate(output: ObjectIdentifier(output), kind: .video, generation: generation) != nil else { throw CancellationError() }
                         output.setSampleBufferDelegate(self, queue: frameQueue)
                         session.commitConfiguration()
                         configurationCommitted = true
                         guard isCurrent(generation) else { throw CancellationError() }
                         session.startRunning()
+                        store.recordNegotiation(activeFormat: device.activeFormat.formatDescription,
+                            requestedFrameRate: mode.frameRate, requestedFrameDuration: duration,
+                            activeMinFrameDuration: device.activeVideoMinFrameDuration,
+                            activeMaxFrameDuration: device.activeVideoMaxFrameDuration,
+                            sessionPreset: session.sessionPreset.rawValue,
+                            outputVideoSettings: output.videoSettings,
+                            connectionEnabled: videoConnection?.isEnabled, connectionActive: videoConnection?.isActive,
+                            inputPortFormat: portFormat, sessionRunning: session.isRunning,
+                            deviceConnected: device.isConnected)
                     } catch { if !configurationCommitted { session.commitConfiguration() }; throw error }
                     guard isCurrent(generation) else { throw CancellationError() }
                     let actual = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)

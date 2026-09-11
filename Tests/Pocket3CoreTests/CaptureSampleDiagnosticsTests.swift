@@ -53,9 +53,14 @@ import Testing
         #expect(failedAttempt.interruptionCount == 1 && failedAttempt.interruptionEndedCount == 1)
         #expect(!failedAttempt.interrupted)
         let payload = try JSONDecoder().decode([String: JSONValue].self, from: JSONEncoder().encode(failedAttempt))
-        #expect(payload.values.allSatisfy { value in
-            switch value { case .number, .string, .bool, .null: true; default: false }
-        })
+        func scalarLeavesOnly(_ value: JSONValue) -> Bool {
+            switch value {
+            case .number, .string, .bool, .null: true
+            case .array(let values): values.allSatisfy(scalarLeavesOnly)
+            case .object(let values): values.values.allSatisfy(scalarLeavesOnly)
+            }
+        }
+        #expect(payload.values.allSatisfy(scalarLeavesOnly))
         #expect(!payload.keys.contains("frame") && !payload.keys.contains("image") && !payload.keys.contains("data"))
     }
 
@@ -91,5 +96,29 @@ import Testing
         let decoded = try JSONDecoder().decode(CaptureSampleDiagnostics.self, from: legacy)
         #expect(decoded.requestedOutputPolicy == nil && decoded.availableVideoOutputPixelFormats == nil
             && decoded.availableVideoOutputCodecs == nil)
+        #expect(decoded.activeFormatFourCC == nil && decoded.callbackWaitTimedOut == nil
+            && decoded.outputVideoSettingsValueTypes == nil)
+    }
+
+    @Test func negotiationSettingsExposeOnlyWhitelistedTypeNames() {
+        let types = CaptureNegotiationSanitizer.valueTypes([
+            "codec": "avc1", "width": 3840, "rate": 59.94, "enabled": true,
+            "opaque": NSObject()
+        ])
+        #expect(types == ["codec":"string", "width":"integer", "rate":"number",
+            "enabled":"boolean", "opaque":"unsupported"])
+        #expect(CaptureNegotiationSanitizer.seconds(CMTime(value: 1, timescale: 60)) == 1.0 / 60)
+        #expect(CaptureNegotiationSanitizer.seconds(.invalid) == nil)
+    }
+
+    @Test func callbackTimeoutRecordsWhetherAnyVideoSampleArrived() {
+        let empty = FrameStore(); empty.recordCallbackTimeout()
+        #expect(empty.sampleDiagnostics().callbackWaitTimedOut == true)
+        #expect(empty.sampleDiagnostics().noVideoSample == true && empty.sampleDiagnostics().callbackTimeoutCount == 1)
+        let sampled = FrameStore()
+        sampled.recordVideoSample(hasImageBuffer: false, hasBlockBuffer: true,
+            mediaSubType: kCMVideoCodecType_H264, inputMediaSubType: kCVPixelFormatType_422YpCbCr8)
+        sampled.recordCallbackTimeout()
+        #expect(sampled.sampleDiagnostics().noVideoSample == false)
     }
 }

@@ -7,7 +7,11 @@ public enum CapturePixelFormat: String, Codable, CaseIterable, Hashable, Sendabl
 
     public var id: String { rawValue }
     public var title: String {
-        switch self { case .automatic: "Auto"; case .nv12: "NV12"; case .uyvy: "UYVY" }
+        switch self {
+        case .automatic: "Auto"
+        case .nv12: "420v host path (MJPEG UVC)"
+        case .uyvy: "2vuy host path (H.264 UVC)"
+        }
     }
     public var mediaSubType: UInt32? {
         switch self {

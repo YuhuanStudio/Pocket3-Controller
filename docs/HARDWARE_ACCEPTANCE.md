@@ -359,3 +359,7 @@ BLE 候選 `OsmoPocket3-7CF5` 完成 protocol pairing；身份仍為 `unverified
 同一 build25 metrics-only harness 隨後只測兩個 UYVY 代表模式：`1920x1080@30` 與僅宣告 UYVY 的 `3840x2160@60`。兩者均在 startup window 內回 `no_frame`，`videoSampleCount=0`、`pixelBufferCount=0`、`nonImageVideoSampleCount=0`、runtime/interruption均0；AVFoundation 仍列出 `2vuy` output 與 `avc1/jpeg` codec。最後已 pause，沒有影像檔、BLE、控制或機身設定寫入。[結果](../artifacts/hardware-complete-2026-09-11/build25-uyvy-representative/a7abb20c-e58e-4c64-9d3c-b961cc5fd999/result.json)、[失敗後診斷](../artifacts/hardware-complete-2026-09-11/build25-after-uyvy.json)
 
 這與先前 UYVY 零 callback 證據一致；本次沒有重播同模式。下一步需改善 active-format／output negotiation 診斷或找到不同 host transport，不能因裝置列出 `2vuy` 就在 UI 宣稱可用。
+
+build25 隨後加入 scalar-only negotiation snapshot，並以新診斷只重測一次 `1920x1080@30` 的2vuy host path。結果清楚顯示：selected active format為`2vuy`／1920×1080／30fps，active min/max duration均0.0333333秒，session preset為1080p、session running、device connected、video connection enabled且active；BGRA output settings只有Width/Height/PixelFormatType的型別名稱。然而 input port仍回`420v`，callback timeout一次且`noVideoSample=true`。這定位為 AVFoundation active-format與input-port negotiation不一致，仍沒有可交給VideoToolbox的sample。[新診斷](../artifacts/hardware-complete-2026-09-11/build25-uyvy-negotiation/6eae14d5-2d58-4077-a08b-be83852571b0/result.json)
+
+介面中的格式名稱因此改為`420v host path (MJPEG UVC)`與`2vuy host path (H.264 UVC)`，避免把AVFoundation host subtype冒充USB wire格式。真正支援H.264高幀率需要可恢復的encoded-UVC backend／NAL組裝／VideoToolbox解碼，不能把decoder接到目前為零的AVFoundation callback。
