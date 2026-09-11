@@ -145,7 +145,7 @@ import Testing
 
     @Test func truncatedValuesAreRejectedAtEachCaptureConfirmedMinimum() {
         let minimums: [(CameraSettingsProperty, Int)] = [
-            (.videoParameters, 9), (.sensorAspectRatio, 1), (.imageEffect, 6),
+            (.videoCodecCapabilities, 1), (.videoFormatCapabilities, 1), (.videoParameters, 9), (.sensorAspectRatio, 1), (.imageEffect, 6),
             (.exposure, 20), (.lensState, 1), (.photoParameters, 13),
             (.lapseParameters, 21), (.motionlapseParameters, 8), (.panoramaParameters, 3)
         ]
@@ -177,7 +177,7 @@ import Testing
     }
 
     @Test func AllPropertiesAreQueryableButNewPropertiesCannotBecomeWriterValues() throws {
-        #expect(CameraSettingsProperty.allCases.count == 9)
+        #expect(CameraSettingsProperty.allCases.count == 11)
         for property in CameraSettingsProperty.allCases {
             let query = try BluetoothCameraPropertyQuery(property: property, binding: binding,
                 sequence: 1, transactionID: 2, startedUptime: 0)

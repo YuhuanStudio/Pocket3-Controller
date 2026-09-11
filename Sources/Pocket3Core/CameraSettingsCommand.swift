@@ -14,6 +14,12 @@ public enum CameraExposureMode: UInt8, Codable, Sendable, Equatable {
     case automatic = 0x01, manual = 0x04
 }
 public enum CameraSettingsProperty: String, Codable, Sendable, Hashable, CaseIterable {
+    /// Capability payload, kept opaque until a Pocket 3-specific layout has
+    /// been captured and independently decoded. It is never a setter input.
+    case videoCodecCapabilities = "camcap_video_codec"
+    /// Capability table for resolution/frame-rate/flags. Its payload remains
+    /// opaque until captured from this firmware and independently decoded.
+    case videoFormatCapabilities = "camcap_video_format"
     case videoParameters = "cam_video_param_v2"
     case sensorAspectRatio = "cam_sensor_aspect_ratio"
     case imageEffect = "cam_image_effect"

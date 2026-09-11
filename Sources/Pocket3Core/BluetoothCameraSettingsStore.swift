@@ -13,7 +13,7 @@ struct BluetoothCameraSettingsStore: Sendable {
     static let maximumAge: TimeInterval = 5
     static let maximumFingerprintsPerProperty = 16
     private static let properties: [CameraSettingsProperty] = [
-        .lensState, .imageEffect, .exposure, .videoParameters, .sensorAspectRatio,
+        .lensState, .imageEffect, .exposure, .videoCodecCapabilities, .videoFormatCapabilities, .videoParameters, .sensorAspectRatio,
         .photoParameters, .lapseParameters, .motionlapseParameters, .panoramaParameters
     ]
     private struct Entry: Sendable {

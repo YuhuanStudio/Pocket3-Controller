@@ -291,10 +291,21 @@ public typealias CameraMotionlapseReadback = CameraMotionlapseParameters
 public typealias CameraPanoParams = CameraPanoramaParameters
 public typealias CameraPanoReadback = CameraPanoramaParameters
 
+/// A complete, bounded read-only capability payload whose field layout is not
+/// yet established for this Pocket 3 firmware. Retaining bytes permits
+/// evidence-led decoding later without inventing codec names or writable
+/// values from an unknown capability table.
+public struct CameraOpaqueCapabilityReadback: Codable, Sendable, Equatable {
+    public let raw: Data
+    public init(raw: Data) { self.raw = raw }
+}
+
 /// Typed values from the read-only 00/99 named-property bus.  The associated
 /// payload structs retain every byte received from the camera, including
 /// bytes whose enum values are not known by this build.
 public enum CameraReadOnlyValue: Codable, Sendable, Equatable {
+    case videoCodecCapabilities(CameraOpaqueCapabilityReadback)
+    case videoFormatCapabilities(CameraOpaqueCapabilityReadback)
     case videoParameters(CameraVideoParameters)
     case sensorAspectRatio(CameraSensorAspectRatioReadback)
     case imageEffect(CameraImageEffectReadback)
@@ -307,6 +318,8 @@ public enum CameraReadOnlyValue: Codable, Sendable, Equatable {
 
     public var property: CameraSettingsProperty {
         switch self {
+        case .videoCodecCapabilities: .videoCodecCapabilities
+        case .videoFormatCapabilities: .videoFormatCapabilities
         case .videoParameters: .videoParameters
         case .sensorAspectRatio: .sensorAspectRatio
         case .imageEffect: .imageEffect
@@ -321,6 +334,8 @@ public enum CameraReadOnlyValue: Codable, Sendable, Equatable {
 
     public var raw: Data {
         switch self {
+        case .videoCodecCapabilities(let value): value.raw
+        case .videoFormatCapabilities(let value): value.raw
         case .videoParameters(let value): value.raw
         case .sensorAspectRatio(let value): value.raw
         case .imageEffect(let value): value.raw
@@ -352,6 +367,12 @@ public enum CameraReadOnlyPropertyDecoder {
         guard value.count <= DUMLCodec.maximumPayloadLength else { return nil }
         let bytes = Array(value)
         switch property {
+        case .videoCodecCapabilities:
+            guard !bytes.isEmpty else { return nil }
+            return .videoCodecCapabilities(CameraOpaqueCapabilityReadback(raw: value))
+        case .videoFormatCapabilities:
+            guard !bytes.isEmpty else { return nil }
+            return .videoFormatCapabilities(CameraOpaqueCapabilityReadback(raw: value))
         case .videoParameters:
             guard bytes.count >= 9 else { return nil }
             return .videoParameters(CameraVideoParameters(raw: value,

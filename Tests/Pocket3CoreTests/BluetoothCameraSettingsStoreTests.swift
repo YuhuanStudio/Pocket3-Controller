@@ -6,6 +6,8 @@ import Testing
     private let session = UUID(), peer = UUID()
     private func value(_ property: CameraSettingsProperty) -> Data {
         switch property {
+        case .videoCodecCapabilities: return Data([0x01])
+        case .videoFormatCapabilities: return Data([0x01])
         case .lensState: return Data([0xb2]) + Data(repeating: 0, count: 46)
         case .imageEffect: return Data(repeating: 0, count: 16)
         case .exposure:
