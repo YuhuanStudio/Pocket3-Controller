@@ -44,3 +44,5 @@ decoded buffer沿用`FrameStore`與`CaptureCallbackFence`，generation不符就�
 5. async decode、direct preview、App source選擇、MCP read-only整合與AVFoundation往返恢復。
 
 任何階段都不能以descriptor、PROBE ACK、NAL bytes或單張decoded frame替代完整串流、ownership、取消、恢復與封裝驗收。
+
+目前descriptor selection已落地為純UVC configuration decoder：可辨識interface class 14/subclass 1 VC、subclass 2 VS、alternate setting、endpoint address／direction／transfer type／max packet，以及MJPEG/H.264 class-specific format subtype。這層只處理bytes，不讀IORegistry、更不開interface或pipe。
