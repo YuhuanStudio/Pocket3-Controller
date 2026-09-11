@@ -363,3 +363,9 @@ BLE 候選 `OsmoPocket3-7CF5` 完成 protocol pairing；身份仍為 `unverified
 build25 隨後加入 scalar-only negotiation snapshot，並以新診斷只重測一次 `1920x1080@30` 的2vuy host path。結果清楚顯示：selected active format為`2vuy`／1920×1080／30fps，active min/max duration均0.0333333秒，session preset為1080p、session running、device connected、video connection enabled且active；BGRA output settings只有Width/Height/PixelFormatType的型別名稱。然而 input port仍回`420v`，callback timeout一次且`noVideoSample=true`。這定位為 AVFoundation active-format與input-port negotiation不一致，仍沒有可交給VideoToolbox的sample。[新診斷](../artifacts/hardware-complete-2026-09-11/build25-uyvy-negotiation/6eae14d5-2d58-4077-a08b-be83852571b0/result.json)
 
 介面中的格式名稱因此改為`420v host path (MJPEG UVC)`與`2vuy host path (H.264 UVC)`，避免把AVFoundation host subtype冒充USB wire格式。真正支援H.264高幀率需要可恢復的encoded-UVC backend／NAL組裝／VideoToolbox解碼，不能把decoder接到目前為零的AVFoundation callback。
+
+## Build 25：ActiveTrack 被動事件錄製準備（2026-09-11）
+
+新增 developer-only `validation-wireless-camera-events`：只在明確 session/peripheral 已配對時，被動接收 CRC-valid `Camera01→App02`、flags0、set02 frame；每個 command ID 獨立做sequence/replay admission，payload上限128 bytes、20秒／512筆，內部只保存frame SHA-256去重。它沒有BLE write、subscription、pairing、Wi-Fi、USB control或tracking-success解讀。初版20秒窗口撞上IPC預設20秒receive timeout，client得到`ipc_disconnected`但App仍存活；現已把此明確operation列入120秒long-operation並補測試。
+
+使用者在機身開啟自動追蹤後，舊paired session的即時status仍只有一般`02/80`等header，既有`02/89/A5/A6`候選為空；這不證明沒有其他tracking事件。換入新recorder build後，BLE候選仍持續廣播（RSSI約−45至−50），但三次有間隔的GATT subscribe均以`bluetooth_gatt_timeout`結束，尚未能在tracking-active狀態重新pair。這是新相容性觀察，不能直接推論ActiveTrack造成timeout。下一步需先由使用者停止機身追蹤，使BLE重新pair，再在已arm的20秒window內重新啟動追蹤，才能取得可比較事件全集。

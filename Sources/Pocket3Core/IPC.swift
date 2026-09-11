@@ -173,6 +173,13 @@ public final class IPCServer: @unchecked Sendable {
 }
 
 public enum IPCClient {
+    static func timeoutSeconds(for operation: String) -> Int {
+        if ["cancel-request", "bridge-ping"].contains(operation) { return 2 }
+        if ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception",
+            "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset",
+            "move", BluetoothCameraEventRecordingRequest.operation].contains(operation) { return 120 }
+        return 20
+    }
     public static func call(_ operation: String, arguments: JSONValue = .object([:]), address: IPCAddress = .default, source: ServiceRequestSource? = nil) async throws -> ServiceReply {
         guard let token = try? String(contentsOf: address.token, encoding: .utf8) else { throw BridgeFailure("app_not_running", "請先開啟 \(Pocket3Product.displayName) App") }
         let request = ServiceRequest(token: token, operation: operation, arguments: arguments, source: source)
@@ -183,8 +190,7 @@ public enum IPCClient {
             guard s >= 0 else { throw BridgeFailure("ipc_socket", "無法建立本機連接") }
             defer { socketState.remove(); close(s) }
             try socketState.install(s)
-            let longOperation = ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset", "move"].contains(operation)
-            SocketIO.configure(s, timeout: ["cancel-request", "bridge-ping"].contains(operation) ? 2 : (longOperation ? 120 : 20))
+            SocketIO.configure(s, timeout: timeoutSeconds(for: operation))
             var addr = try SocketIO.address(address.socket)
             let result = withUnsafePointer(to: &addr) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.connect(s, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) } }
             guard result == 0 else { throw BridgeFailure("app_not_running", "\(Pocket3Product.displayName) App 尚未啟動或已退出") }

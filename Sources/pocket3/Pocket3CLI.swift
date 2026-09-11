@@ -91,6 +91,15 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
+            if command == BluetoothCameraEventRecordingRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled", "Camera event recording requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
+                let request = try BluetoothCameraEventRecordingRequest(cliArguments: requestArguments)
+                let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}"); return
+            }
             let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == "validation-wireless-pair", args.contains("--read-connection-details") {
@@ -220,7 +229,7 @@ import MCP
             }
             if command == "validation-setup" { arguments["access"] = .string(option("--access") ?? "observe") }
             if let dimension = option("--max-dimension"), let size = Int(dimension) { arguments["maxDimension"] = .number(Double(size)) }
-            guard ["status", "doctor", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel"].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
+            guard ["status", "doctor", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel", BluetoothCameraEventRecordingRequest.operation].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
             let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
             if let data = reply.imageJPEG {
                 let output = option("--output") ?? "pocket3-\(Int(Date().timeIntervalSince1970)).jpg"
@@ -250,6 +259,8 @@ import MCP
           Developer only: fixed 1.2-second USB retarget and hold experiment.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
+        pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
+          Developer only: passively record up to 20 seconds/512 bounded camera-domain events. No writes or tracking claims.
         pocket3 validation-wireless-pair [--read-connection-details]
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
