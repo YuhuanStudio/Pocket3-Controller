@@ -10,8 +10,11 @@ features.
 |---|---|---|
 | Pocket 3 DUML commands use FFF5 write-without-response; telemetry is observed on FFF4. | Pocket 3 implementation/capture notes. | Keep the existing CoreBluetooth route; every setter still needs a Pocket 3 ACK and matching readback. |
 | BLE message IDs are big-endian, unlike UDP datalink sequencing. | Multiple Osmo implementations. | Keep the current BLE DUML codec split; do not reuse UDP framing state for BLE confirmation. |
+| Pocket 3 BLE advertisements may have no manufacturer data. | Two independent Pocket 3 BLE implementations, one tested from macOS. | Keep scanning by FFF0 service/local name; never add a manufacturer-data admission requirement. |
+| Correctly formed BLE gimbal writes can still be silently ignored without an active Wi-Fi streaming state. | Pocket 3 BLE implementation report; not a Pocket 3 host-control guarantee. | Preserve BLE telemetry/read-only features, but do not present native gimbal buttons or retry ignored writes. |
 | `camcap_video_codec`, `camcap_video_format`, and `cam_video_param_v2` are property names used by other Osmo sessions. | Osmosis media-protocol documentation. | Query only through the bounded 00/99 read path. Store opaque capability payloads until Pocket 3 captures establish a layout. |
 | Wi-Fi streaming flows require a BLE pairing/wake path and joining the camera AP. | Pocket 3 BLE reference implementations. | Do not adopt: the product requirement preserves the Mac's existing network. |
+| A Linux Pocket 3 HDMI pipeline reports 4K50 H.264 after direct UVC extraction with `libuvch264src`. | One third-party Linux project; transport-specific evidence, not a macOS result. | It supports direct UVC VS ownership as the high-frame-rate research route; it does not make macOS AVFoundation UYVY callbacks work. |
 | Pocket 4 work found in public material treats native tracking as a camera-side feature until a firmware-specific host control path is proven. | Pocket 4 project planning, not a command specification. | Maintain the same boundary for Pocket 3: local analysis is not DJI ActiveTrack control. |
 
 ## Explicit non-transfers
@@ -37,5 +40,7 @@ features.
 ## Sources
 
 - yigitkonur, [lib-osmo-ble protocol reference](https://github.com/yigitkonur/lib-osmo-ble/blob/main/PROTOCOL.md), accessed 2026-09-11.
+- triwav, [DJI Osmo Pocket 3 BLE protocol notes](https://github.com/triwav/dji-osmo-ble-protocol), accessed 2026-09-12.
+- stephanebhiri, [Pocket 3 direct-UVC H.264 HDMI pipeline](https://github.com/stephanebhiri/DJI_OSMOPOCKET3_TO_HDMI_4K_60P_50P), accessed 2026-09-12.
 - KonradIT, [Osmosis media protocol](https://github.com/KonradIT/osmosis/blob/main/MEDIA_PROTOCOL.md), accessed 2026-09-11.
 - FRAME-26, [Pocket 4 control research gate](https://github.com/FRAME-26/Homer_nero/blob/main/HOMER_MASTER_BUILD_PLAN.md), accessed 2026-09-11.
