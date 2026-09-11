@@ -44,4 +44,5 @@ finally:
   (destination/'report.json').write_text(json.dumps(final,ensure_ascii=False,indent=2)+'\n')
  except Exception:pass
 if not report.get('passed'):raise SystemExit('Stream validation did not pass; inspect the report.')
-if not report.get('fullAcceptanceRun'):print('Passed only the requested short/video-only check; full 30-minute audiovisual acceptance is still pending.')
+if not report.get('fullAcceptanceRun'):
+ print('Passed only the requested short audiovisual check.' if args.audio else 'Passed only the requested short video-only check; full 30-minute audiovisual acceptance is still pending.')
