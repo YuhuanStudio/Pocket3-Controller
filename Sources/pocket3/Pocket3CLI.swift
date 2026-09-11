@@ -260,7 +260,7 @@ import MCP
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
-          Developer only: passively record up to 20 seconds/512 bounded camera-domain events. No writes or tracking claims.
+          Developer only: passively record up to 20 seconds/512 bounded camera/gimbal telemetry changes. No writes or tracking claims.
         pocket3 validation-wireless-pair [--read-connection-details]
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3

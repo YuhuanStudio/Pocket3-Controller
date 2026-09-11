@@ -24,6 +24,8 @@
 - [ ] 依[direct UVC H.264規格](docs/DIRECT_UVC_H264_PLAN.md)逐階段實作公開API backend：純parser/control→VS ownership→同步1080p30 VT decode→直幅／4K→async preview與App整合；不得與AVFoundation／OBS爭用endpoint。
 - [x] build25 ActiveTrack被動camera-event recorder：exact paired peer/session、Camera→App set02、20秒／512筆／128-byte payload、per-command sequence、SHA-256去重、取消／斷線與120秒IPC timeout均已實作；完全不送命令。
 - [ ] ActiveTrack live事件差異：使用者啟動追蹤後舊候選仍空；換新build時三次GATT subscribe timeout，候選仍有廣播。需先停止機身追蹤、重新pair，再於已arm window內啟動，不能把timeout歸因於追蹤或把空候選當不支援。
+- [x] 第一輪已arm的ActiveTrack窗口完成：148筆只有不變的`02/80`與`02/DC`，候選89/A5/A6及pose mode/limit均未變；因此recorder已擴到Camera＋Gimbal route並改為只保留payload變化，仍待新版off/on重測。[事件](artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)
+- [x] direct UVC H.264 stage1純資料層：26-byte UVC1.0 PROBE/COMMIT與descriptor catalog、UVC bulk header/FID/EOF/PTS/SCR assembler、Annex-B/AVCC normalizer及SPS/PPS/IDR readiness均已實作；不含I/O或decode成功宣稱。
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。

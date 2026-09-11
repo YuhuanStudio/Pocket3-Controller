@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-/// The bounded result of a passive camera-domain notification window.
+/// The bounded result of a passive camera/gimbal telemetry-change window.
 ///
 /// These events preserve wire values for offline protocol discovery. They are
 /// deliberately not tracking states, success signals, or camera images.
@@ -11,18 +11,23 @@ public struct BluetoothCameraEvent: Codable, Sendable, Equatable {
     public let receivedAt: Date
     public let receivedUptime: TimeInterval
     public let sequence: UInt16
+    public let source: UInt8
+    public let commandSet: UInt8
     public let commandID: UInt8
     public let payloadLength: Int
     public let payloadHex: String
 
     public init(sessionID: UUID, peripheralID: UUID, receivedAt: Date,
-                receivedUptime: TimeInterval, sequence: UInt16, commandID: UInt8,
+                receivedUptime: TimeInterval, sequence: UInt16, source: UInt8,
+                commandSet: UInt8, commandID: UInt8,
                 payloadLength: Int, payloadHex: String) {
         self.sessionID = sessionID
         self.peripheralID = peripheralID
         self.receivedAt = receivedAt
         self.receivedUptime = receivedUptime
         self.sequence = sequence
+        self.source = source
+        self.commandSet = commandSet
         self.commandID = commandID
         self.payloadLength = payloadLength
         self.payloadHex = payloadHex
@@ -51,12 +56,14 @@ public struct BluetoothCameraEventRecording: Codable, Sendable, Equatable {
     public let failureCode: String?
     public let acceptedSampleCount: Int
     public let rejectedFrameCount: Int
+    public let unchangedFrameCount: Int
     public let events: [BluetoothCameraEvent]
 
     public init(sessionID: UUID, peripheralID: UUID, startedUptime: TimeInterval,
                 finishedUptime: TimeInterval?, end: BluetoothCameraEventRecordingEnd?,
                 failureCode: String?, acceptedSampleCount: Int,
-                rejectedFrameCount: Int, events: [BluetoothCameraEvent]) {
+                rejectedFrameCount: Int, unchangedFrameCount: Int,
+                events: [BluetoothCameraEvent]) {
         self.sessionID = sessionID
         self.peripheralID = peripheralID
         self.startedUptime = startedUptime
@@ -65,6 +72,7 @@ public struct BluetoothCameraEventRecording: Codable, Sendable, Equatable {
         self.failureCode = failureCode
         self.acceptedSampleCount = acceptedSampleCount
         self.rejectedFrameCount = rejectedFrameCount
+        self.unchangedFrameCount = unchangedFrameCount
         self.events = events
     }
 }
@@ -153,20 +161,23 @@ public enum BluetoothCameraEventParser {
                              peripheralID: UUID, receivedAt: Date,
                              receivedUptime: TimeInterval) -> BluetoothCameraEvent? {
         let frame = packet.frame
-        guard frame.source == 0x01, frame.destination == 0x02,
-              frame.commandSet == 0x02, frame.flags == 0,
+        let allowedRoute = (frame.source == 0x01 && frame.commandSet == 0x02)
+            || (frame.source == 0x04 && frame.commandSet == 0x04)
+        guard allowedRoute, frame.destination == 0x02, frame.flags == 0,
               frame.payload.count <= maximumPayloadBytes,
               receivedAt.timeIntervalSinceReferenceDate.isFinite,
               receivedUptime.isFinite, receivedUptime >= 0 else { return nil }
         return BluetoothCameraEvent(sessionID: sessionID, peripheralID: peripheralID,
             receivedAt: receivedAt, receivedUptime: receivedUptime,
-            sequence: frame.sequence, commandID: frame.commandID,
+            sequence: frame.sequence, source: frame.source,
+            commandSet: frame.commandSet, commandID: frame.commandID,
             payloadLength: frame.payload.count,
             payloadHex: frame.payload.map { String(format: "%02x", $0) }.joined())
     }
 }
 
-/// Bounded passive event recorder for a single paired BLE connection. It has
+/// Bounded passive change recorder for camera and gimbal device domains on a
+/// single paired BLE connection. It has
 /// no transport, timer, pairing, subscription, write, retry, Wi-Fi, USB, or
 /// tracking interpretation responsibilities. Its owner supplies already
 /// decoded packets and owns the lifetime/cancellation of the BLE operation.
@@ -183,8 +194,9 @@ public struct BluetoothCameraEventRecorder: Sendable {
     private var failureCode: String?
     private var events: [BluetoothCameraEvent] = []
     private var rejectedFrameCount = 0
-    private var fingerprints = Set<Data>()
-    private var sequenceAdmissions: [UInt8: BluetoothCameraEventSequenceAdmission] = [:]
+    private var unchangedFrameCount = 0
+    private var lastPayloadFingerprints: [UInt32: Data] = [:]
+    private var sequenceAdmissions: [UInt32: BluetoothCameraEventSequenceAdmission] = [:]
     private var lastEventUptime: TimeInterval?
 
     public init(sessionID: UUID, peripheralID: UUID, startedUptime: TimeInterval,
@@ -194,7 +206,8 @@ public struct BluetoothCameraEventRecorder: Sendable {
         self.peripheralID = peripheralID
         self.startedUptime = startedUptime
         if let baselineSequence {
-            sequenceAdmissions[baselineCommandID] = BluetoothCameraEventSequenceAdmission(baselineSequence: baselineSequence)
+            sequenceAdmissions[Self.routeKey(source: 0x01, commandSet: 0x02,
+                commandID: baselineCommandID)] = BluetoothCameraEventSequenceAdmission(baselineSequence: baselineSequence)
         }
     }
 
@@ -228,14 +241,22 @@ public struct BluetoothCameraEventRecorder: Sendable {
         }
         // Exact frame fingerprints catch replayed notifications even if a
         // future transport emits a frame with an unexpected sequence value.
-        let fingerprint = Data(SHA256.hash(data: packet.frameData))
-        var admission = sequenceAdmissions[event.commandID] ?? BluetoothCameraEventSequenceAdmission()
-        guard !fingerprints.contains(fingerprint), admission.accept(event.sequence) else {
+        let routeKey = Self.routeKey(source: event.source, commandSet: event.commandSet,
+            commandID: event.commandID)
+        var admission = sequenceAdmissions[routeKey] ?? BluetoothCameraEventSequenceAdmission()
+        guard admission.accept(event.sequence) else {
             rejectedFrameCount += 1
             return false
         }
-        fingerprints.insert(fingerprint)
-        sequenceAdmissions[event.commandID] = admission
+        sequenceAdmissions[routeKey] = admission
+        var semantic = Data([event.source, 0x02, event.commandSet, event.commandID])
+        semantic.append(packet.frame.payload)
+        let fingerprint = Data(SHA256.hash(data: semantic))
+        guard lastPayloadFingerprints[routeKey] != fingerprint else {
+            unchangedFrameCount += 1
+            return false
+        }
+        lastPayloadFingerprints[routeKey] = fingerprint
         events.append(event)
         lastEventUptime = uptime
         if events.count == Self.maximumSamples {
@@ -274,11 +295,15 @@ public struct BluetoothCameraEventRecorder: Sendable {
             startedUptime: startedUptime, finishedUptime: finishedUptime,
             end: ending, failureCode: failureCode,
             acceptedSampleCount: events.count, rejectedFrameCount: rejectedFrameCount,
+            unchangedFrameCount: unchangedFrameCount,
             events: events)
     }
 
     private static func validTime(_ value: TimeInterval) -> Bool {
         value.isFinite && value >= 0 &&
             (value + maximumDuration).isFinite && value + maximumDuration > value
+    }
+    private static func routeKey(source: UInt8, commandSet: UInt8, commandID: UInt8) -> UInt32 {
+        UInt32(source) << 16 | UInt32(commandSet) << 8 | UInt32(commandID)
     }
 }

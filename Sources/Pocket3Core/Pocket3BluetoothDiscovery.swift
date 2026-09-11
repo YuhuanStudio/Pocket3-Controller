@@ -596,7 +596,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             && pairer?.paired == true && registrationAcknowledgmentSession == operation.session
     }
 
-    /// Developer-only passive sampling of source-camera notifications. This
+    /// Developer-only passive sampling of camera/gimbal telemetry changes. This
     /// operation submits no packet, changes no subscription, and never starts
     /// discovery or pairing; the already active paired session owns all BLE
     /// transport work. Every callback is fenced to the exact session and peer.

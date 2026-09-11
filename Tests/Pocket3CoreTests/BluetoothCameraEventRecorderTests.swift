@@ -18,7 +18,7 @@ import Testing
         let event = try #require(BluetoothCameraEventParser.parse(valid, sessionID: session,
             peripheralID: peer, receivedAt: date, receivedUptime: 4))
         #expect(event.sessionID == session && event.peripheralID == peer)
-        #expect(event.sequence == 7 && event.commandID == 0xa6)
+        #expect(event.sequence == 7 && event.source == 1 && event.commandSet == 2 && event.commandID == 0xa6)
         #expect(event.payloadLength == 3 && event.payloadHex == "ab00ff")
 
         for invalid in [
@@ -31,6 +31,11 @@ import Testing
             #expect(BluetoothCameraEventParser.parse(invalid, sessionID: session,
                 peripheralID: peer, receivedAt: date, receivedUptime: 5) == nil)
         }
+        let gimbal = try packet(sequence: 13, source: 4, commandSet: 4,
+            commandID: 5, payload: Data([1,2,3,4,5,6]))
+        let gimbalEvent = try #require(BluetoothCameraEventParser.parse(gimbal,
+            sessionID: session, peripheralID: peer, receivedAt: date, receivedUptime: 5))
+        #expect(gimbalEvent.source == 4 && gimbalEvent.commandSet == 4 && gimbalEvent.commandID == 5)
     }
 
     @Test func recorderBindsToPairedIdentityAndDeduplicatesSequenceAndFrame() throws {
@@ -59,13 +64,13 @@ import Testing
         let session = UUID(), peer = UUID()
         var recorder = try BluetoothCameraEventRecorder(sessionID: session,
             peripheralID: peer, startedUptime: 1, baselineSequence: 0xfffe)
-        let beforeWrap = recorder.receive(try packet(sequence: 0xffff), sessionID: session,
+        let beforeWrap = recorder.receive(try packet(sequence: 0xffff, payload: Data([1])), sessionID: session,
             peripheralID: peer, paired: true, hostReceivedAt: Date(), uptime: 1.1)
-        let afterWrap = recorder.receive(try packet(sequence: 0), sessionID: session,
+        let afterWrap = recorder.receive(try packet(sequence: 0, payload: Data([2])), sessionID: session,
             peripheralID: peer, paired: true, hostReceivedAt: Date(), uptime: 1.2)
-        let duplicate = recorder.receive(try packet(sequence: 0), sessionID: session,
+        let duplicate = recorder.receive(try packet(sequence: 0, payload: Data([3])), sessionID: session,
             peripheralID: peer, paired: true, hostReceivedAt: Date(), uptime: 1.3)
-        let replay = recorder.receive(try packet(sequence: 0xff00), sessionID: session,
+        let replay = recorder.receive(try packet(sequence: 0xff00, payload: Data([4])), sessionID: session,
             peripheralID: peer, paired: true, hostReceivedAt: Date(), uptime: 1.4)
         #expect(beforeWrap && afterWrap && !duplicate && !replay)
         #expect(recorder.result.acceptedSampleCount == 2)
@@ -75,17 +80,38 @@ import Testing
         let session = UUID(), peer = UUID()
         var recorder = try BluetoothCameraEventRecorder(sessionID: session,
             peripheralID: peer, startedUptime: 1)
-        let status = recorder.receive(try packet(sequence: 900, commandID: 0x80),
+        let status = recorder.receive(try packet(sequence: 900, commandID: 0x80, payload: Data([1])),
             sessionID: session, peripheralID: peer, paired: true,
             hostReceivedAt: Date(), uptime: 1.1)
-        let storage = recorder.receive(try packet(sequence: 40, commandID: 0xDC),
+        let storage = recorder.receive(try packet(sequence: 40, commandID: 0xDC, payload: Data([2])),
             sessionID: session, peripheralID: peer, paired: true,
             hostReceivedAt: Date(), uptime: 1.2)
-        let nextStatus = recorder.receive(try packet(sequence: 901, commandID: 0x80),
+        let nextStatus = recorder.receive(try packet(sequence: 901, commandID: 0x80, payload: Data([3])),
             sessionID: session, peripheralID: peer, paired: true,
             hostReceivedAt: Date(), uptime: 1.3)
         #expect(status && storage && nextStatus)
         #expect(recorder.result.events.map(\.commandID) == [0x80, 0xDC, 0x80])
+    }
+
+    @Test func unchangedTelemetryDoesNotConsumeCapacityButRealTransitionsRemainVisible() throws {
+        let session = UUID(), peer = UUID()
+        var recorder = try BluetoothCameraEventRecorder(sessionID: session,
+            peripheralID: peer, startedUptime: 1)
+        let first = recorder.receive(try packet(sequence: 1, source: 4, commandSet: 4,
+            commandID: 5, payload: Data([1])), sessionID: session, peripheralID: peer,
+            paired: true, hostReceivedAt: Date(), uptime: 1.1)
+        let same = recorder.receive(try packet(sequence: 2, source: 4, commandSet: 4,
+            commandID: 5, payload: Data([1])), sessionID: session, peripheralID: peer,
+            paired: true, hostReceivedAt: Date(), uptime: 1.2)
+        let changed = recorder.receive(try packet(sequence: 3, source: 4, commandSet: 4,
+            commandID: 5, payload: Data([2])), sessionID: session, peripheralID: peer,
+            paired: true, hostReceivedAt: Date(), uptime: 1.3)
+        let returned = recorder.receive(try packet(sequence: 4, source: 4, commandSet: 4,
+            commandID: 5, payload: Data([1])), sessionID: session, peripheralID: peer,
+            paired: true, hostReceivedAt: Date(), uptime: 1.4)
+        #expect(first && !same && changed && returned)
+        #expect(recorder.result.acceptedSampleCount == 3 && recorder.result.unchangedFrameCount == 1)
+        #expect(recorder.result.events.map(\.payloadHex) == ["01","02","01"])
     }
 
     @Test func durationAndSampleBoundsCloseTheWindow() throws {
@@ -104,7 +130,8 @@ import Testing
         var capped = try BluetoothCameraEventRecorder(sessionID: session,
             peripheralID: peer, startedUptime: 0)
         for index in 0..<BluetoothCameraEventRecorder.maximumSamples {
-            let accepted = capped.receive(try packet(sequence: UInt16(index + 1)), sessionID: session,
+            let payload = Data([UInt8(index >> 8), UInt8(index & 0xff)])
+            let accepted = capped.receive(try packet(sequence: UInt16(index + 1), payload: payload), sessionID: session,
                 peripheralID: peer, paired: true, hostReceivedAt: Date(),
                 uptime: 0.001 + Double(index) * 0.001)
             #expect(accepted)
