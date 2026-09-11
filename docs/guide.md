@@ -85,7 +85,7 @@ Portrait results depend on the camera's physical orientation and selected mode.
 Earlier portrait trials passed after changing the body orientation; do not assume
 that selecting a portrait resolution alone rotates the camera or enables all
 native portrait modes. UYVY / H.264 paths and 4K60 do not have a passing capture
-result. If no frames arrive, return to the tested 1080p30 NV12 combination.
+result. **H.264 host output** is an experimental Mac-side encoded path; this Pocket 3 format does not advertise HEVC (`hvc1`) output, so **HEVC host output** is rejected before capture rather than falling back or retrying. If no frames arrive, return to the tested 1080p30 NV12 combination.
 
 The snapshot action captures a single image; CLI snapshots write to your explicit `--output` path.
 A preview does not imply that the app records or controls all internal recording modes.

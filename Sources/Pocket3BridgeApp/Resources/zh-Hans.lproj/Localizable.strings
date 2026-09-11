@@ -1473,6 +1473,8 @@
 "Preview output" = "预览输出";
 "BGRA preview" = "BGRA 预览";
 "Normal preview path" = "普通预览路径";
+"HEVC host output is below the requested frame rate." = "HEVC 主机输出低于要求的帧率。";
+"HEVC host output" = "HEVC 主机输出";
 "H.264 host output" = "H.264 主机输出";
 "Experimental · host encoded" = "实验性 · 由主机编码";
 "H.264 host output is below the requested frame rate." = "H.264 主机输出低于要求的帧率。";

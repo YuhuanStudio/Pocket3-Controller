@@ -10,6 +10,7 @@ import Testing
         #expect(try MCPCameraToolContract.operation(name: "camera_compare_frames", arguments: .object([:])) == "compare-frames")
         #expect(try MCPCameraToolContract.operation(name: "camera_connect", arguments: .object([
             "modeID": .string("1920x1080@30"), "pixelFormat": .string("nv12"), "outputPolicy": .string("h264")])) == "connect")
+        #expect(try MCPCameraToolContract.operation(name: "camera_connect", arguments: .object(["outputPolicy": .string("hevc")])) == "connect")
         #expect(try MCPCameraToolContract.operation(name: "capture_frame", arguments: .object([:])) == "snapshot")
         #expect(try MCPCameraToolContract.captureDimension(arguments: .object([:])) == 1920)
         for size in [320, 1280, 3840] {
@@ -42,7 +43,7 @@ import Testing
         for arguments in [
             JSONValue.object(["deviceID": .string("")]),
             .object(["pixelFormat": .string("avc1")]),
-            .object(["outputPolicy": .string("hevc")]),
+            .object(["outputPolicy": .string("unknown")]),
             .object(["modeID": .number(1)]),
             .object(["unexpected": .bool(true)])
         ] {

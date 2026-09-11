@@ -53,6 +53,10 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
     public var h264DecodeFailureCount: Int? = 0
     public var h264DecodeTotalMilliseconds: Double? = 0
     public var h264DecodeMaximumMilliseconds: Double? = 0
+    public var decodedHEVCFrameCount: Int? = 0
+    public var hevcDecodeFailureCount: Int? = 0
+    public var hevcDecodeTotalMilliseconds: Double? = 0
+    public var hevcDecodeMaximumMilliseconds: Double? = 0
     public var edgeMetrics: FrameEdgeMetrics?
     public var lastVideoSampleFourCC: String?
     public var lastVideoInputFourCC: String?
@@ -89,9 +93,9 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
 /// One explicitly opted-in diagnostic policy. Normal application launches keep
 /// their BGRA conversion, even if the environment variable happens to be set.
 public enum CaptureOutputPolicy: String, Codable, CaseIterable, Sendable, Identifiable {
-    case bgra, native, systemDefault = "system_default", h264
+    case bgra, native, systemDefault = "system_default", h264, hevc
     public var id: String { rawValue }
-    public var isUserSelectable: Bool { self == .bgra || self == .h264 }
+    public var isUserSelectable: Bool { self == .bgra || self == .h264 || self == .hevc }
     static func selected(environment: [String: String], arguments: [String]) -> Self {
         guard arguments.contains("--hardware-validation") else { return .bgra }
         return Self(rawValue: environment["POCKET3_CAPTURE_OUTPUT"] ?? "") ?? .bgra
@@ -101,12 +105,12 @@ public enum CaptureOutputPolicy: String, Codable, CaseIterable, Sendable, Identi
         // samples; nil would instead request a default uncompressed format.
         if self == .native { return [:] }
         if self == .systemDefault { return nil }
-        if self == .h264 {
+        if self == .h264 || self == .hevc {
             // Before attaching/configuring the input, retain system defaults.
             // The explicit codec is applied only after activeFormat is selected
             // and its availableVideoCodecTypes has been checked below.
             guard let width, let height else { return nil }
-            return [AVVideoCodecKey: AVVideoCodecType.h264.rawValue,
+            return [AVVideoCodecKey: (self == .h264 ? AVVideoCodecType.h264 : AVVideoCodecType.hevc).rawValue,
                     AVVideoWidthKey: width, AVVideoHeightKey: height]
         }
         var result: [String: Any] = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
@@ -117,8 +121,9 @@ public enum CaptureOutputPolicy: String, Codable, CaseIterable, Sendable, Identi
         return result
     }
     func validateAvailableCodecs(_ codecs: [String]) throws {
-        guard self != .h264 || codecs.contains(AVVideoCodecType.h264.rawValue) else {
-            throw BridgeFailure("output_codec_unavailable", "目前擷取格式未提供 H.264 診斷輸出")
+        let required: AVVideoCodecType? = self == .h264 ? .h264 : self == .hevc ? .hevc : nil
+        guard required.map({ codecs.contains($0.rawValue) }) ?? true else {
+            throw BridgeFailure("output_codec_unavailable", "目前擷取格式未提供要求的壓縮診斷輸出")
         }
     }
 }
@@ -265,6 +270,16 @@ public final class FrameStore: @unchecked Sendable {
             diagnostics.h264DecodeMaximumMilliseconds = max(diagnostics.h264DecodeMaximumMilliseconds ?? 0, milliseconds)
         }
     }
+    public func recordHEVCDecode(success: Bool, durationSeconds: Double) {
+        guard durationSeconds.isFinite && durationSeconds >= 0 else { return }
+        lock.withLock {
+            if success { diagnostics.decodedHEVCFrameCount = (diagnostics.decodedHEVCFrameCount ?? 0) + 1 }
+            else { diagnostics.hevcDecodeFailureCount = (diagnostics.hevcDecodeFailureCount ?? 0) + 1 }
+            let milliseconds = durationSeconds * 1_000
+            diagnostics.hevcDecodeTotalMilliseconds = (diagnostics.hevcDecodeTotalMilliseconds ?? 0) + milliseconds
+            diagnostics.hevcDecodeMaximumMilliseconds = max(diagnostics.hevcDecodeMaximumMilliseconds ?? 0, milliseconds)
+        }
+    }
     public func recordEdgeMetrics(_ metrics: FrameEdgeMetrics) {
         lock.withLock { diagnostics.edgeMetrics = metrics }
     }
@@ -360,6 +375,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     private var audioInput: AVCaptureDeviceInput?
     private var audioOutput: AVCaptureAudioDataOutput?
     private var avc1Decoder: AVC1SampleDecoder?
+    private var hevc1Decoder: HEVC1SampleDecoder?
     private var sessionObservers: [NSObjectProtocol] = []
     private let captureActivity = CaptureActivityLease()
     private let lifecycleLock: NSLock
@@ -645,6 +661,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     private func stopOnQueue() {
         captureActivity.stop()
         avc1Decoder?.invalidate(); avc1Decoder = nil
+        hevc1Decoder?.invalidate(); hevc1Decoder = nil
         // Invalidate first: even a callback already computing outside the lock
         // cannot commit after this point. Detach delegates before stop/removal.
         callbackFence.invalidateAll()
@@ -730,6 +747,16 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                     store.recordH264Decode(success: decodedPixel != nil, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
                 } catch {
                     store.recordH264Decode(success: false, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
+                    decodedPixel = nil
+                }
+            } else if pixel == nil, mediaSubType == kCMVideoCodecType_HEVC, hasBlockBuffer {
+                let started = ProcessInfo.processInfo.systemUptime
+                do {
+                    if hevc1Decoder == nil { hevc1Decoder = HEVC1SampleDecoder() }
+                    decodedPixel = try hevc1Decoder?.decode(sample).pixelBuffer
+                    store.recordHEVCDecode(success: decodedPixel != nil, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
+                } catch {
+                    store.recordHEVCDecode(success: false, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
                     decodedPixel = nil
                 }
             } else { decodedPixel = nil }

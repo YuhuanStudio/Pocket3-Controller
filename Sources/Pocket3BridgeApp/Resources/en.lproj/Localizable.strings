@@ -1473,6 +1473,8 @@
 "Preview output" = "Preview output";
 "BGRA preview" = "BGRA preview";
 "Normal preview path" = "Normal preview path";
+"HEVC host output is below the requested frame rate." = "HEVC host output is below the requested frame rate.";
+"HEVC host output" = "HEVC host output";
 "H.264 host output" = "H.264 host output";
 "Experimental · host encoded" = "Experimental · host encoded";
 "H.264 host output is below the requested frame rate." = "H.264 host output is below the requested frame rate.";

@@ -117,7 +117,8 @@ final class AppModel {
     }
     var captureOutputPolicyOptions: [YunSelect<CaptureOutputPolicy>.Option] {
         [.init(value: .bgra, title: loc("BGRA preview"), detail: loc("Normal preview path")),
-         .init(value: .h264, title: loc("H.264 host output"), detail: loc("Experimental · host encoded"))]
+         .init(value: .h264, title: loc("H.264 host output"), detail: loc("Experimental · host encoded")),
+         .init(value: .hevc, title: loc("HEVC host output"), detail: loc("Experimental · host encoded"))]
     }
     var capturePixelFormatSupported: Bool {
         captureMode != nil && (capturePixelFormat == .automatic || availableInputFormats[captureModeID]?.contains(capturePixelFormat) == true)
@@ -380,11 +381,12 @@ final class AppModel {
     var isConnecting: Bool { connecting || status?.phase == "connecting" }
     var canConnect: Bool { isCameraSource && !isConnecting && capturePixelFormatSupported && status?.devices.contains(where: { $0.id == selectedID }) == true }
     var outputPolicyStatus: String? {
-        guard let status, status.requestedOutputPolicy == .h264 else { return nil }
-        return "H.264 host output · " + String(format: "%.1f fps", status.capture.recentFPS)
+        guard let status, (status.requestedOutputPolicy == .h264 || status.requestedOutputPolicy == .hevc) else { return nil }
+        let codec = status.requestedOutputPolicy == .hevc ? "HEVC" : "H.264"
+        return codec + " host output · " + String(format: "%.1f fps", status.capture.recentFPS)
     }
     var outputPolicyRateLimited: Bool {
-        guard let status, status.requestedOutputPolicy == .h264,
+        guard let status, (status.requestedOutputPolicy == .h264 || status.requestedOutputPolicy == .hevc),
               let requested = status.requestedMode?.frameRate, requested > 0 else { return false }
         return status.capture.recentFPS > 0 && status.capture.recentFPS < requested * 0.9
     }
@@ -778,7 +780,7 @@ struct RootView: View {
                                         .foregroundStyle(model.outputPolicyRateLimited ? Yun.Palette.warning : Yun.Palette.textTertiary)
                                         .fixedSize(horizontal: false, vertical: true)
                                     if model.outputPolicyRateLimited {
-                                        Text(loc("H.264 host output is below the requested frame rate."))
+                                        Text(loc(model.status?.requestedOutputPolicy == .hevc ? "HEVC host output is below the requested frame rate." : "H.264 host output is below the requested frame rate."))
                                             .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }

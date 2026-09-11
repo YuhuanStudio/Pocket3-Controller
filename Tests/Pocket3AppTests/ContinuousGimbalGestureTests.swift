@@ -35,6 +35,7 @@ private enum GestureTestError: Error { case timeout }
 }
 private let gestureTestBinding = ContinuousGimbalBinding(sessionID: "gesture-fixture", generation: 1)
 
+@Suite(.serialized) struct ContinuousGimbalGestureTests {
 @MainActor @Test func unavailableContinuousUICannotStartMotion() async {
     let controller = ContinuousGimbalGestureController(monitorsEnabled: false)
     let transport = GestureTestTransport()
@@ -61,6 +62,10 @@ private let gestureTestBinding = ContinuousGimbalBinding(sessionID: "gesture-fix
     #expect(await scheduler.status().phase == .idle)
 }
 
+// This asserts a real 50 ms MainActor heartbeat across the Core 250 ms lease.
+// Keep it serial: concurrent MainActor tests can otherwise prevent *any* UI
+// heartbeat from receiving a scheduling turn, which tests runner contention
+// rather than the controller's renewal contract.
 @MainActor @Test func heldGestureRenewsHeartbeatAndSpeedUntilMatchingRelease() async throws {
     let controller = ContinuousGimbalGestureController(monitorsEnabled: false)
     let transport = GestureTestTransport()
@@ -183,4 +188,5 @@ private let gestureTestBinding = ContinuousGimbalBinding(sessionID: "gesture-fix
     #expect(await scheduler.status().phase == .active)
     #expect(await transport.writes.allSatisfy { !$0.command.isNeutral })
     _ = await controller.stop()
+}
 }

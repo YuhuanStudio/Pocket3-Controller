@@ -1473,6 +1473,8 @@
 "Preview output" = "預覽輸出";
 "BGRA preview" = "BGRA 預覽";
 "Normal preview path" = "一般預覽路徑";
+"HEVC host output is below the requested frame rate." = "HEVC 主機輸出低於要求的幀率。";
+"HEVC host output" = "HEVC 主機輸出";
 "H.264 host output" = "H.264 主機輸出";
 "Experimental · host encoded" = "實驗性 · 由主機編碼";
 "H.264 host output is below the requested frame rate." = "H.264 主機輸出低於要求的幀率。";

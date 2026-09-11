@@ -378,6 +378,10 @@ build25 隨後加入 scalar-only negotiation snapshot，並以新診斷只重測
 
 recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload變更**：每個route獨立sequence admission，route+payload SHA-256排除重複高頻telemetry，相同值另計`unchangedFrameCount`，A→B→A仍保留三個狀態。需在新版App、由使用者明確標記的tracking off/on下一輪窗口取得實機差異。
 
+## Build 25：AVFoundation HEVC host-output capability（2026-09-11）
+
+在這台 Pocket 3 的 USB 1920×1080@30、NV12 active format，以明確 `hevc` host-output policy 檢查 `AVCaptureVideoDataOutput.availableVideoCodecTypes`。它只回報 `avc1`、`jpeg`，沒有 `hvc1`，所以服務在建立 callback 前以 `output_codec_unavailable` 拒絕；沒有 video sample、影格、設定寫入或自動重試。隨後同一裝置回到 BGRA 正向對照取得一張影格，再 privacy pause 回到零影格。這只界定 macOS AVFoundation host-output transport，不能否定機身目前的 HEVC 錄影設定，也不能冒稱 USB HEVC 已支援。[metrics-only 結果](../artifacts/hardware-complete-2026-09-11/hevc-host-output-avfoundation-1080p30.json)
+
 ## Build 25：HEVC 機內錄影唯讀基準（2026-09-11）
 
 在既有paired session只讀訂閱`cam_video_param_v2`，單次subscription已送出、property push成功、沒有matching ACK；回覆value長度10，解碼為4K（`0x10`）、30 fps（`0x03`）、HEVC（`compression=0x01`）。這確認機身目前的HEVC baseline，沒有送`02/AB`或任何設定寫入。後續developer writer的HEVC no-op必須以完整fresh raw baseline作零寫入驗證；H.264→HEVC→H.264的受控測試仍等追蹤關閉與新版App重啟。[唯讀結果](../artifacts/hardware-complete-2026-09-11/hevc-current-readonly-property.json)

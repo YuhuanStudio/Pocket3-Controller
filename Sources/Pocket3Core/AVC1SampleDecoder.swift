@@ -85,3 +85,68 @@ final class AVC1SampleDecoder {
 
     func invalidate() { decoder?.invalidate(); decoder = nil; bundle = nil; dimensions = nil }
 }
+
+/// The HEVC counterpart to `AVC1SampleAdapter`. AVFoundation labels this
+/// output `hvc1`; parameter sets are copied before decode just as H.264's are.
+/// It therefore never retains a capture callback buffer.
+public enum HEVC1SampleAdapter {
+    public static func extract(_ sample: CMSampleBuffer,
+                               limits: VideoToolboxDecoderLimits = .default) throws -> AVC1CompressedSample {
+        guard let format = CMSampleBufferGetFormatDescription(sample) else { throw AVC1SampleAdapterError.missingFormat }
+        guard CMFormatDescriptionGetMediaSubType(format) == kCMVideoCodecType_HEVC else { throw AVC1SampleAdapterError.notH264 }
+        let dimensions = CMVideoFormatDescriptionGetDimensions(format)
+        guard dimensions.width > 0, dimensions.height > 0,
+              Int(dimensions.width) <= limits.maxWidth, Int(dimensions.height) <= limits.maxHeight else {
+            throw AVC1SampleAdapterError.invalidDimensions
+        }
+        var sets: [Data] = []
+        for index in 0..<3 {
+            var pointer: UnsafePointer<UInt8>?, length = 0, count = 0
+            var headerLength: Int32 = 0
+            let status = CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(format, parameterSetIndex: index,
+                parameterSetPointerOut: &pointer, parameterSetSizeOut: &length,
+                parameterSetCountOut: &count, nalUnitHeaderLengthOut: &headerLength)
+            guard status == noErr, let pointer, length > 0, count == 3, headerLength == 4 else {
+                throw AVC1SampleAdapterError.missingParameterSets
+            }
+            sets.append(Data(bytes: pointer, count: length))
+        }
+        let bundle: VideoToolboxParameterSetBundle
+        do { bundle = try .init(codec: .hevc, parameterSets: sets, limits: limits) }
+        catch { throw AVC1SampleAdapterError.invalidParameterSets }
+        guard let block = CMSampleBufferGetDataBuffer(sample) else { throw AVC1SampleAdapterError.missingBlockBuffer }
+        let length = CMBlockBufferGetDataLength(block)
+        guard length > 0 else { throw AVC1SampleAdapterError.emptyAccessUnit }
+        guard length <= limits.maxAccessUnitBytes else { throw AVC1SampleAdapterError.accessUnitTooLarge }
+        var accessUnit = Data(count: length)
+        let copied = accessUnit.withUnsafeMutableBytes { raw in
+            CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length, destination: raw.baseAddress!)
+        }
+        guard copied == kCMBlockBufferNoErr else { throw AVC1SampleAdapterError.blockCopyFailed(copied) }
+        return AVC1CompressedSample(parameterSets: bundle, accessUnit: accessUnit, dimensions: dimensions,
+            presentationTimeStamp: CMSampleBufferGetPresentationTimeStamp(sample), duration: CMSampleBufferGetDuration(sample))
+    }
+}
+
+/// Queue-confined HEVC decoder for AVFoundation's explicit host-output policy.
+final class HEVC1SampleDecoder {
+    private let limits: VideoToolboxDecoderLimits
+    private var decoder: VideoToolboxAccessUnitDecoder?
+    private var bundle: VideoToolboxParameterSetBundle?
+    private var dimensions: CMVideoDimensions?
+    init(limits: VideoToolboxDecoderLimits = .default) { self.limits = limits }
+    deinit { decoder?.invalidate() }
+    func decode(_ sample: CMSampleBuffer) throws -> VideoToolboxDecodeResult {
+        let input = try HEVC1SampleAdapter.extract(sample, limits: limits)
+        let dimensionsChanged = dimensions.map { $0.width != input.dimensions.width || $0.height != input.dimensions.height } ?? true
+        if bundle != input.parameterSets || dimensionsChanged {
+            decoder?.invalidate()
+            decoder = try VideoToolboxAccessUnitDecoder(codec: .hevc, parameterSets: input.parameterSets,
+                dimensions: input.dimensions, limits: limits)
+            bundle = input.parameterSets; dimensions = input.dimensions
+        }
+        guard let decoder else { throw VideoToolboxDecoderError.invalidated }
+        return try decoder.decode(input.accessUnit, presentationTimeStamp: input.presentationTimeStamp, duration: input.duration)
+    }
+    func invalidate() { decoder?.invalidate(); decoder = nil; bundle = nil; dimensions = nil }
+}

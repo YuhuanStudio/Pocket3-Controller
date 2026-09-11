@@ -29,7 +29,7 @@ public enum MCPCameraToolContract {
             "deviceID": .object(["type": .string("string")]),
             "modeID": .object(["type": .string("string")]),
             "pixelFormat": .object(["type": .string("string"), "enum": .array(["automatic", "nv12", "uyvy"].map(JSONValue.string))]),
-            "outputPolicy": .object(["type": .string("string"), "enum": .array(["bgra", "h264"].map(JSONValue.string))])
+            "outputPolicy": .object(["type": .string("string"), "enum": .array(["bgra", "h264", "hevc"].map(JSONValue.string))])
         ]), "additionalProperties": .bool(false)
     ])
     private static let angleSchema: JSONValue = .object([
@@ -64,7 +64,7 @@ public enum MCPCameraToolContract {
                   fields["deviceID"].map({ $0.string != nil && !$0.string!.isEmpty }) ?? true,
                   fields["modeID"].map({ $0.string != nil && !$0.string!.isEmpty }) ?? true,
                   fields["pixelFormat"].map({ ["automatic", "nv12", "uyvy"].contains($0.string ?? "") }) ?? true,
-                  fields["outputPolicy"].map({ ["bgra", "h264"].contains($0.string ?? "") }) ?? true else {
+                  fields["outputPolicy"].map({ ["bgra", "h264", "hevc"].contains($0.string ?? "") }) ?? true else {
                 throw BridgeFailure("invalid_camera_arguments", "camera_connect accepts optional deviceID/modeID/pixelFormat/outputPolicy values")
             }
             return "connect"

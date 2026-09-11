@@ -238,7 +238,7 @@ import MCP
             }
             if ["validation-connect", "connect"].contains(command), args.contains("--output-policy") {
                 guard let raw = option("--output-policy"), let policy = CaptureOutputPolicy(rawValue: raw), policy.isUserSelectable else {
-                    throw BridgeFailure("invalid_output_policy", "Use --output-policy bgra|h264")
+                    throw BridgeFailure("invalid_output_policy", "Use --output-policy bgra|h264|hevc")
                 }
                 arguments["outputPolicy"] = .string(policy.rawValue)
             }
@@ -263,7 +263,7 @@ import MCP
         Open the App and enable AI access before snapshot/move.
 
         pocket3 status [--json]
-        pocket3 connect [--device DEVICE-ID] [--mode MODE-ID] [--pixel-format automatic|nv12|uyvy] [--output-policy bgra|h264]
+        pocket3 connect [--device DEVICE-ID] [--mode MODE-ID] [--pixel-format automatic|nv12|uyvy] [--output-policy bgra|h264|hevc]
         pocket3 pause
         Pocket 3 Controller.app --background-bridge
           Starts the logged-in user's local bridge without a Dock icon or visible main window.
@@ -319,7 +319,7 @@ import MCP
         let empty = try value(MCPCameraToolContract.emptySchema)
         let tools: [MCP.Tool] = [
             Tool(name: "camera_status", description: "Read the selected Pocket 3, access mode, capture freshness and control capabilities. It never starts AVFoundation capture; while capture is already active it may read the retained UVC control session and report a degraded control read separately from the video stream.", inputSchema: empty, annotations: .init(readOnlyHint: true, openWorldHint: false)),
-            Tool(name: MCPCameraToolContract.connectName, description: "Explicitly start a USB preview on the logged-in user's local bridge. Select only a currently advertised device/mode/input format and BGRA or H.264 host output. This retains manual access; it does not grant AI control, join camera Wi-Fi, or start body recording.", inputSchema: try value(MCPCameraToolContract.connectSchema), annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false)),
+            Tool(name: MCPCameraToolContract.connectName, description: "Explicitly start a USB preview on the logged-in user's local bridge. Select only a currently advertised device/mode/input format and BGRA, H.264 or HEVC host output. This retains manual access; it does not grant AI control, join camera Wi-Fi, or start body recording.", inputSchema: try value(MCPCameraToolContract.connectSchema), annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false)),
             Tool(name: MCPCameraToolContract.pauseName, description: "Release the active USB preview and invalidate its capture session. This accepts no arguments and retains no camera image.", inputSchema: empty, annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false)),
             Tool(name: MCPCameraToolContract.compareFramesName, description: "Compare two fresh frames from the same active capture session. Returns only bounded luminance-change metrics and frame metadata; it never returns or stores image data. Requires AI observation access.", inputSchema: empty, annotations: .init(readOnlyHint: true, openWorldHint: false)),
             Tool(name: MCPZoomToolContract.statusName, description: "Read current/minimum/maximum/step/writable for the selected camera's UVC zoom. Values are raw device integers, not calibrated x zoom ratios. Pass camera_status.capture.sessionID as expectedSessionID to bind this read to that connection.", inputSchema: try value(MCPZoomToolContract.statusSchema), annotations: .init(readOnlyHint: true, openWorldHint: false)),

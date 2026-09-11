@@ -100,7 +100,7 @@ import Testing
         }
     }
 
-    @Test func explicitH264OutputRequiresDevelopmentOptInAndAdvertisedCodec() throws {
+    @Test func explicitCompressedOutputRequiresDevelopmentOptInAndAdvertisedCodec() throws {
         let environment = ["POCKET3_CAPTURE_OUTPUT": "h264"]
         #expect(CaptureOutputPolicy.selected(environment: environment, arguments: []) == .bgra)
         #expect(CaptureOutputPolicy.selected(environment: environment, arguments: ["--hardware-validation"]) == .h264)
@@ -113,6 +113,11 @@ import Testing
         #expect(settings[AVVideoWidthKey] as? Int == 1080 && settings[AVVideoHeightKey] as? Int == 1920)
         #expect(settings[kCVPixelBufferPixelFormatTypeKey as String] == nil)
         #expect(settings[kCVPixelBufferWidthKey as String] == nil && settings[kCVPixelBufferHeightKey as String] == nil)
+        #expect(CaptureOutputPolicy.hevc.settings() == nil)
+        try CaptureOutputPolicy.hevc.validateAvailableCodecs(["hvc1"])
+        #expect(throws: BridgeFailure.self) { try CaptureOutputPolicy.hevc.validateAvailableCodecs(["avc1"]) }
+        let hevc = try #require(CaptureOutputPolicy.hevc.settings(width: 1920, height: 1080))
+        #expect(hevc[AVVideoCodecKey] as? String == AVVideoCodecType.hevc.rawValue)
     }
 
     @Test func h264OutputDiagnosticsKeepInputAndCompressedSamplesDistinct() throws {

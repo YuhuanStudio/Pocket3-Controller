@@ -414,7 +414,7 @@ public actor CameraService {
         resetRollHoldForConnectionChange()
         phase = "connecting"; lastError = nil; lastCaptureAttempt = nil
         guard outputPolicy.isUserSelectable || validationEnabled else {
-            throw BridgeFailure("invalid_output_policy", "只可選擇 BGRA preview 或 H.264 host output")
+            throw BridgeFailure("invalid_output_policy", "只可選擇 BGRA preview、H.264 或 HEVC host output")
         }
         selected = device; requestedMode = captureMode; requestedPixelFormat = pixelFormat; requestedOutputPolicy = outputPolicy
         // The previous control's Stop cleanup has finished above. Do not create
@@ -1401,7 +1401,7 @@ public actor CameraService {
                 } else { mode = .default1080p30 }
                 let pixelFormat = fields["pixelFormat"]?.string.flatMap(CapturePixelFormat.init(rawValue:)) ?? .automatic
                 let outputPolicy = fields["outputPolicy"]?.string.flatMap(CaptureOutputPolicy.init(rawValue:)) ?? .bgra
-                guard outputPolicy.isUserSelectable else { throw BridgeFailure("invalid_output_policy", "Choose BGRA preview or H.264 host output") }
+                guard outputPolicy.isUserSelectable else { throw BridgeFailure("invalid_output_policy", "Choose BGRA preview, H.264 or HEVC host output") }
                 try await connect(id: id, mode: mode, pixelFormat: pixelFormat, outputPolicy: outputPolicy)
                 return ServiceReply(id: request.id, result: try .encode(await status()))
             case "pause":
@@ -1438,7 +1438,7 @@ public actor CameraService {
                 let outputPolicy: CaptureOutputPolicy
                 if request.arguments["outputPolicy"] == .null { outputPolicy = .bgra }
                 else if let raw = request.arguments["outputPolicy"].string, let value = CaptureOutputPolicy(rawValue: raw), value.isUserSelectable { outputPolicy = value }
-                else { throw BridgeFailure("invalid_output_policy", "Output policy must be bgra or h264") }
+                else { throw BridgeFailure("invalid_output_policy", "Output policy must be bgra, h264 or hevc") }
                 let resolution = request.arguments["resolution"].number ?? 1080
                 guard resolution == 1080 || resolution == 2160 else { throw BridgeFailure("invalid_format", "只接受 1080 或 2160") }
                 let id = request.arguments["deviceID"].string ?? selected?.id ?? CaptureEngine.devices().first?.id ?? ""
