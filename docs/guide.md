@@ -54,6 +54,11 @@ to begin an explicit USB preview from that bridge, then `pocket3 pause` to
 release it. These commands retain manual access; they do not grant AI control,
 join camera Wi-Fi, or start body recording.
 
+On macOS 26 or later, Shortcuts can expose **Connect Pocket 3 Preview** and
+**Pause Pocket 3 Preview**. Both use the saved App selection and the same
+local service; they retain manual access and do not start body recording,
+wireless control, or camera Wi-Fi.
+
 The camera service has no physical-display-on requirement. The app must remain
 running in the logged-in user's macOS session; the local CLI/MCP helper uses that
 same user's service and does not start a system daemon before login. Remote
