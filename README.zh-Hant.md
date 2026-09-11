@@ -136,6 +136,7 @@ MCP helper 使用 stdio，透過同使用者私有 Unix socket 呼叫已開啟�
 | `move_gimbal` | 經驗證與授權的有界 UVC 移動，回傳動作後證據 |
 | `stop_gimbal` | 取消排隊動作，回報停止及讀回結果 |
 | `camera_focus_status` | 只讀當次 AVFoundation 點選／自動／連續對焦能力，不送出對焦點 |
+| `camera_roll_status` | 讀取 UVC Roll capability；Roll 寫入仍受獨立物理停止驗證 gate 阻擋 |
 | `camera_zoom_status` | 讀取當次連線的縮放範圍與原始值 |
 | `camera_set_zoom` | 依同一 session 的範圍、step 與控制權設定縮放 |
 

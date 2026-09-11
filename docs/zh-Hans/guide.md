@@ -142,7 +142,7 @@ build22曾在真实App、无相机条件下通过Apple问答、MLX计数与定�
 
 `assistFraming`仍需要符合条件的相机控制权与能力。Debug版 `evaluate-workflow` 的模拟相机也接受相同intent，省略时同样只观察；模拟动作不是硬件证据。
 
-MCP目前有十二个基础相机工具：`camera_status`、`camera_format_inventory`、`camera_body_status`、`camera_connect`、`camera_pause`、`camera_compare_frames`、`camera_focus_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。`camera_connect`明确启动本机USB预览、`camera_pause`释放它；`camera_compare_frames`需要观察权限，只返回同一session两张新帧的scalar差异。`camera_focus_status`只读取 AVFoundation 的点选／自动／连续对焦能力，不发送对焦点或启动 BLE。`camera_format_inventory`列出所选相机声明的模式与输入 path，不启动采集；声明不代表已验证可串流。`camera_body_status`只返回 App 已有的 Bluetooth discovery snapshot，不扫描、配对、加入 Wi-Fi 或写入设置。CLI的`ask`、媒体文件分析及评测入口没有另外包装成新的MCP工具。
+MCP目前有十三个基础相机工具：`camera_status`、`camera_format_inventory`、`camera_body_status`、`camera_connect`、`camera_pause`、`camera_compare_frames`、`camera_focus_status`、`camera_roll_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。`camera_connect`明确启动本机USB预览、`camera_pause`释放它；`camera_compare_frames`需要观察权限，只返回同一session两张新帧的scalar差异。`camera_focus_status`只读取 AVFoundation 的点选／自动／连续对焦能力，不发送对焦点或启动 BLE。`camera_format_inventory`列出所选相机声明的模式与输入 path，不启动采集；声明不代表已验证可串流。`camera_body_status`只返回 App 已有的 Bluetooth discovery snapshot，不扫描、配对、加入 Wi-Fi 或写入设置。`camera_roll_status`只报告 UVC Roll capability；在独立物理 moving-stop 验证通过前，刻意不提供 Roll 写入。CLI的`ask`、媒体文件分析及评测入口没有另外包装成新的MCP工具。
 
 MCP 缩放先取得 `camera_status.capture.sessionID`，以 `expectedSessionID` 传给 `camera_zoom_status`，再选择符合其 minimum／maximum／step 刻度的整数 `rawValue` 调用 `camera_set_zoom`。检查 `completed` 与 `verified`，再取得新帧。取消或未确认的动作不能触发自动连续重试。
 
