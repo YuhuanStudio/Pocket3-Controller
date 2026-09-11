@@ -56,6 +56,9 @@
 
 ## beta 1 發布與整理
 
+- [x] 2026-09-12 current-source Release package gate：clean source `61a45a3`、build25、648 tests、三語UI parity、UVC ASan ownership/session/interface、MCP smoke/cancellation、Sparkle feed、ZIP/DMG/hash/signature皆通過；實體相機／公開更新／Developer ID與公證仍不在此gate。[結果](artifacts/verification-gate.json)
+
+
 - [x] beta 2 build24已發布：exact-source完整gate、beta1→candidate實際Sparkle更新安裝、annotated tag、GitHub prerelease四項資產、未登入公開下載hash、公開Ed25519 feed／ZIP驗簽及signed appcast均通過；beta1 tag與資產未移動。[Release](https://github.com/YuhuanStudio/Pocket3-Controller/releases/tag/v0.0.1-beta.2)、[公開驗證摘要](docs/releases/0.0.1-beta.2-verification.json)
 
 - [x] 使用者選定產品名稱 Pocket 3 Controller、GitHub 儲存庫名稱 `YuhuanStudio/Pocket3-Controller`；內部 bundle ID、簽署身分與設定沿用。
