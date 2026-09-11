@@ -179,4 +179,18 @@ struct VideoToolboxRoundTripTests {
         #expect(CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA)
         decoder.invalidate()
     }
+
+    @Test func hvc1SampleAdapterCopiesAndDecodesHEVCWithoutCameraAccess() throws {
+        let width = 64, height = 48
+        let sample = try encodedSample(codec: kCMVideoCodecType_HEVC, width: width, height: height)
+        let extracted = try HEVC1SampleAdapter.extract(sample)
+        #expect(extracted.parameterSets.codec == .hevc && !extracted.accessUnit.isEmpty)
+        #expect(extracted.dimensions.width == width && extracted.dimensions.height == height)
+        let decoder = HEVC1SampleDecoder()
+        let result = try decoder.decode(sample)
+        let buffer = try #require(result.pixelBuffer)
+        #expect(CVPixelBufferGetWidth(buffer) == width && CVPixelBufferGetHeight(buffer) == height)
+        #expect(CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA)
+        decoder.invalidate()
+    }
 }
