@@ -99,6 +99,9 @@ public enum Pocket3ChargingState: String, Codable, Sendable { case unknown, char
 public struct Pocket3BatteryTelemetry: Codable, Sendable, Equatable {
     public let percent: Int
     public let chargingState: Pocket3ChargingState
+    /// Exact Pocket 3 `0D/02` byte 32. Unknown future values remain visible
+    /// without being converted into a charging or external-power claim.
+    public var chargingStateRaw: UInt8? = nil
     public let source: DUMLTelemetrySource
     public let receivedAt: Date
 
@@ -131,6 +134,7 @@ public enum Pocket3TelemetryParser {
         }
         // Not charging is not proof of absent external power, especially at
         // high state of charge. No external-power value is manufactured here.
-        return Pocket3BatteryTelemetry(percent: Int(payload[20]), chargingState: state, source: source, receivedAt: receivedAt)
+        return Pocket3BatteryTelemetry(percent: Int(payload[20]), chargingState: state,
+            chargingStateRaw: payload[32], source: source, receivedAt: receivedAt)
     }
 }

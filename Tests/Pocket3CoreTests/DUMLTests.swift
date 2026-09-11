@@ -85,6 +85,7 @@ import Testing
             let decoded = try Pocket3TelemetryParser.battery(in: encoded, source: .bluetooth, receivedAt: now)
             let result = try #require(decoded)
             #expect(result.percent == 100 && result.chargingState == expected)
+            #expect(result.chargingStateRaw == state)
             #expect(result.source == .bluetooth && result.receivedAt == now)
         }
         for frame in [batteryFrame(percent: 101), batteryFrame(commandID: 3), batteryFrame(commandSet: 2), batteryFrame(length: 32), batteryFrame(length: 0)] {

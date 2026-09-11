@@ -33,11 +33,12 @@ private func snapshot(_ store: BluetoothPoseStore, time: TimeInterval = 100, pai
 
 @Test func bluetoothPoseUsesExistingAxisLayoutAndDeviceReportedUnits() throws {
     var store = BluetoothPoseStore(); store.bind(sessionID: poseSession, peripheralID: posePeer)
-    let packet = try posePacket(poseFrame(tail: Data("PRIVATE_TAIL_NOT_IN_STATUS".utf8)))
+    let packet = try posePacket(poseFrame(tail: Data([0x60, 0, 0, 0, 0x42]) + Data("PRIVATE_TAIL_NOT_IN_STATUS".utf8)))
     let accepted = receivePose(&store, packet: packet)
     #expect(accepted)
     let pose = try #require(snapshot(store))
     #expect(pose.pitchRaw == -125 && pose.rollRaw == 20 && pose.yawRaw == 1799)
+    #expect(pose.modeStatusRaw == 0x60 && pose.limitStatusRaw == 0x42)
     #expect(pose.pitchDegrees == -12.5 && pose.rollDegrees == 2 && pose.yawDegrees == 179.9)
     #expect(pose.unit == .deviceReportedDeciDegrees && pose.calibration == .notCalibratedToUSB)
     let decoded = try #require(BluetoothPoseValues.parse(packet.frame))
