@@ -49,6 +49,11 @@ window. It does not create a pre-login system daemon, keep the display awake,
 or bypass Camera/Bluetooth permissions. Opening the App normally brings the
 main window back.
 
+Use `pocket3 connect --mode 1920x1080@30 --pixel-format nv12 --output-policy bgra`
+to begin an explicit USB preview from that bridge, then `pocket3 pause` to
+release it. These commands retain manual access; they do not grant AI control,
+join camera Wi-Fi, or start body recording.
+
 The camera service has no physical-display-on requirement. The app must remain
 running in the logged-in user's macOS session; the local CLI/MCP helper uses that
 same user's service and does not start a system daemon before login. Remote

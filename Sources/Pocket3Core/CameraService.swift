@@ -1368,6 +1368,29 @@ public actor CameraService {
                 }
             }
             switch request.operation {
+            case "connect":
+                guard case .object(let fields) = request.arguments,
+                      Set(fields.keys).isSubset(of: ["deviceID", "modeID", "pixelFormat", "outputPolicy"]) else {
+                    throw BridgeFailure("connect_arguments", "Choose a currently connected Pocket 3")
+                }
+                guard let id = fields["deviceID"]?.string ?? selected?.id ?? CaptureEngine.devices().first?.id,
+                      !id.isEmpty else { throw BridgeFailure("connect_arguments", "Choose a currently connected Pocket 3") }
+                let mode: CaptureMode
+                if let modeID = fields["modeID"]?.string {
+                    guard let found = CaptureMode.available(deviceID: id).first(where: { $0.id == modeID }) else {
+                        throw BridgeFailure("invalid_format", "Choose a format advertised by the selected Pocket 3")
+                    }
+                    mode = found
+                } else { mode = .default1080p30 }
+                let pixelFormat = fields["pixelFormat"]?.string.flatMap(CapturePixelFormat.init(rawValue:)) ?? .automatic
+                let outputPolicy = fields["outputPolicy"]?.string.flatMap(CaptureOutputPolicy.init(rawValue:)) ?? .bgra
+                guard outputPolicy.isUserSelectable else { throw BridgeFailure("invalid_output_policy", "Choose BGRA preview or H.264 host output") }
+                try await connect(id: id, mode: mode, pixelFormat: pixelFormat, outputPolicy: outputPolicy)
+                return ServiceReply(id: request.id, result: try .encode(await status()))
+            case "pause":
+                guard request.arguments == .object([:]) else { throw BridgeFailure("pause_arguments", "Pause accepts no arguments") }
+                await pause()
+                return ServiceReply(id: request.id, result: try .encode(await status()))
             case "validation-stream-start":
                 guard validationEnabled else { throw BridgeFailure("validation_disabled", "串流驗證只供開發工作階段使用") }
                 let seconds = request.arguments["seconds"].number ?? 1800

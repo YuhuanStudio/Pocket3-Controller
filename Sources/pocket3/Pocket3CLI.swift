@@ -223,7 +223,8 @@ import MCP
                 arguments["seconds"] = .number(seconds); arguments["audio"] = .bool(args.contains("--audio"))
             }
             if command == "validation-connect", let resolution = option("--resolution"), let value = Double(resolution) { arguments["resolution"] = .number(value) }
-            if command == "validation-connect", let modeID = option("--mode") { arguments["modeID"] = .string(modeID) }
+            if ["validation-connect", "connect"].contains(command), let modeID = option("--mode") { arguments["modeID"] = .string(modeID) }
+            if command == "connect", let deviceID = option("--device") { arguments["deviceID"] = .string(deviceID) }
             if command == "validation-connect", args.contains("--skip-uvc") { arguments["skipUVC"] = .bool(true) }
             if command == "validation-connect", args.contains("--startup-timeout") {
                 guard let raw = option("--startup-timeout"), let value = Double(raw), value.isFinite, (1...30).contains(value) else {
@@ -231,11 +232,11 @@ import MCP
                 }
                 arguments["startupTimeout"] = .number(value)
             }
-            if command == "validation-connect", args.contains("--pixel-format") {
+            if ["validation-connect", "connect"].contains(command), args.contains("--pixel-format") {
                 guard let raw = option("--pixel-format"), let pixelFormat = CapturePixelFormat(rawValue: raw) else { throw BridgeFailure("invalid_input_format", "Use --pixel-format automatic|nv12|uyvy") }
                 arguments["pixelFormat"] = .string(pixelFormat.rawValue)
             }
-            if command == "validation-connect", args.contains("--output-policy") {
+            if ["validation-connect", "connect"].contains(command), args.contains("--output-policy") {
                 guard let raw = option("--output-policy"), let policy = CaptureOutputPolicy(rawValue: raw), policy.isUserSelectable else {
                     throw BridgeFailure("invalid_output_policy", "Use --output-policy bgra|h264")
                 }
@@ -243,7 +244,7 @@ import MCP
             }
             if command == "validation-setup" { arguments["access"] = .string(option("--access") ?? "observe") }
             if let dimension = option("--max-dimension"), let size = Int(dimension) { arguments["maxDimension"] = .number(Double(size)) }
-            guard ["status", "doctor", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel", BluetoothCameraEventRecordingRequest.operation].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
+            guard ["status", "doctor", "connect", "pause", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel", BluetoothCameraEventRecordingRequest.operation].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
             let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
             if let data = reply.imageJPEG {
                 let output = option("--output") ?? "pocket3-\(Int(Date().timeIntervalSince1970)).jpg"
@@ -262,6 +263,8 @@ import MCP
         Open the App and enable AI access before snapshot/move.
 
         pocket3 status [--json]
+        pocket3 connect [--device DEVICE-ID] [--mode MODE-ID] [--pixel-format automatic|nv12|uyvy] [--output-policy bgra|h264]
+        pocket3 pause
         Pocket 3 Controller.app --background-bridge
           Starts the logged-in user's local bridge without a Dock icon or visible main window.
         pocket3 doctor
