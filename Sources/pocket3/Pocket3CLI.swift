@@ -39,6 +39,10 @@ import MCP
                 guard args.count == 2, let location = UInt32(args[1].replacingOccurrences(of: "0x", with: ""), radix: 16) else { throw BridgeFailure("usage", "pocket3 uvc-stream-interfaces 0xLOCATION") }
                 print(try UVCConnection.streamInterfaces(location: location).pretty); return
             }
+            if command == "uvc-stream-open-diagnostic" {
+                guard args.count == 2, let location = UInt32(args[1].replacingOccurrences(of: "0x", with: ""), radix: 16) else { throw BridgeFailure("usage", "pocket3 uvc-stream-open-diagnostic 0xLOCATION") }
+                print(try UVCConnection.streamOpenDiagnostic(location: location).pretty); return
+            }
             var arguments: [String: JSONValue] = [:]
             func option(_ name: String) -> String? { guard let i = args.firstIndex(of: name), i+1 < args.count else { return nil }; return args[i+1] }
             if ["zoom", "validation-zoom", "roll", "validation-roll"].contains(command) {

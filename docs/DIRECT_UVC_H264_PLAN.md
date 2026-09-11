@@ -35,7 +35,9 @@ decoded buffer沿用`FrameStore`與`CaptureCallbackFence`，generation不符就�
 
 ## 實作與驗收階段
 
-目前進度：第1階段的純資料模組已完成，包含26-byte negotiation codec／固定mode catalog、UVC payload與access-unit assembler、H.264 Annex-B／AVCC normalizer及parameter-set／IDR readiness。另已加入HEVC Annex-B／HVCC normalizer、VPS/SPS/PPS＋IRAP readiness，及H.264/HEVC共用的同步VideoToolbox decoder foundation。AVFoundation↔direct ownership reducer亦已完成，要求AVF stop＋queue drain後才能取得direct owner，且direct pipe/interface/object全釋放後才能重啟AVF。本機合成HEVC MP4已經實際經App影片import seek解成BGRA；合成BGRA亦已經分別完成VTCompressionSession H.264與HEVC encode→新decoder BGRA roundtrip。尚未開啟VS interface、送PROBE/COMMIT或取得direct USB decode frame。
+目前進度：第1階段的純資料模組已完成，包含26-byte negotiation codec／固定mode catalog、UVC payload與access-unit assembler、H.264 Annex-B／AVCC normalizer及parameter-set／IDR readiness。另已加入HEVC Annex-B／HVCC、VPS/SPS/PPS＋IRAP readiness，及H.264/HEVC共用的同步VideoToolbox decoder foundation。AVFoundation↔direct ownership reducer亦已完成，要求AVF stop＋queue drain後才能取得direct owner，且direct pipe/interface/object全釋放後才能重啟AVF。本機合成HEVC MP4已經實際經App影片import seek解成BGRA；合成BGRA亦已經分別完成VTCompressionSession H.264與HEVC encode→新decoder BGRA roundtrip。
+
+第一個真實VS lifecycle診斷已加入：`uvc-stream-open-diagnostic`僅以一般`USBInterfaceOpen`嘗試VS interface 1，成功就立刻close，不會seize、改alternate setting、發UVC request或讀pipe。2026-09-11在沒有本App AVFoundation capture時，Pocket 3回`busy`（open `-536870203`），因此沒有取得endpoint或開始stream。這是現有macOS UVC client ownership的明確邊界；下一步是以App的AVFoundation stop/drain evidence觸發一次受控handoff，不能在busy狀態繼續嘗試或使用seize。
 
 1. 純資料：descriptor selection、26-byte control、UVC payload、FID/EOF/loss、Annex B/AVCC與SPS/PPS/IDR測試。
 2. raw transport：只取得VS ownership與scalar diagnostics；busy、拔除、timeout、取消、cleanup必須通過。

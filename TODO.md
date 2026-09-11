@@ -33,6 +33,7 @@
 - [x] direct UVC VS descriptor foundation：純decoder可從configuration descriptors辨識VC/VS interface、alternate setting、bulk IN endpoint、MJPEG/H.264 format並拒絕malformed資料；不開interface或pipe。
 - [x] direct UVC真機只讀inventory：IORegistry確認`Video Streaming@1`及既有AVFoundation/UVCAssistant client；ownership policy的停止AVF→acquire VS邊界已有硬體topology依據，尚未claim interface。
 - [x] `uvc-stream-interfaces` CLI：真機確認VC0/VS1/alt0/endpoints，缺失location明確回空；僅IORegistry讀取，無UVC controller/interface/pipe操作。
+- [x] direct UVC VS一般open診斷：`uvc-stream-open-diagnostic`只做一般open後立即close，絕不seize／改alt／送request／讀pipe。真機VS1回`busy`（`-536870203`），故無endpoint與stream取得；這是受控handoff待做的ownership evidence，不代表H.264不可用。
 - [x] HEVC/H.265 decode foundation：Annex-B／HVCC、VPS/SPS/PPS、IRAP16…23、loss/reset/parameter-change及有界cache已完成；共用VideoToolbox decoder只接受canonical H.264或HEVC parameter sets及4-byte length access unit，輸出BGRA並有generation fence。尚未以實際encoded frame完成decode驗收。
 - [x] HEVC本機影片實際驗收：合成HEVC MP4經`ImportedVideoSource`實際seek、解碼為BGRA並核對像素內容；不使用Pocket 3、網路或持久素材。direct UVC HEVC仍不成立，因descriptor未宣告HEVC。
 - [x] AVFoundation↔direct capture ownership policy：stop＋frame queue drain、direct exclusive acquire/release、AVF restart證據與generation permit已完成純狀態機及actor tests；尚未接真實VS transport。

@@ -35,6 +35,11 @@ char *p3_uvc_devices(void);
 // Read-only IORegistry inventory. Does not create a UVCController, open an
 // interface, claim a pipe, or issue any USB request.
 char *p3_uvc_stream_interfaces(uint32_t location);
+// Opt-in VideoStreaming interface lifecycle diagnostic. It attempts a normal
+// open of VS interface 1 and immediately closes it on success. It never
+// seizes, changes alt setting, sends a UVC request, claims a pipe, or reads
+// payload bytes. Exclusive access is reported as busy.
+char *p3_uvc_stream_open_diagnostic(uint32_t location);
 char *p3_uvc_status(uint32_t location);
 char *p3_uvc_set_position(uint32_t location, int32_t pan, int32_t tilt, const char *expectedRegistryID);
 void p3_uvc_free(char *value);

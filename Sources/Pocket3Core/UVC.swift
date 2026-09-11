@@ -76,6 +76,9 @@ public actor UVCConnection {
     public static func streamInterfaces(location: UInt32) throws -> JSONValue {
         try consume(p3_uvc_stream_interfaces(location))
     }
+    public static func streamOpenDiagnostic(location: UInt32) throws -> JSONValue {
+        try consume(p3_uvc_stream_open_diagnostic(location))
+    }
 
     public func zoomStatus() throws -> USBZoomCapabilities {
         guard lifetimePermit.isValid else { throw BridgeFailure("uvc_connection_closed", "USB 控制連線已結束") }
