@@ -38,6 +38,7 @@
 - [x] H.264 host-output 4K30：相同fallback真機取得283個`avc1` samples並輸出3840×2160 BGRA，29.11fps、零runtime error，後續pause。4K高幀率與直幅不由此宣稱已通過。
 - [x] H.264 host-output產品選項：App與設定頁分開呈現USB輸入格式與預覽輸出，預設BGRA、可選實驗性H.264 host output並持久化；Service status回報requested/active policy。新版無環境變數實機透過明確`h264` policy取得169個decoded avc1 frames；公開UI擷取不含預覽內容且已檢視。
 - [x] 背景／遠端 bridge：`--background-bridge`在已登入session隱藏Dock／主視窗但保留IPC/MCP與選單列；一般CLI新增explicit `connect`／`pause`，實機背景模式1080p30 NV12/BGRA達29.21fps，pause後0 frames。它不支援pre-login daemon、不改TCC、不加入Wi-Fi或提升control權限。
+- [x] 背景 MCP capture：MCP stdio `initialize`／`tools/list`實測包含`camera_connect`與`camera_pause`；兩者走同一service capture contract，保留manual access且不提供Wi-Fi／native BLE控制。
 - [ ] H.264 host-output直幅性能：1080×1920為23.74fps；720×1280為14.00fps，雖有174個samples／零decode failure且平均decode僅4.38ms，瓶頸在AVFoundation encoded-output供給率，非同步decoder。直幅30fps維持NV12/BGRA；H.264 output不可標為30fps支援。
 - [ ] 4K60 host capture：NV12未宣告；UYVY/H.264 input加host H.264 output仍0 sample／0 runtime error，不能以4K30標成4K60可用。需新的可合法交付callback的transport，decoder不在此輪資料路徑上。
 - [x] HEVC/H.265 decode foundation：Annex-B／HVCC、VPS/SPS/PPS、IRAP16…23、loss/reset/parameter-change及有界cache已完成；共用VideoToolbox decoder只接受canonical H.264或HEVC parameter sets及4-byte length access unit，輸出BGRA並有generation fence。尚未以實際encoded frame完成decode驗收。
