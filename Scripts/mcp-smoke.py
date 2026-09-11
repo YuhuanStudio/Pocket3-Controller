@@ -105,11 +105,15 @@ try:
     send({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}})
     listing = response(2)
     names = {t["name"] for t in listing["tools"]}
-    assert names == {"camera_status","capture_frame","move_gimbal","stop_gimbal","camera_zoom_status","camera_set_zoom"}, names
+    assert names == {"camera_status", "camera_format_inventory", "camera_body_status", "camera_connect",
+                     "camera_pause", "camera_compare_frames", "camera_focus_status", "camera_roll_status",
+                     "capture_frame", "move_gimbal", "stop_gimbal", "camera_zoom_status", "camera_set_zoom"}, names
     zoom_schema = next(t["inputSchema"] for t in listing["tools"] if t["name"] == "camera_set_zoom")
     assert set(zoom_schema["required"]) == {"rawValue", "expectedSessionID"}, zoom_schema
     assert zoom_schema["properties"]["rawValue"]["type"] == "integer", zoom_schema
     assert zoom_schema["additionalProperties"] is False, zoom_schema
+    roll_schema = next(t["inputSchema"] for t in listing["tools"] if t["name"] == "camera_roll_status")
+    assert roll_schema["additionalProperties"] is False and "rawValue" not in roll_schema["properties"], roll_schema
     send({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"camera_status","arguments":{}}})
     status = response(3)
     assert not status.get("isError"), status
