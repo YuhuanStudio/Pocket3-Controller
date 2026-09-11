@@ -97,7 +97,7 @@
 - [x] 傳送額度等待已在真機生效：Prepare後等待10.472ms，再各一次提交Point；未重送Prepare。build12原先只送第一步便中止的結果保留。[build13結果](artifacts/focus-live-2026-09-09/tap-write-c80067c8-c513-4025-9545-332ba1ea889e/summary.json)
 - [ ] BLE Tap AF仍未確認生效：本次Point 800ms內無ACK，Hint／Commit未送；期間2筆及稍後獨立12秒的30筆座標仍約中心，AF-C／Auto EV0保持。一般GUI不據此開啟；不以相同條件盲重送，下一步需查明Camera命令路由或可用的其他傳輸。
 - [x] 公開beta1的橫幅NV12補驗：720p30、1080p24、4K30均取得新影格；1080p30另有本版smoke。這是已完成的子矩陣，不覆蓋所有格式、方向／黑邊或後續candidate。[矩陣](artifacts/public-beta1/nv12-landscape-matrix/b765fe71-749f-4261-a966-126179c87fea/result.json)、[build9 smoke](artifacts/public-beta1/hardware-smoke/result.json)
-- [x] 直幅 privacy-preserving edge metrics：1080×1920 NV12/BGRA不保存影像下，top/bottom dark fraction=1.0、left/right=0.683，量化出強烈黑邊訊號；這不是內容方向、構圖或機身姿態正確性判定。
+- [x] 直幅 privacy-preserving edge metrics：1080×1920 NV12/BGRA不保存影像下，top/bottom dark fraction=1.0、left/right=0.683，量化出強烈黑邊訊號；相機卡的保守warning已以不含preview的實際UI render檢查。這不是內容方向、構圖或機身姿態正確性判定。
 - [x] 最新 USB audio metrics：1080p30短期20.90秒、48kHz stereo／2 channels、約30fps、零failure；只保存scalar metrics。這不替代30分鐘影音acceptance或機內音訊設定控制。
 - [x] 最新完整 USB audiovisual acceptance：1080p30＋48kHz stereo持續1,800.91秒、1,720 sample、零failure；最終29.97fps、frame age 0.0038s、resident 329.6MB，pause後0 frames。只保存scalar metrics，不替代機內audio setter或其他格式組合。
 
