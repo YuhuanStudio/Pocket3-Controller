@@ -1476,3 +1476,4 @@
 "H.264 host output" = "H.264 host output";
 "Experimental · host encoded" = "Experimental · host encoded";
 "H.264 host output is below the requested frame rate." = "H.264 host output is below the requested frame rate.";
+"Possible horizontal black bars detected." = "Possible horizontal black bars detected.";

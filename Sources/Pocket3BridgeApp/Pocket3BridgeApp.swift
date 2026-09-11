@@ -388,6 +388,10 @@ final class AppModel {
               let requested = status.requestedMode?.frameRate, requested > 0 else { return false }
         return status.capture.recentFPS > 0 && status.capture.recentFPS < requested * 0.9
     }
+    var hasPossibleHorizontalBlackBars: Bool {
+        guard let edges = status?.capture.sampleDiagnostics?.edgeMetrics else { return false }
+        return edges.topDarkFraction >= 0.95 && edges.bottomDarkFraction >= 0.95
+    }
     var cameraSelectionPlaceholder: String { loc(status?.devices.isEmpty != false ? "No camera detected" : "Select a camera") }
     func setAccess(_ mode: AccessMode) async { guard isCameraSource else { return }; zoomStorage?.cancel(); rollStorage?.cancel(); await service.setAccess(mode); await refresh() }
     func move(_ direction: String) async {
@@ -778,6 +782,11 @@ struct RootView: View {
                                             .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
+                                }
+                                if model.hasPossibleHorizontalBlackBars {
+                                    Label(loc("Possible horizontal black bars detected."), systemImage: "rectangle.split.3x1")
+                                        .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                             YunDivider()
