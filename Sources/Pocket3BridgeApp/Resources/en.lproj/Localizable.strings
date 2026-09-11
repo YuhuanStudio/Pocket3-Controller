@@ -1124,6 +1124,8 @@
 
 "Face back" = "Back";
 
+"Minimum · %@" = "Minimum · %@";
+"Maximum · %@" = "Maximum · %@";
 "UVC position range" = "UVC position range";
 "UVC position targets are nominal values, not DJI native presets or calibrated physical angles." = "UVC position targets are nominal values, not DJI native presets or calibrated physical angles.";
 "Pan" = "Pan";

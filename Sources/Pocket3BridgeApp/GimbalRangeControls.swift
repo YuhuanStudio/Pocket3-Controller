@@ -30,6 +30,7 @@ struct GimbalRangeControls: View {
                         await point(pan: value, tilt: nil, session: session)
                     }
                     .id("\(sessionID):pan")
+                RangeEndpoints(minimum: Double(minimum.pan) / 3600, maximum: Double(maximum.pan) / 3600)
                 GimbalAxisSlider(label: loc("Tilt"),
                     position: Double(capabilities.position.tilt) / 3600,
                     range: Double(minimum.tilt) / 3600...Double(maximum.tilt) / 3600,
@@ -38,6 +39,7 @@ struct GimbalRangeControls: View {
                         await point(pan: nil, tilt: value, session: session)
                     }
                     .id("\(sessionID):tilt")
+                RangeEndpoints(minimum: Double(minimum.tilt) / 3600, maximum: Double(maximum.tilt) / 3600)
                 Text(loc("UVC position targets are nominal values, not DJI native presets or calibrated physical angles."))
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -50,6 +52,23 @@ struct GimbalRangeControls: View {
         isSubmitting = true
         defer { isSubmitting = false }
         await model.point(panDegrees: pan, tiltDegrees: tilt)
+    }
+}
+
+private struct RangeEndpoints: View {
+    let minimum: Double
+    let maximum: Double
+    var body: some View {
+        HStack {
+            Text(String(format: loc("Minimum · %@"), degree(minimum)))
+            Spacer(minLength: Yun.Space.sm)
+            Text(String(format: loc("Maximum · %@"), degree(maximum)))
+        }
+        .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+        .monospacedDigit()
+    }
+    private func degree(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0...1))))°"
     }
 }
 
