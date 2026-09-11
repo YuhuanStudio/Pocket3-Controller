@@ -24,7 +24,9 @@ import time
 import uuid
 
 PROJECT = Path(__file__).resolve().parents[1]
-TOOLS = {"camera_status", "capture_frame", "move_gimbal", "stop_gimbal", "camera_zoom_status", "camera_set_zoom"}
+TOOLS = {"camera_status", "camera_format_inventory", "camera_body_status", "camera_connect",
+         "camera_pause", "camera_compare_frames", "camera_focus_status", "camera_roll_status",
+         "capture_frame", "move_gimbal", "stop_gimbal", "camera_zoom_status", "camera_set_zoom"}
 OBSERVATION_SECONDS = 1.5
 
 
