@@ -10,7 +10,7 @@ import Pocket3Core
 struct Pocket3ConnectPreviewIntent: AppIntent {
     static let title: LocalizedStringResource = "Connect Pocket 3 Preview"
     static let description = IntentDescription("Connect the selected Pocket 3 using its saved preview settings.")
-    static let openAppWhenRun = false
+    static let openAppWhenRun = true
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -31,7 +31,7 @@ struct Pocket3ConnectPreviewIntent: AppIntent {
 struct Pocket3PrivacyPauseIntent: AppIntent {
     static let title: LocalizedStringResource = "Pause Pocket 3 Preview"
     static let description = IntentDescription("Release the active Pocket 3 preview and camera session.")
-    static let openAppWhenRun = false
+    static let openAppWhenRun = true
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
