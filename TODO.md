@@ -36,6 +36,7 @@
 - [x] direct UVC VS一般open診斷：`uvc-stream-open-diagnostic`只做一般open後立即close，絕不seize／改alt／送request／讀pipe。真機VS1回`busy`（`-536870203`），故無endpoint與stream取得；這是受控handoff待做的ownership evidence，不代表H.264不可用。
 - [x] AVFoundation H.264 encoded-output fallback：`avc1` block buffer嚴格抽取SPS/PPS、4-byte AVCC與CM timing，再透過既有VideoToolbox decoder輸出BGRA；參數集／尺寸改變會重建decoder，stop會invalidate。合成avc1→BGRA roundtrip通過；真機1080p30 782 samples／28.45fps／零runtime error、pause後0 frames，不保存畫面。這是host output，不是direct VS或USB H.264 wire claim。
 - [x] H.264 host-output 4K30：相同fallback真機取得283個`avc1` samples並輸出3840×2160 BGRA，29.11fps、零runtime error，後續pause。4K高幀率與直幅不由此宣稱已通過。
+- [ ] H.264 host-output直幅1080×1920@30性能：尺寸、BGRA與231個`avc1` samples正確，零runtime error，但23.74fps低於30fps門檻；需解決同步decode背壓後才可標為通過。
 - [x] HEVC/H.265 decode foundation：Annex-B／HVCC、VPS/SPS/PPS、IRAP16…23、loss/reset/parameter-change及有界cache已完成；共用VideoToolbox decoder只接受canonical H.264或HEVC parameter sets及4-byte length access unit，輸出BGRA並有generation fence。尚未以實際encoded frame完成decode驗收。
 - [x] HEVC本機影片實際驗收：合成HEVC MP4經`ImportedVideoSource`實際seek、解碼為BGRA並核對像素內容；不使用Pocket 3、網路或持久素材。direct UVC HEVC仍不成立，因descriptor未宣告HEVC。
 - [x] AVFoundation↔direct capture ownership policy：stop＋frame queue drain、direct exclusive acquire/release、AVF restart證據與generation permit已完成純狀態機及actor tests；尚未接真實VS transport。

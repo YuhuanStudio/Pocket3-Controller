@@ -43,6 +43,8 @@ macOS SDK查核後已撤回「App首選IOUSBHostInterface」的假設：該類�
 
 同一路徑已實測4K30：283個`avc1` block-buffer samples交回3840×2160 BGRA，29.11fps、零runtime error，之後明確pause。這是第一個可用的4K H.264 host-output preview path；4K48/50/60、直幅與長時間記憶體／停止恢復仍須各自驗收。
 
+直幅1080×1920@30同樣可交回正確尺寸BGRA，231個`avc1` samples、零runtime error，但即時速率僅23.74fps；因此它目前只證明H.264 decoder與直幅尺寸路徑，**不**通過30fps性能門檻。需分析VideoToolbox同步decode背壓後，才能提升為直幅30fps支援。
+
 1. 純資料：descriptor selection、26-byte control、UVC payload、FID/EOF/loss、Annex B/AVCC與SPS/PPS/IDR測試。
 2. raw transport：只取得VS ownership與scalar diagnostics；busy、拔除、timeout、取消、cleanup必須通過。
 3. 同步1080p30 VideoToolbox→FrameStore；不保存畫面，先驗尺寸/FPS/freshness/memory bounds。
