@@ -160,11 +160,11 @@ or use this configuration after installing in Applications:
 }
 ```
 
-The nine tools are `camera_status`, `camera_connect`, `camera_pause`,
-`camera_compare_frames`, `capture_frame`, `move_gimbal`, `stop_gimbal`,
-`camera_zoom_status` and `camera_set_zoom`. `camera_connect` explicitly starts
+The ten tools are `camera_status`, `camera_connect`, `camera_pause`,
+`camera_compare_frames`, `camera_focus_status`, `capture_frame`, `move_gimbal`,
+`stop_gimbal`, `camera_zoom_status` and `camera_set_zoom`. `camera_connect` explicitly starts
 the local USB preview; `camera_pause` releases it. `camera_compare_frames`
-returns only same-session scalar change metrics, never image data. The helper uses a private local Unix
+returns only same-session scalar change metrics, never image data. `camera_focus_status` is read-only AVFoundation capability metadata; an unsupported result does not trigger a focus write. The helper uses a private local Unix
 socket to reach the app. External observation and camera actions follow the
 app's access setting; the default leaves control with the person using the app.
 

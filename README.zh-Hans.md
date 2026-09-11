@@ -133,6 +133,7 @@ MCP helper 使用 stdio，通过同用户私有 Unix socket 调用已开启的 A
 | `capture_frame` | 在允许观察时取得新 JPEG 与帧／session 信息 |
 | `move_gimbal` | 经验证与授权的有界 UVC 移动，返回动作后证据 |
 | `stop_gimbal` | 取消排队动作，报告停止及读回结果 |
+| `camera_focus_status` | 只读当次 AVFoundation 点选／自动／连续对焦能力，不发送对焦点 |
 | `camera_zoom_status` | 读取当次连接的缩放范围与原始值 |
 | `camera_set_zoom` | 依同一 session 的范围、step 与控制权设置缩放 |
 

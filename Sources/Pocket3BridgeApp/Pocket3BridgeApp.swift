@@ -185,6 +185,10 @@ final class AppModel {
                 case "ui-check": return try await AppModel.shared.checkInterface(request)
                 case "image-workspace": return try await AppModel.shared.handleImageWorkspace(request)
                 case "validation-manual-control": return try await AppModel.shared.handleManualControlValidation(request)
+                case "focus-status":
+                    // Read the exact active AVFoundation input capability. This
+                    // never requests focus, camera access escalation or BLE.
+                    return ServiceReply(id: request.id, result: try .encode(await service.capture.focusCapabilities()))
                 case "validation-focus-status", "validation-focus-point":
                     guard CommandLine.arguments.contains("--hardware-validation") else { throw BridgeFailure("validation_disabled", "Focus validation requires a development launch") }
                     let capabilities = await service.capture.focusCapabilities()

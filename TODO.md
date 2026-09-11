@@ -170,7 +170,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 - [x] **build11 Zoom moving-stop 新規則實機讀回通過。** 從100請求400，讀到194、再200且仍moving時Stop；hold target／observed均200，內部11筆／0.847秒、其後8筆獨立讀回／0.899秒均穩定，原請求以CancellationError結束。之後明確恢復100亦verified。[Stop結果](artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/result.json)、[恢復](artifacts/zoom-moving-stop-2026-09-09/7ec1044c-d59b-46fd-a823-23aaa20b8aea/restoration.json)。只驗本次有界途中停止，不涵蓋倍率、物理煞停延遲、完整UI拖曳／所有視角。
 - [ ] Zoom 最新整合版的持續拖曳、取消／Stop、重連、gimbal 接管與新影格／視覺效果；校準倍率另行驗證。
 - [ ] 使用者要求的機身搖桿 double／triple **原生快速回中與前後切換**。單次 FE08 已提交但3秒無回覆、30筆姿態無變化；FE09未由此得到成功證據，慢速 USB approach 不作產品替代。[FE08](artifacts/hardware-resumed/native-recenter-result.json)
-- [ ] App 預覽 **tap AF** 的可用傳輸。使用者已確認 Pocket 3 **機身在 Webcam 模式可點按 AF**；當次 USB／AVFoundation 卻回報 point／auto／continuous 均 false。缺的是 host 控制路徑，不是機身 AF，也不能以 MF 拉條替代。[AVF 能力](artifacts/hardware-resumed/focus-capabilities.json)
+- [ ] App 預覽 **tap AF** 的可用傳輸。使用者已確認 Pocket 3 **機身在 Webcam 模式可點按 AF**；當次 USB／AVFoundation 卻回報 point／auto／continuous 均 false。新版已提供唯讀 MCP／CLI `camera_focus_status`／`focus-status`，實機正常 MCP connect→read→pause 同 session再次回報三者皆false，沒有啟動BLE或送寫入。缺的是 host 控制路徑，不是機身 AF，也不能以 MF 拉條替代。[結果](artifacts/hardware-complete-2026-09-11/mcp-focus-status.json)
 - [ ] 完整宣告視角範圍、各姿態、物理角度／速度、平滑度、停止延遲與尾移校準；不以一次大角度往返或穩定 USB 回讀宣稱全範圍／機械停止通過。
 - [x] USB small absolute target baseline：metrics-only pan probe從raw0請求3600、穩定readback3960（tolerance內）；tilt probe target/readback均3600、pan−360；另5° nominal pan probe target/readback均17640／tilt3600。三者verified=true且之後pause。這只證明兩軸有界目標可到達，不校準機械角度或全範圍。
 - [ ] 收緊後的完整控制報告：每軸至少20次往返、中途停止、競爭控制、快速拔插／喚醒及動作後新影格。v3錯誤通過標記已撤銷；v4曾24次保持通過但首個目標未到位，整份仍未接受。
