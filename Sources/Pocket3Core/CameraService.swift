@@ -1395,6 +1395,10 @@ public actor CameraService {
                 if request.arguments["pixelFormat"] == .null { pixelFormat = .automatic }
                 else if let raw = request.arguments["pixelFormat"].string, let value = CapturePixelFormat(rawValue: raw) { pixelFormat = value }
                 else { throw BridgeFailure("invalid_input_format", "Input pixel format must be automatic, nv12 or uyvy") }
+                let outputPolicy: CaptureOutputPolicy
+                if request.arguments["outputPolicy"] == .null { outputPolicy = .bgra }
+                else if let raw = request.arguments["outputPolicy"].string, let value = CaptureOutputPolicy(rawValue: raw), value.isUserSelectable { outputPolicy = value }
+                else { throw BridgeFailure("invalid_output_policy", "Output policy must be bgra or h264") }
                 let resolution = request.arguments["resolution"].number ?? 1080
                 guard resolution == 1080 || resolution == 2160 else { throw BridgeFailure("invalid_format", "只接受 1080 或 2160") }
                 let id = request.arguments["deviceID"].string ?? selected?.id ?? CaptureEngine.devices().first?.id ?? ""
@@ -1403,7 +1407,7 @@ public actor CameraService {
                     guard let found = CaptureMode.available(deviceID: id).first(where: { $0.id == modeID }) else { throw BridgeFailure("invalid_format", "Unknown capture mode") }
                     mode = found
                 } else { mode = nil }
-                try await connect(id: id, resolution: Int(resolution), mode: mode, pixelFormat: pixelFormat,
+                try await connect(id: id, resolution: Int(resolution), mode: mode, pixelFormat: pixelFormat, outputPolicy: outputPolicy,
                                   validationStartupTimeout: startupTimeout, validationSkipUVC: skipUVC)
                 return ServiceReply(id: request.id, result: try .encode(await status()))
             case "validation-pause", "validation-suspend":

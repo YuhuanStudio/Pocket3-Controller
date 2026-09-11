@@ -235,6 +235,12 @@ import MCP
                 guard let raw = option("--pixel-format"), let pixelFormat = CapturePixelFormat(rawValue: raw) else { throw BridgeFailure("invalid_input_format", "Use --pixel-format automatic|nv12|uyvy") }
                 arguments["pixelFormat"] = .string(pixelFormat.rawValue)
             }
+            if command == "validation-connect", args.contains("--output-policy") {
+                guard let raw = option("--output-policy"), let policy = CaptureOutputPolicy(rawValue: raw), policy.isUserSelectable else {
+                    throw BridgeFailure("invalid_output_policy", "Use --output-policy bgra|h264")
+                }
+                arguments["outputPolicy"] = .string(policy.rawValue)
+            }
             if command == "validation-setup" { arguments["access"] = .string(option("--access") ?? "observe") }
             if let dimension = option("--max-dimension"), let size = Int(dimension) { arguments["maxDimension"] = .number(Double(size)) }
             guard ["status", "doctor", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel", BluetoothCameraEventRecordingRequest.operation].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
