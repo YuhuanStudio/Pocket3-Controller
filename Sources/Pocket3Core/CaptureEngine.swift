@@ -48,6 +48,11 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
     public var pixelBufferCount = 0
     public var nonImageVideoSampleCount = 0
     public var nonImageVideoBlockBufferCount = 0
+    // Optional for backward-compatible decoding of persisted diagnostics.
+    public var decodedH264FrameCount: Int? = 0
+    public var h264DecodeFailureCount: Int? = 0
+    public var h264DecodeTotalMilliseconds: Double? = 0
+    public var h264DecodeMaximumMilliseconds: Double? = 0
     public var lastVideoSampleFourCC: String?
     public var lastVideoInputFourCC: String?
     public var requestedOutputPolicy: String?
@@ -245,6 +250,16 @@ public final class FrameStore: @unchecked Sendable {
             }
             diagnostics.lastVideoSampleFourCC = mediaSubType.map(CapturePixelFormat.fourCCString)
             diagnostics.lastVideoInputFourCC = inputMediaSubType.map(CapturePixelFormat.fourCCString)
+        }
+    }
+    public func recordH264Decode(success: Bool, durationSeconds: Double) {
+        guard durationSeconds.isFinite && durationSeconds >= 0 else { return }
+        lock.withLock {
+            if success { diagnostics.decodedH264FrameCount = (diagnostics.decodedH264FrameCount ?? 0) + 1 }
+            else { diagnostics.h264DecodeFailureCount = (diagnostics.h264DecodeFailureCount ?? 0) + 1 }
+            let milliseconds = durationSeconds * 1_000
+            diagnostics.h264DecodeTotalMilliseconds = (diagnostics.h264DecodeTotalMilliseconds ?? 0) + milliseconds
+            diagnostics.h264DecodeMaximumMilliseconds = max(diagnostics.h264DecodeMaximumMilliseconds ?? 0, milliseconds)
         }
     }
     public func recordOutputConfiguration(policy: String, pixelFormats: [UInt32], codecs: [String]) {
@@ -701,10 +716,15 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
             let hasBlockBuffer = CMSampleBufferGetDataBuffer(sample) != nil
             let decodedPixel: CVPixelBuffer?
             if pixel == nil, mediaSubType == kCMVideoCodecType_H264, hasBlockBuffer {
+                let started = ProcessInfo.processInfo.systemUptime
                 do {
                     if avc1Decoder == nil { avc1Decoder = AVC1SampleDecoder() }
                     decodedPixel = try avc1Decoder?.decode(sample).pixelBuffer
-                } catch { decodedPixel = nil }
+                    store.recordH264Decode(success: decodedPixel != nil, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
+                } catch {
+                    store.recordH264Decode(success: false, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
+                    decodedPixel = nil
+                }
             } else { decodedPixel = nil }
             let deliveredPixel = pixel ?? decodedPixel
             let metadata = deliveredPixel.map { CaptureVideoMetadata(buffer: $0,
