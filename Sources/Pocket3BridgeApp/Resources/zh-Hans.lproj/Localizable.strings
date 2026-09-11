@@ -1481,5 +1481,7 @@
 "Experimental · host encoded" = "实验性 · 由主机编码";
 "H.264 host output is below the requested frame rate." = "H.264 主机输出低于要求的帧率。";
 "Possible horizontal black bars detected." = "检测到可能的水平黑边。";
+"Sample scene changes" = "采样场景变化";
+"Scene samples · %d intervals · %.3f peak luma" = "场景采样 · %d 个区段 · %.3f 峰值亮度差";
 "Compare +1 s" = "比较 +1 秒";
 "Frame change · %.3f luma · %.1f%% samples" = "帧差异 · %.3f 亮度 · %.1f%% 抽样";

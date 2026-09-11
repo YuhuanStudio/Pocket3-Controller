@@ -151,9 +151,19 @@ struct ObservationPrivateText: View {
                     Button(loc("Compare +1 s")) { model.imageWorkspace.compareNextSecond() }
                         .buttonStyle(YunButtonStyle(.secondary, small: true))
                         .disabled(!model.imageWorkspace.ready || model.imageWorkspace.isComparingFrames || model.imageWorkspace.videoSeekTime >= video.metadata.lastSeekSeconds)
-                    if model.imageWorkspace.isComparingFrames { ProgressView().controlSize(.mini) }
+                    Button(loc("Sample scene changes")) { model.imageWorkspace.sampleSceneChanges() }
+                        .buttonStyle(YunButtonStyle(.ghost, small: true))
+                        .disabled(!model.imageWorkspace.ready || model.imageWorkspace.isComparingFrames || model.imageWorkspace.isSamplingTimeline || model.imageWorkspace.videoSeekTime >= video.metadata.lastSeekSeconds)
+                    if model.imageWorkspace.isComparingFrames || model.imageWorkspace.isSamplingTimeline { ProgressView().controlSize(.mini) }
                     if let comparison = model.imageWorkspace.frameComparison {
                         Text(String(format: loc("Frame change · %.3f luma · %.1f%% samples"), comparison.metrics.meanAbsoluteLumaDifference, comparison.metrics.darkPixelChangeFraction * 100))
+                            .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !model.imageWorkspace.frameTimeline.isEmpty {
+                        let changes = model.imageWorkspace.frameTimeline
+                        let peak = changes.map(\.metrics.meanAbsoluteLumaDifference).max() ?? 0
+                        Text(String(format: loc("Scene samples · %d intervals · %.3f peak luma"), changes.count, peak))
                             .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

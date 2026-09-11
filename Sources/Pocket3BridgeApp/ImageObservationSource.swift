@@ -58,6 +58,7 @@ enum ImageObservationResponse: Sendable {
     private(set) var responseSourceFrameID: String?
     private(set) var resultSnapshot: AnalysisExportSnapshot?
     private(set) var frameComparison: FrameComparisonObservation?
+    private(set) var frameTimeline: [FrameComparisonObservation] = []
     private(set) var region: NormalizedImageRegion?
     var selectingRegion = false
     var videoSeekTime: Double = 0
@@ -66,6 +67,7 @@ enum ImageObservationResponse: Sendable {
     private(set) var isAnalyzing = false
     private(set) var isCancelling = false
     private(set) var isComparingFrames = false
+    private(set) var isSamplingTimeline = false
     private(set) var error: String?
     var question = ""
     var action: ImageObservationAction = .ask
@@ -73,7 +75,7 @@ enum ImageObservationResponse: Sendable {
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
     private var importID = UUID()
     private var revision = 0
-    var isWorking: Bool { isImporting || isAnalyzing || isComparingFrames }
+    var isWorking: Bool { isImporting || isAnalyzing || isComparingFrames || isSamplingTimeline }
     var ready: Bool { asset != nil && !isImporting && !videoScrubbing }
 
     init(load: @escaping @Sendable (URL) async throws -> ImportedObservationImage = ImportedObservationImage.load,
@@ -98,7 +100,7 @@ enum ImageObservationResponse: Sendable {
         importID = UUID(); let id = importID
         let oldVideo = asset?.videoSource
         asset = nil; preview = nil; error = nil; isImporting = true
-        region = nil; selectingRegion = false; videoSeekTime = 0; frameComparison = nil
+        region = nil; selectingRegion = false; videoSeekTime = 0; frameComparison = nil; frameTimeline = []
         importTask = Task { [self] in
             defer { if importID == id { isImporting = false; importTask = nil } }
             var importedVideo: ImportedVideoSource?
@@ -168,6 +170,45 @@ enum ImageObservationResponse: Sendable {
         }
     }
 
+    /// Produces at most eight adjacent one-second scalar comparisons from the
+    /// selected local-video frame. It is deliberately not semantic event or
+    /// subject tracking: decoded pixels stay inside each comparison task.
+    func sampleSceneChanges() {
+        guard ready, !isComparingFrames, !isSamplingTimeline, let current = asset,
+              let video = current.videoSource else { return }
+        let upper = video.metadata.lastSeekSeconds
+        guard upper > current.frame.info.presentationTime else { return }
+        revision += 1; let requestedRevision = revision, baselineID = current.frame.info.id
+        frameComparison = nil; frameTimeline = []; error = nil; isSamplingTimeline = true
+        Task { [self] in
+            defer { if revision == requestedRevision { isSamplingTimeline = false } }
+            do {
+                var previous = current.frame, observations: [FrameComparisonObservation] = []
+                for _ in 0..<8 {
+                    let target = min(upper, previous.info.presentationTime + 1)
+                    guard target > previous.info.presentationTime else { break }
+                    let next = try await video.frame(at: target)
+                    // This bounded 256×256 scalar comparison stays with the
+                    // workspace task. It avoids transferring a mutable frame
+                    // buffer across Swift 6 isolation domains while sampling.
+                    let metrics = try FrameComparison.compare(previous.pixelBuffer, next.pixelBuffer)
+                    try Task.checkCancellation()
+                    guard previous.info.sessionID == next.info.sessionID else {
+                        throw BridgeFailure("video_session_changed", "Video session changed while sampling scene changes")
+                    }
+                    observations.append(FrameComparisonObservation(sessionID: previous.info.sessionID,
+                        firstFrameID: previous.info.id, secondFrameID: next.info.id,
+                        intervalSeconds: next.info.presentationTime - previous.info.presentationTime, metrics: metrics))
+                    previous = next
+                }
+                guard revision == requestedRevision, asset?.frame.info.id == baselineID,
+                      asset?.videoSource === video else { return }
+                frameTimeline = observations
+            } catch is CancellationError {}
+            catch { if revision == requestedRevision { self.error = AppErrorPresentation.message(error, fallback: .videoTime) } }
+        }
+    }
+
     func setRegion(_ value: NormalizedImageRegion?) {
         guard region != value else { selectingRegion = false; return }
         cancel(clearResult: true); region = value; selectingRegion = false
@@ -227,7 +268,7 @@ enum ImageObservationResponse: Sendable {
         if asset?.videoSource != nil { videoSeekTime = asset?.frame.info.presentationTime ?? 0 }
         analysisTask?.cancel()
         isCancelling = isAnalyzing
-        frameComparison = nil; isComparingFrames = false
+        frameComparison = nil; frameTimeline = []; isComparingFrames = false; isSamplingTimeline = false
         if clearResult { response = nil; responseFrameID = nil; responseSourceFrameID = nil; resultSnapshot = nil; error = nil }
     }
     func clear() {
@@ -392,6 +433,14 @@ extension AppModel {
                 try await Task.sleep(for: .milliseconds(20))
             }
             guard !imageWorkspace.isComparingFrames else { throw BridgeFailure("video_compare_timeout", "Video frame comparison did not finish") }
+        case "timeline":
+            guard !isCameraSource, observationReady, !aiWorking else { throw BridgeFailure("image_workspace_busy", "Video workspace is not ready") }
+            imageWorkspace.sampleSceneChanges()
+            let deadline = ProcessInfo.processInfo.systemUptime + 20
+            while imageWorkspace.isSamplingTimeline, ProcessInfo.processInfo.systemUptime < deadline {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            guard !imageWorkspace.isSamplingTimeline else { throw BridgeFailure("video_timeline_timeout", "Video scene sampling did not finish") }
         case "cancel": imageWorkspace.cancel()
         case "seek":
             guard let time = request.arguments["seconds"].number, let video = imageWorkspace.asset?.videoSource,
@@ -427,6 +476,7 @@ extension AppModel {
             "video": try (file.asset?.videoSource?.metadata).map(JSONValue.encode) ?? .null,
             "videoSeekTime": .number(file.videoSeekTime),
             "frameComparison": try file.frameComparison.map(JSONValue.encode) ?? .null,
+            "frameTimeline": try .array(file.frameTimeline.map(JSONValue.encode)),
             "exportAvailable": .bool(file.resultSnapshot != nil), "aiBusy": .bool(aiWorking),
             "marker": file.marker.map { .object(["x": .number($0.x), "y": .number($0.y)]) } ?? .null,
             "cameraActionReady": .bool(cameraActionReady), "cameraAccess": .string(access.rawValue)]

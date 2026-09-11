@@ -1481,5 +1481,7 @@
 "Experimental · host encoded" = "實驗性 · 由主機編碼";
 "H.264 host output is below the requested frame rate." = "H.264 主機輸出低於要求的幀率。";
 "Possible horizontal black bars detected." = "偵測到可能的水平黑邊。";
+"Sample scene changes" = "取樣場景變化";
+"Scene samples · %d intervals · %.3f peak luma" = "場景取樣 · %d 個區段 · %.3f 峰值亮度差";
 "Compare +1 s" = "比較 +1 秒";
 "Frame change · %.3f luma · %.1f%% samples" = "影格差異 · %.3f 亮度 · %.1f%% 抽樣";

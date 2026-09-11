@@ -110,6 +110,16 @@ def main():
               "Distinct synthetic scenes did not produce a meaningful scalar difference")
         check(not any(key in comparison for key in ["imageData", "pixelData", "path", "sourceURL"]),
               "Comparison IPC exposed image or path data")
+        workspace("timeline"); timeline = settled(); report["videoSceneTimeline"] = timeline["frameTimeline"]
+        samples = timeline["frameTimeline"]
+        check(1 <= len(samples) <= 8, "Scene sampler did not produce its bounded local timeline")
+        check(samples[0]["firstFrameID"] == baseline["frame"]["id"] and samples[0]["intervalSeconds"] > 0,
+              "Scene sampler did not start from the selected frame")
+        check(samples[0]["metrics"]["meanAbsoluteLumaDifference"] > 10,
+              "Scene sampler missed the deliberately distinct synthetic transition")
+        check(all(item["sessionID"] == comparison["sessionID"] and
+                  not any(key in item for key in ["imageData", "pixelData", "path", "sourceURL"])
+                  for item in samples), "Scene timeline exposed media or crossed a video session")
         workspace("seek", "--seconds", "1.5"); selected = settled(); actual = selected["frame"]["presentationTime"]
         check(1 <= actual < 2 and abs(actual - 1.5) <= 1/30 + 1e-6, "Seek did not return a FRAME B timestamp")
         ready_to_run(); workspace("ocr"); ocr = settled(); report["videoOCR"] = ocr
