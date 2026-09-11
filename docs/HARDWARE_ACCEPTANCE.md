@@ -345,3 +345,5 @@ BLE 候選 `OsmoPocket3-7CF5` 完成 protocol pairing；身份仍為 `unverified
 九個 allowlisted named properties 依序查詢。AF、image effect、exposure 可直接收到 property push；其餘六個單獨 query 在各自兩秒 window 逾時。隨後 Wireless UI 的完整循序讀取收到全部九類 observation：1080p／30 fps／HEVC、landscape、Normal、AF-C、Auto WB、Auto EV 0，以及 photo/lapse/motionlapse/panorama raw/typed fields。未知 photo／panorama code 保留 `0x00`／`0x02`，沒有映射成未證實設定。所有單獨 query 都沒有 matching ACK，`propertyReceived` 與 ACK 分開記錄，不能稱 setter 或 subscription 已確認。
 
 被動 tracking candidate allowlist `02/89`、`02/A5`、`02/A6` 在本次基線為空；沒有送 tracking command，也不能由空集合推論 Pocket 3 不支援機身 ActiveTrack。UI 擷取排除 camera preview 與 private observation content。完整機器可讀摘要在 `artifacts/hardware-complete-2026-09-11/build25-hardware-summary.json`；各 property query、USB/BLE status 與無 preview 的 Wireless UI capture 位於同一目錄。
+
+收緊 readback 後的最終 build25 session `F6545D2B-764B-4CEA-9525-4B6AB73D7CAD` 再次完成 pairing。電池保留 `chargingStateRaw=0`；姿態額外保留未命名的 `modeStatusRaw=128`、`limitStatusRaw=0`，兩者只供診斷，不作模式或機械限位判斷。Lens decoder 現在只接受 capture-confirmed `0xB1/0xB2`，writer payload `0x01/0x02` 維持 unknown；非 video-like `02/80` 不再輸出 elapsed recording time。
