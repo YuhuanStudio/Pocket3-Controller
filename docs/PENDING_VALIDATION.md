@@ -6,7 +6,7 @@
 
 公開版本為 beta 2 build24；main 的 build25 已完成 USB 1080p30 NV12 與 BLE pairing 的唯讀基線。真機已收到 `02/80` camera status、`02/DC` storage、九類 named camera properties、battery、pose，以及未知值 raw preservation；BLE peer 身份仍未與 USB serial 關聯。ActiveTrack 候選 observer 已就緒但基線為空，需機身啟動追蹤後比較。原生 preset、tap AF、設定寫入、完整格式／直幅、全範圍物理控制、遠端桌面與公證仍待驗證。Mac 網路沒有切換至相機 Wi-Fi。
 
-build25 目前來源的 Release tests 為 633 次執行、零失敗，包含收緊 lens/status 與 raw telemetry 後的完整重跑。三語完整九欄設定 fixture 已逐張檢查，長英文值會換行，無線 popover 高度限制為 680 px 並可捲動。完整封裝／搬移模型／更新／DMG gate 仍待下一個候選批次。詳細 current source of truth 見 [Pocket 3 支援矩陣](POCKET3_SUPPORT_MATRIX.md) 與 [實機驗收](HARDWARE_ACCEPTANCE.md)。
+build25 目前來源的 Release tests 為 634 次執行、零失敗，包含收緊 lens/status 與 raw telemetry 後的完整重跑。三語完整九欄設定 fixture 已逐張檢查，長英文值會換行，無線 popover 高度限制為 680 px 並可捲動。完整封裝／搬移模型／更新／DMG gate 仍待下一個候選批次。詳細 current source of truth 見 [Pocket 3 支援矩陣](POCKET3_SUPPORT_MATRIX.md) 與 [實機驗收](HARDWARE_ACCEPTANCE.md)。
 
 ## build5 狀態（2026-09-09，歷史保留）
 
@@ -14,7 +14,7 @@ build25 目前來源的 Release tests 為 633 次執行、零失敗，包含收�
 
 ## build4等待／驗收快照（2026-09-09，歷史保留）
 
-使用者已關閉Pocket3，本批未執行新實機取像／控制。**0.1.0 / build4完整Release gate已通過**，重新完整執行、非resume；run `beede929-3b74-49a0-895f-33cbe67f49ee`，App executable SHA-256 `f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428ff527d7`。[報告](../artifacts/offline-2026-09-09/final/verification-gate.json)。這是本批離線整合完成，不是整體1.0或所有硬體功能完成。詳細scope見 [ACCEPTANCE_AUDIT](ACCEPTANCE_AUDIT.md)；[OFFLINE_REMAINING_AUDIT](OFFLINE_REMAINING_AUDIT.md)保留修正前查讀脈絡。
+使用者已關閉Pocket3，本批未執行新實機取像／控制。**0.1.0 / build4完整Release gate已通過**，重新完整執行、非resume；run `beede929-3b74-49a0-895f-33cbe67f49ee`，App executable SHA-256 `f6e3207c34510ae58ce808d20f3e7e58659fd431634bc34ffc8ac6428ff527d7`。[報告](../artifacts/offline-2026-09-09/final/verification-gate.json)。這是本批離線整合完成，不是整體1.0或所有硬體功能完成。詳細scope見 [ACCEPTANCE_AUDIT](ACCEPTANCE_AUDIT.md)；[OFFLINE_REMAINING_AUDIT](OFFLINE_REMAINING_AUDIT.md)保留修正前查讀脈絡。
 
 本批已通過332項Release測試、317條三語字串／7個共用設計檔、3套C/ObjC ASan、29張UI、離線MCP／取消、模型搬移推論／卸載，以及ZIP與唯讀DMG payload簽章／hash。banner兩例均30pt、footer38pt；暫時語言修正後saved preferences未變。[設計](../artifacts/offline-2026-09-09/final/design-contract.json)、[UI](../artifacts/offline-2026-09-09/final/ui-gate.log)、[安裝包](../artifacts/offline-2026-09-09/final/release-artifacts.json)、[payload](../artifacts/offline-2026-09-09/final/release-artifacts-verification.json)。**本次popover animation因鎖屏／休眠未驗，歷史解鎖通過紀錄保留**，不混為同一次測試。
 
@@ -24,7 +24,7 @@ build25 目前來源的 Release tests 為 633 次執行、零失敗，包含收�
 
 - 指定1080×1920 NV12／30fps、stereo48kHz的1800.207秒影音長測與清理已通過。[實際報告](../artifacts/hardware-resumed/stream-final/EC740B6A-ECD5-4C48-89B1-8A797CF2D936/report.json)。
 - 手動USB按住／拖曳、放開／失焦／Stop與可見AppKit輸入surface已實測；本機固定開發簽署、授權保留與解鎖後動畫亦已有紀錄。[硬體／UI證據](HARDWARE_ACCEPTANCE.md)、[本機簽署](LOCAL_SIGNING.md)。以下舊段落的ad-hoc／無有效身分／未測動畫是當時狀態，不是現在結論。
-- 真實Apple模型測試13.388秒、快取MLX模型測試37.843秒通過；兩者相機皆為simulation，physicalCameraAccess=false，只證明離線zoom工具順序、單次寫入模擬器與新影格回答。[Apple結果](../artifacts/model-zoom-check/apple-E9E5E104-C10D-4534-A9AE-163363E477DE/result.json)、[MLX結果](../artifacts/model-zoom-check/mlx-E203FD0E-3F39-4CF0-A3E3-5919636B82DD/result.json)。框架／流程不同計時範圍詳見驗收對照，不當實體相機測試。
+- 真實Apple模型測試13.388秒、快取MLX模型測試37.843秒通過；兩者相機皆為simulation，physicalCameraAccess=false，只證明離線zoom工具順序、單次寫入模擬器與新影格回答。[Apple結果](../artifacts/model-zoom-check/apple-E9E5E104-C10D-4534-A9AE-163463E477DE/result.json)、[MLX結果](../artifacts/model-zoom-check/mlx-E203FD0E-3F39-4CF0-A3E3-5919636B82DD/result.json)。框架／流程不同計時範圍詳見驗收對照，不當實體相機測試。
 
 仍待實機／協議證據的項目：機身double／triple對應的原生快速回中／朝向、tap AF、H.264取像、完整範圍／各姿態、物理角度／速度／停止尾移，以及新整合後的拔插／睡眠與真實AI相機流程。**慢速USB軌跡不替代原生preset，MF不替代tap AF**；Mac保留原網路，不要求加入相機SSID。[詳細限制](HARDWARE_ACCEPTANCE.md)。
 

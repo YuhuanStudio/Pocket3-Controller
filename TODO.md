@@ -17,7 +17,7 @@
 - [x] build22完整gate與安裝：503項執行通過、3項opt-in跳過；59張UI、3語、7個Yun共用設計檔、搬移後MLX/CoreAI推論、ZIP/DMG驗證通過。另6項照片workspace回歸包含真實RootView隱私／marker渲染；3張照片工作區公開UI已逐張看過，所有圖片內容與分析均隱去。[gate](artifacts/offline-workspace-build22/final/verification-gate.json)、[安裝](artifacts/offline-workspace-build22/installed.json)、[公開截圖manifest](docs/images/image-workspace-build22.json)
 - [x] build23媒體工作區：本機影片時間點、實際PTS與方向、VFR／長hold／GOP邊界、ROI拖選裁切／標記映回、JSON／Markdown不可變結果匯出。真App以合成圖片與影片完成MLX ROI計數、Vision OCR、Apple影片影格回答、匯出、快速seek取消與三語隱私截圖；相機狀態在離線gate維持零影格不變。[流程](artifacts/media-workspace-gate-1789044947/result.json)
 - [x] build23完整gate與安裝：534項執行通過、3項opt-in跳過；59張UI、三語、7個Yun共用設計檔、搬移App後MLX/CoreAI推論、ZIP/DMG與簽章通過。已安裝與gate相同的build23。[gate](artifacts/offline-media-build23/final/verification-gate.json)、[截圖manifest](docs/images/media-workspace-build23.json)、[安裝](artifacts/offline-media-build23/installed.json)
-- [x] build25 唯讀硬體基線：`02/80` camera status、`02/DC` storage、九類 named properties、未知 raw 值、被動 tracking candidates、BLE identity 邊界與 UVC transient-read resilience 已實作；Release tests 633次零失敗，USB 1080p30、BLE pairing/status/settings 已實測。[支援矩陣](docs/POCKET3_SUPPORT_MATRIX.md)、[真機紀錄](docs/HARDWARE_ACCEPTANCE.md)
+- [x] build25 唯讀硬體基線：`02/80` camera status、`02/DC` storage、九類 named properties、未知 raw 值、被動 tracking candidates、BLE identity 邊界與 UVC transient-read resilience 已實作；Release tests 634次零失敗，USB 1080p30、BLE pairing/status/settings 已實測。[支援矩陣](docs/POCKET3_SUPPORT_MATRIX.md)、[真機紀錄](docs/HARDWARE_ACCEPTANCE.md)
 - [x] build25 metrics-only NV12 矩陣：10秒暖機後13個實際橫幅／直幅模式全部通過尺寸、FourCC、BGRA、新影格、freshness、session與FPS；不保存畫面，故內容方向與黑邊仍另待視覺驗收。[結果](artifacts/hardware-complete-2026-09-11/build25-nv12-matrix-warm/51a6c591-668e-4474-bf39-7a3edcfd9901/result.json)
 - [ ] build25 UYVY 代表重測：1080p30與4K60均 `no_frame`，各種 sample count為0且無 runtime/interruption；沒有自動重試。需先補 negotiation 診斷或替代 transport，不能把 advertised `2vuy` 當支援。[結果](artifacts/hardware-complete-2026-09-11/build25-uyvy-representative/a7abb20c-e58e-4c64-9d3c-b961cc5fd999/result.json)
 - [x] build25 scalar negotiation 診斷：2vuy 1080p30顯示active format正確、session/connection/device均active，但input port仍是420v且callback timeout/no sample；格式UI已分清host subtype與MJPEG/H.264 UVC路徑。[結果](artifacts/hardware-complete-2026-09-11/build25-uyvy-negotiation/6eae14d5-2d58-4077-a08b-be83852571b0/result.json)
@@ -31,6 +31,7 @@
 - [x] HEVC本機影片實際驗收：合成HEVC MP4經`ImportedVideoSource`實際seek、解碼為BGRA並核對像素內容；不使用Pocket 3、網路或持久素材。direct UVC HEVC仍不成立，因descriptor未宣告HEVC。
 - [x] AVFoundation↔direct capture ownership policy：stop＋frame queue drain、direct exclusive acquire/release、AVF restart證據與generation permit已完成純狀態機及actor tests；尚未接真實VS transport。
 - [x] H.264 VideoToolbox實際roundtrip：合成64×48 BGRA像素經本機VTCompressionSession壓成H.264，提取SPS/PPS與4-byte access unit後由新decoder同步解回BGRA，尺寸與generation通過；沒有Pocket 3、USB、檔案或網路。
+- [x] HEVC/H.265 VideoToolbox實際roundtrip：相同合成BGRA經HEVC encoder壓縮，提取VPS/SPS/PPS與4-byte access unit後由新decoder同步解回BGRA；不依賴Pocket 3 USB descriptor。
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
@@ -99,13 +100,13 @@ build 5 App SHA-256：`314f6cc8c769ce6640e36cbab6f989f71a4e192ce85c6947061b39042
 
 - [x] 本批 Release 332 項程式測試通過：Intelligence 21、Evaluation 1、Core 268、App 42；7 個共享設計檔、317 個三語字串及3組 C／ASan 檢查亦通過。[測試](artifacts/offline-2026-09-09/final/test-gate.log)、[設計／三語](artifacts/offline-2026-09-09/final/design-contract.json)
 - [x] 四個更新 feed 簽章案例通過；本機測試 feed 不等於正式更新發布與安裝驗收。
-- [x] 真實 Apple 模型＋**模擬相機**：zoom 狀態→單次 raw 200→新影格→明說模擬的回答通過。[result](artifacts/model-zoom-check/apple-E9E5E104-C10D-4534-A9AE-163363E477DE/result.json)、[log](artifacts/offline-2026-09-09/apple-zoom-model.log)
+- [x] 真實 Apple 模型＋**模擬相機**：zoom 狀態→單次 raw 200→新影格→明說模擬的回答通過。[result](artifacts/model-zoom-check/apple-E9E5E104-C10D-4534-A9AE-163463E477DE/result.json)、[log](artifacts/offline-2026-09-09/apple-zoom-model.log)
 - [x] 已快取的真實 MLX 模型＋**模擬相機**：同一 zoom 流程通過，沒有下載模型。[result](artifacts/model-zoom-check/mlx-E203FD0E-3F39-4CF0-A3E3-5919636B82DD/result.json)、[log](artifacts/offline-2026-09-09/mlx-zoom-model-bundle.log)
 - [x] **本批 build 4 完整 Release gate**：統一測試、MCP、29 張介面、搬移後 MLX／Core AI 推論與卸載，以及 ZIP／DMG 均通過。新視覺檢查發現並修正截圖語言未通知 footer 重繪；短／長提示列均30 pt、footer區38 pt，截圖不改已保存語言。[UI](artifacts/offline-2026-09-09/final/ui-gate.log)、[推論](artifacts/offline-2026-09-09/final/portable-inference.json)
 - [x] signed-feed／loopback fixture 偏好隔離與清理通過：四個 feed 案例加上非測試 bundle 拒絕／零請求／偏好 sentinel 保留；空偏好域的清理誤判已修。[更新測試](artifacts/offline-2026-09-09/final/update-feed-verification/result.json)
 - [x] 新 ZIP 解壓與 DMG 只讀掛載後的 App／CLI 簽章、版本與雜湊核對，以及卸載清理均通過。[產物](artifacts/offline-2026-09-09/final/release-artifacts.json)、[包內驗證](artifacts/offline-2026-09-09/final/release-artifacts-verification.json)
 
-build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431633bc34ffc8ac6428ff527d7`。該批桌面處於鎖定／休眠狀態，popover 動畫未重驗；離線版面與生命週期通過不等於該輪動畫通過。實機影音／動作、正式更新下載安裝及公證亦不在該 gate 的通過範圍。
+build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431634bc34ffc8ac6428ff527d7`。該批桌面處於鎖定／休眠狀態，popover 動畫未重驗；離線版面與生命週期通過不等於該輪動畫通過。實機影音／動作、正式更新下載安裝及公證亦不在該 gate 的通過範圍。
 
 兩份模型 result 均為 `simulation=true`、`physicalCameraAccess=false`，各只有一次模擬 raw 200 寫入；流程計時約 Apple 13.386 秒、MLX 37.832 秒。這證明真實模型的工具流程，**不是實體相機變焦、倍率或相機端動作證據**。另一份 MLX `ED86A580…` 只有 started／未 passed，不併入成功結果。
 
