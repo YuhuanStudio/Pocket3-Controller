@@ -10,14 +10,15 @@ import Testing
 /// camera service, model, network or repository video fixture is used.
 private func makeImportedMovie(at url: URL, width: Int = 64, height: Int = 32, rotated: Bool = false,
                                frameCount: Int = 10, frameStep: CMTime = CMTime(value: 1, timescale: 10),
-                               presentationTimes: [CMTime]? = nil, endTime: CMTime? = nil) async throws {
+                               presentationTimes: [CMTime]? = nil, endTime: CMTime? = nil,
+                               codec: AVVideoCodecType = .h264) async throws {
     let times = presentationTimes ?? (0..<frameCount).map { CMTimeMultiply(frameStep, multiplier: Int32($0)) }
     let end = endTime ?? CMTimeMultiply(frameStep, multiplier: Int32(frameCount))
     let timeScale = max(600, max(end.timescale, times.map(\.timescale).max() ?? frameStep.timescale))
     let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
     writer.movieTimeScale = timeScale
     let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
-        AVVideoCodecKey: AVVideoCodecType.h264.rawValue,
+        AVVideoCodecKey: codec.rawValue,
         AVVideoWidthKey: width, AVVideoHeightKey: height,
         AVVideoCompressionPropertiesKey: [AVVideoMaxKeyFrameIntervalKey: 1, AVVideoAverageBitRateKey: 500_000]])
     input.expectsMediaDataInRealTime = false
@@ -120,6 +121,20 @@ private actor VideoDeliveryGate {
 }
 
 @Suite("Imported local video", .serialized) struct ImportedVideoSourceTests {
+    @Test func realHEVCImportDecodesToBGRAWithoutCameraAccess() async throws {
+        let directory = try movieDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("synthetic-hevc.mp4")
+        try await makeImportedMovie(at: url, codec: .hevc)
+        let source = try await ImportedVideoSource.open(url)
+        let frame = try await source.frame(at: 0.7)
+        #expect(source.metadata.width == 64 && source.metadata.height == 32)
+        #expect(frame.info.outputPixelFormat == "BGRA")
+        let pixel = videoPixel(frame, x: 30, y: 16)
+        #expect(pixel.blue > 150 && pixel.red < 110)
+        await source.close()
+    }
+
     @Test func realMP4SeekingUsesActualTimeFreshIDsAndStableVideoSession() async throws {
         let directory = try movieDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
