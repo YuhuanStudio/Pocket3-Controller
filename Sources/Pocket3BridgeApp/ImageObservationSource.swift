@@ -188,6 +188,10 @@ enum ImageObservationResponse: Sendable {
                     let target = min(upper, previous.info.presentationTime + 1)
                     guard target > previous.info.presentationTime else { break }
                     let next = try await video.frame(at: target)
+                    // A variable-rate asset may hold the prior decoded frame
+                    // beyond the requested second. A timeline must not emit a
+                    // zero-interval self-comparison or keep resampling it.
+                    guard next.info.presentationTime > previous.info.presentationTime else { break }
                     // This bounded 256×256 scalar comparison stays with the
                     // workspace task. It avoids transferring a mutable frame
                     // buffer across Swift 6 isolation domains while sampling.
