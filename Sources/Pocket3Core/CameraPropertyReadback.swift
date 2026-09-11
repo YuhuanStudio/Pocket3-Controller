@@ -126,6 +126,12 @@ public struct CameraSettingsObservation: Codable, Sendable, Equatable {
             if let thirds = observation.evThirdStops { value = .autoEV(thirdStops: thirds) }
             else { value = nil }
             exposureMode = observation.exposureMode
+        case .videoParameters(let observation):
+            if let compression = observation.compression {
+                value = .videoCompression(compression)
+            } else {
+                value = nil
+            }
         default:
             value = nil
         }

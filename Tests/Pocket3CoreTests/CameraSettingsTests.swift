@@ -22,6 +22,11 @@ import Testing
         var value = [UInt8](repeating: 0, count: 20); value[6] = UInt8(0x10+thirds); value[7] = mode
         return CameraPropertyPush(property: .exposure, transactionID: transaction, value: Data(value))
     }
+    private func video(_ compression: CameraVideoCompression, resolution: UInt8 = 0x10,
+                       frameRate: UInt8 = 0x06, transaction: UInt32 = 1) -> CameraPropertyPush {
+        CameraPropertyPush(property: .videoParameters, transactionID: transaction,
+            value: Data([resolution, frameRate, 0, 0, 0, 0, 0, 0, compression.rawValue]))
+    }
 
     @Test func typedSettingCommandsMatchCapturedBytesAndRouting() throws {
         let commands: [(CameraSettingValue, UInt8, String)] = [
@@ -36,6 +41,16 @@ import Testing
             #expect(frame.source == 2 && frame.destination == 1 && frame.flags == 0x40)
             #expect(frame.commandSet == 2 && frame.commandID == id && frame.sequence == 0x1234)
             #expect(try DUMLCodec.decode(command.encodedFrame(sequence: 0x1234)) == frame)
+            #expect(try JSONDecoder().decode(CameraSettingCommand.self, from: JSONEncoder().encode(command)) == command)
+        }
+        for compression in CameraVideoCompression.allCases {
+            let value = CameraSettingValue.videoCompression(compression)
+            let command = CameraSettingCommand.videoCompression(compression)
+            #expect(command.value == value)
+            #expect(command.commandID == 0xab)
+            #expect(command.payload == Data([compression.rawValue, 0x00]))
+            #expect(command.frame(sequence: 0x1234).commandSet == 0x02)
+            #expect(try command.encodedFrame(sequence: 0x1234) == DUMLCodec.encode(command.frame(sequence: 0x1234)))
             #expect(try JSONDecoder().decode(CameraSettingCommand.self, from: JSONEncoder().encode(command)) == command)
         }
     }
@@ -110,6 +125,35 @@ import Testing
         #expect(state.operation?.phase == .confirmed)
         #expect(state.operation?.confirmation?.transactionID == 999) // Does not pretend it echoes sequence 7.
         #expect(state.operation?.confirmation?.basis == "fresh_matching_property_after_submission")
+    }
+
+    @Test func videoCompressionUsesTypedReadbackAndExactFullBaseline() throws {
+        var state = try CameraSettingsState(binding: binding)
+        let seeded = state.apply(video(.h264Compatibility), binding: binding, receivedUptime: 0, now: 0)
+        #expect(seeded)
+        let command = CameraSettingCommand.videoCompression(.hevcEfficiency)
+        let request = try state.prepare(command, sequence: 7, now: 0.1)
+
+        // A same-codec readback with a changed resolution is still a changed
+        // videoParameters baseline and must block the final write.
+        let changed = state.apply(video(.h264Compatibility, resolution: 0x0a,
+                                        transaction: 2), binding: binding,
+                                 receivedUptime: 0.2, now: 0.2)
+        #expect(changed)
+        #expect(throws: CameraSettingsError.baselineChanged) {
+            try state.validateForSubmission(request, binding: binding, now: 0.3)
+        }
+
+        var fresh = try CameraSettingsState(binding: binding)
+        let freshSeeded = fresh.apply(video(.h264Compatibility), binding: binding, receivedUptime: 1, now: 1)
+        #expect(freshSeeded)
+        let freshRequest = try fresh.prepare(command, sequence: 8, now: 1.1)
+        try fresh.validateForSubmission(freshRequest, binding: binding, now: 1.2)
+        try fresh.markSubmitted(freshRequest, binding: binding, at: 1.2)
+        let confirmed = fresh.apply(video(.hevcEfficiency, transaction: 3), binding: binding,
+                                    receivedUptime: 1.3, now: 1.3)
+        #expect(confirmed)
+        #expect(fresh.operation?.phase == .confirmed)
     }
 
     @Test func wrongGenerationOldFutureAndPreSubmissionSamplesCannotConfirm() throws {

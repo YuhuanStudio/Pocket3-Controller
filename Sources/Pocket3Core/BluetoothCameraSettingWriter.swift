@@ -19,6 +19,9 @@ public struct BluetoothCameraSettingWriteRequest: Sendable, Codable {
               expectedBaseline.receivedUptime.isFinite, expectedBaseline.receivedUptime >= 0 else {
             throw BridgeFailure("invalid_bluetooth_setting_request", "Pass the exact capture/BLE sessions and a known matching-property baseline")
         }
+        guard !command.requiresExactVideoParametersBaseline || Self.isExactVideoParametersBaseline(expectedBaseline) else {
+            throw BridgeFailure("invalid_bluetooth_setting_request", "Video compression requires the complete cam_video_param_v2 baseline")
+        }
         self.expectedSessionID = expectedSessionID; self.peripheralID = peripheralID
         self.expectedCaptureSessionID = expectedCaptureSessionID; self.command = command
         self.expectedBaseline = expectedBaseline
@@ -73,12 +76,28 @@ public struct BluetoothCameraSettingWriteRequest: Sendable, Codable {
               current.receivedUptime >= expectedBaseline.receivedUptime else {
             throw BridgeFailure("bluetooth_setting_baseline_stale", "Read the current paired camera setting again before submitting")
         }
-        guard current.value == expectedBaseline.value, current.exposureMode == expectedBaseline.exposureMode else {
+        guard current.value == expectedBaseline.value, current.exposureMode == expectedBaseline.exposureMode,
+              !command.requiresExactVideoParametersBaseline
+                || (Self.isExactVideoParametersBaseline(current)
+                    && current.readOnlyValue == expectedBaseline.readOnlyValue) else {
             throw BridgeFailure("bluetooth_setting_baseline_changed", "The camera setting changed after the supplied baseline")
         }
         if case .autoEV = command.value, current.exposureMode != .automatic {
             throw BridgeFailure("bluetooth_setting_exposure_not_auto", "Auto EV requires confirmed automatic exposure")
         }
+    }
+
+    private static func isExactVideoParametersBaseline(_ observation: CameraSettingsObservation) -> Bool {
+        guard observation.property == .videoParameters,
+              case .videoParameters(let video) = observation.readOnlyValue,
+              video.raw.count >= 9,
+              video.raw[0] == video.resolutionRaw,
+              video.raw[1] == video.frameRateRaw,
+              video.raw[8] == video.compressionRaw,
+              let compression = video.compression,
+              video.compressionRaw == compression.rawValue,
+              observation.value == .videoCompression(compression) else { return false }
+        return true
     }
 }
 

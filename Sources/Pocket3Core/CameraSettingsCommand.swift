@@ -28,11 +28,15 @@ public enum CameraSettingValue: Codable, Sendable, Equatable {
     case whiteBalance(CameraWhiteBalance)
     case focus(CameraFocusMode)
     case autoEV(thirdStops: Int)
+    /// Camera-side recording compression. This is a BLE/native camera setting
+    /// and is deliberately kept separate from USB/UVC capture format state.
+    case videoCompression(CameraVideoCompression)
     public var property: CameraSettingsProperty {
         switch self {
         case .whiteBalance: .imageEffect
         case .focus: .lensState
         case .autoEV: .exposure
+        case .videoCompression: .videoParameters
         }
     }
 }
@@ -71,8 +75,36 @@ public struct CameraSettingCommand: Codable, Sendable, Equatable {
         }
         return try Self(.autoEV(thirdStops: Int(thirdStops)))
     }
+    /// Builds the capture-confirmed 02/AB video-compression command. The
+    /// enum already restricts the command to H.264 or HEVC, so this helper is
+    /// non-throwing; `try` remains source-compatible for callers that use the
+    /// throwing factories for all camera settings.
+    public static func videoCompression(_ compression: CameraVideoCompression) -> Self {
+        // The enum case has the same base name as this convenience factory;
+        // the explicit constructor keeps that distinction clear to Swift.
+        Self(videoCompression: compression)
+    }
+
+    private init(videoCompression compression: CameraVideoCompression) {
+        self.value = .videoCompression(compression)
+    }
+
+    /// Compression changes need the complete, freshly decoded named-property
+    /// value as a submission baseline. The command only carries the codec
+    /// selector, so comparing the full readback prevents a stale resolution,
+    /// frame-rate, or reserved-byte snapshot from authorizing the write.
+    public var requiresExactVideoParametersBaseline: Bool {
+        if case .videoCompression = value { return true }
+        return false
+    }
+
     public var commandID: UInt8 {
-        switch value { case .whiteBalance: 0x2c; case .focus: 0x24; case .autoEV: 0x2e }
+        switch value {
+        case .whiteBalance: 0x2c
+        case .focus: 0x24
+        case .autoEV: 0x2e
+        case .videoCompression: 0xab
+        }
     }
     public var payload: Data {
         switch value {
@@ -80,6 +112,7 @@ public struct CameraSettingCommand: Codable, Sendable, Equatable {
         case .whiteBalance(.customKelvin(let kelvin)): Data([6,UInt8(kelvin / 100),0,0,0])
         case .focus(let mode): Data([mode.rawValue])
         case .autoEV(let thirds): Data([UInt8(0x10 + thirds)])
+        case .videoCompression(let compression): Data([compression.rawValue, 0x00])
         }
     }
     public func frame(sequence: UInt16) -> DUMLFrame {

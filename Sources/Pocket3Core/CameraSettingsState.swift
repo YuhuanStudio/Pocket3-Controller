@@ -77,7 +77,7 @@ public struct CameraSettingsState: Sendable {
         guard now < operation.deadlineUptime else { throw CameraSettingsError.requestExpired }
         guard operation.phase == .prepared else { throw CameraSettingsError.invalidTransition }
         let current = try freshBaseline(for: request.command, now: now)
-        guard current.value == operation.baseline.value && current.exposureMode == operation.baseline.exposureMode else {
+        guard baselineMatches(current, operation.baseline, for: request.command) else {
             throw CameraSettingsError.baselineChanged
         }
     }
@@ -154,6 +154,39 @@ public struct CameraSettingsState: Sendable {
         guard let observation = observations[command.value.property], observation.value != nil,
               observation.isFresh(now: now, maximumAge: Self.maximumObservationAge) else { throw CameraSettingsError.noFreshBaseline }
         if case .autoEV = command.value, observation.exposureMode != .automatic { throw CameraSettingsError.exposureNotAutomatic }
+        if command.requiresExactVideoParametersBaseline && !isExactVideoParametersBaseline(observation) {
+            throw CameraSettingsError.noFreshBaseline
+        }
         return observation
+    }
+
+    private func baselineMatches(_ current: CameraSettingsObservation,
+                                 _ baseline: CameraSettingsObservation,
+                                 for command: CameraSettingCommand) -> Bool {
+        guard current.value == baseline.value,
+              current.exposureMode == baseline.exposureMode else { return false }
+        guard !command.requiresExactVideoParametersBaseline else {
+            // A compression SET addresses only the codec selector. Keep the
+            // whole named-property baseline stable until the final write so a
+            // concurrent format change cannot be authorized by a matching
+            // compression byte alone.
+            return isExactVideoParametersBaseline(current)
+                && isExactVideoParametersBaseline(baseline)
+                && current.readOnlyValue == baseline.readOnlyValue
+        }
+        return true
+    }
+
+    private func isExactVideoParametersBaseline(_ observation: CameraSettingsObservation) -> Bool {
+        guard observation.property == .videoParameters,
+              case .videoParameters(let video) = observation.readOnlyValue,
+              video.raw.count >= 9,
+              video.raw[0] == video.resolutionRaw,
+              video.raw[1] == video.frameRateRaw,
+              video.raw[8] == video.compressionRaw,
+              let compression = video.compression,
+              video.compressionRaw == compression.rawValue,
+              observation.value == .videoCompression(compression) else { return false }
+        return true
     }
 }

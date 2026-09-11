@@ -12,6 +12,25 @@ import Testing
             exposureMode: property == .exposure || value?.property == .exposure ? (mode ?? .automatic) : mode,
             transactionID: 77, binding: binding, receivedUptime: time)
     }
+    func videoObservation(_ compression: CameraVideoCompression, resolution: UInt8 = 0x10,
+                          frameRate: UInt8 = 0x06, time: Double = 100,
+                          transaction: UInt32 = 77) -> CameraSettingsObservation {
+        let raw = Data([resolution, frameRate, 0, 0, 0, 0, 0, 0, compression.rawValue])
+        let value = CameraVideoParameters(raw: raw, resolutionRaw: resolution,
+            frameRateRaw: frameRate, compressionRaw: compression.rawValue,
+            resolution: CameraVideoResolution(rawValue: resolution),
+            frameRate: CameraFrameRate(rawValue: frameRate), compression: compression)
+        return CameraSettingsObservation(property: .videoParameters,
+            value: .videoCompression(compression), readOnlyValue: .videoParameters(value),
+            exposureMode: nil, transactionID: transaction, binding: binding, receivedUptime: time)
+    }
+    func videoSnapshot(_ compression: CameraVideoCompression = .h264Compatibility,
+                       resolution: UInt8 = 0x10, time: Double = 100,
+                       sequence: UInt16 = 40,
+                       fingerprints: [Data] = []) -> BluetoothCameraSettingsStore.AdmissionSnapshot {
+        .init(observation: videoObservation(compression, resolution: resolution, time: time),
+              sequence: sequence, fingerprints: fingerprints)
+    }
     func snapshot(_ value: CameraSettingValue = .whiteBalance(.automatic), time: Double = 100,
                   sequence: UInt16 = 40, fingerprints: [Data] = []) -> BluetoothCameraSettingsStore.AdmissionSnapshot {
         .init(observation: observation(value, time: time), sequence: sequence, fingerprints: fingerprints)
@@ -45,6 +64,8 @@ import Testing
         case .focus(let mode): contents = [mode == .single ? 0xb1 : 0xb2] + Array(repeating: 0, count: 46)
         case .autoEV(let thirds):
             contents = Array(repeating: 0, count: 44); contents[6] = UInt8(0x10 + thirds); contents[7] = mode.rawValue
+        case .videoCompression(let compression):
+            contents = [0x10, 0x06, 0, 0, 0, 0, 0, 0, compression.rawValue]
         case nil: contents = [0,0,0,0,255,0] + Array(repeating: 0, count: 10)
         }
         let name = Array(property.rawValue.utf8)
@@ -89,6 +110,43 @@ import Testing
             #expect(value.result.applied && value.result.stateMatched && value.result.end == .applied)
             #expect(value.result.matchingReadbackCount == 1 && value.result.observationWindowComplete)
             #expect(!value.result.retryPerformed && !value.result.restorePerformed)
+        }
+    }
+
+    @Test func videoCompressionWritesOneABCommandAndNeedsACKAndMatchingReadback() throws {
+        for target in CameraVideoCompression.allCases {
+            let previous: CameraVideoCompression = target == .h264Compatibility ? .hevcEfficiency : .h264Compatibility
+            let baseline = videoSnapshot(previous)
+            let input = try request(.videoCompression(target), baseline: baseline.observation)
+            var value = try BluetoothCameraSettingWriter(request: input, baseline: baseline, sequence: 7, now: 100)
+            var writes: [Data] = []
+            let sent = try value.submitIfReady(currentBaseline: baseline, hasCredit: true,
+                maximumWriteBytes: 64, at: 100) { _, data in writes.append(data) }
+            let expectedFrame = try CameraSettingCommand.videoCompression(target).encodedFrame(sequence: 7)
+            #expect(sent && writes == [expectedFrame])
+            receive(&value, try ack(commandID: 0xab), at: 100.1)
+            receive(&value, try push(.videoCompression(target), property: .videoParameters), at: 100.2)
+            value.tick(at: 103)
+            #expect(value.result.end == .applied && value.result.applied)
+            #expect(value.result.acknowledged && value.result.stateMatched)
+            #expect(value.result.matchingReadbackCount == 1 && writes.count == 1)
+        }
+    }
+
+    @Test func videoCompressionNoOpIsZeroWritesAndBaselineMustBeExact() throws {
+        let baseline = videoSnapshot(.hevcEfficiency)
+        let noOpRequest = try request(.videoCompression(.hevcEfficiency), baseline: baseline.observation)
+        var noOp = try BluetoothCameraSettingWriter(request: noOpRequest, baseline: baseline, sequence: 7, now: 100)
+        var writes = 0
+        let sent = try noOp.submitIfReady(currentBaseline: baseline, hasCredit: true,
+            maximumWriteBytes: 64, at: 100) { _, _ in writes += 1 }
+        #expect(!sent && writes == 0 && noOp.result.noOp && noOp.result.end == .noOp)
+
+        let expected = videoSnapshot(.h264Compatibility, resolution: 0x10)
+        let changed = videoSnapshot(.h264Compatibility, resolution: 0x0a, time: 100.1, sequence: 41)
+        let input = try request(.videoCompression(.hevcEfficiency), baseline: expected.observation)
+        #expect(throws: BridgeFailure.self) {
+            _ = try BluetoothCameraSettingWriter(request: input, baseline: changed, sequence: 7, now: 100.1)
         }
     }
     @Test func ackAloneOrStateWithoutAckCannotConfirmCommandApplied() throws {

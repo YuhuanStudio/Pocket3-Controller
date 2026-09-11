@@ -2,7 +2,7 @@
 
 > 本文件的 `artifacts/` 與 `research/` 連結指向本機證據目錄，不隨公開原始碼發布；版本摘要與公開下載驗證見 Release 說明。
 
-初次研究日期：2026-09-08；進度更新：2026-09-09。固定設定來源為 Kaze for DJI `341a35de18493ff61f97c93b8b10161a7512aa36`。初次研究沒有操作相機；後續已實作首批 command encoder／純狀態管理與 BLE 只讀面板，並在本機取得 AF-C、WB Auto、曝光 Auto／EV0。**WB／EV／AF 模式 setter 仍未通過本機寫入驗收。** 來源全文、MIT 授權及16份檔案的 SHA-256 見 [PROVENANCE](../research/2026-09-08/camera-settings/PROVENANCE.md)，逐批結果見[硬體驗收](HARDWARE_ACCEPTANCE.md)。
+初次研究日期：2026-09-08；進度更新：2026-09-11。固定設定來源為 Kaze for DJI `341a35de18493ff61f97c93b8b10161a7512aa36`。初次研究沒有操作相機；後續已實作首批 command encoder／純狀態管理與 BLE 只讀面板，並在本機取得 AF-C、WB Auto、曝光 Auto／EV0。**WB／EV／AF 模式 setter 仍未通過本機寫入驗收。** 來源全文、MIT 授權及16份檔案的 SHA-256 見 [PROVENANCE](../research/2026-09-08/camera-settings/PROVENANCE.md)，逐批結果見[硬體驗收](HARDWARE_ACCEPTANCE.md)。
 
 ## 2026-09-09：點選對焦的新增證據
 
@@ -53,6 +53,7 @@
 | 白平衡 Kelvin | `02/2C` → `06 KK 00 00 00`，`KK=Kelvin/100`；2000…10000，每次100 K；例5600 K=`06 38 00 00 00` | 同 property；`[4]=06`，Kelvin=`[5]×100` | C/I/R；未知 mode byte 不能當 Auto |
 | 對焦模式 | `02/24` → S-AF `01`、C-AF `02` | `cam_lens_state` ≥1；`[0]=B1`／`B2` | C/I/R；只確認模式，不證明已合焦、對焦距離或對焦點 |
 | AUTO EV | `02/2E` → `10+n`，`n=-9…9`，每格1/3 EV；−3=`07`、0=`10`、+3=`19` | `cam_expo_param` ≥20；`[6]−10` 為 third-stops；只接受 `[6]=07…19` | C/I/R；需 `[7]=01` 的 Auto 基準 |
+| 機內錄影壓縮 | `02/AB` → H.264 `00 00`、HEVC/H.265 `01 00` | `cam_video_param_v2` ≥9；compression=`[8]` | build25 developer writer要求完整9-byte fresh baseline、一次寫入、ACK＋寫後matching readback；尚待本機寫入驗收。這不是USB HEVC。 |
 | 曝光模式 | `02/1E` → Auto `01 00`、Manual `04 00` | `cam_expo_param[7]`=`01`／`04` | C/I/R；切 Manual 後快門／ISO 的原值仍需另核對 |
 | 色彩模式 | `02/42` → Normal `00`、HLG `3C`、D-Log M `3D` | `cam_image_effect[2]` | C/I/R；設定回讀不等於 USB／預覽已驗證 HDR 或10-bit |
 
