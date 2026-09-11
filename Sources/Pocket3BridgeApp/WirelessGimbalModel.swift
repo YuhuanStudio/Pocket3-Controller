@@ -263,7 +263,7 @@ final class WirelessGimbalModel {
                 }
             }
             do {
-                for property in [CameraSettingsProperty.lensState, .imageEffect, .exposure] {
+                for property in CameraSettingsProperty.allCases {
                     try Task.checkCancellation()
                     guard self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
                     let result = try await self.bluetooth.queryCameraProperty(property: property)

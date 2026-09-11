@@ -57,8 +57,8 @@ struct BluetoothCameraPropertyQuery {
 
     init(property: CameraSettingsProperty, binding: ContinuousGimbalBinding,
          sequence: UInt16, transactionID: UInt32, startedUptime: TimeInterval) throws {
-        guard [.lensState, .imageEffect, .exposure].contains(property) else {
-            throw BridgeFailure("bluetooth_property_query_unsupported", "Only the three known camera properties may be queried.")
+        guard CameraSettingsProperty.allCases.contains(property) else {
+            throw BridgeFailure("bluetooth_property_query_unsupported", "The requested camera property is not in the read-only allowlist.")
         }
         guard !binding.sessionID.isEmpty else { throw CameraSettingsError.invalidSession }
         guard Self.validWindowStart(startedUptime) else { throw CameraSettingsError.invalidTime }

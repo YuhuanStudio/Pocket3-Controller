@@ -19,6 +19,26 @@ protocol CameraControlConnection: AnyObject, Sendable {
 }
 extension UVCConnection: CameraControlConnection {}
 
+/// Test-only status dependencies. Production status reads continue to use
+/// CaptureEngine discovery and FrameStore freshness directly; tests can model
+/// discovery, a healthy capture stream, and attachment invalidation without
+/// opening a real camera.
+struct CameraServiceStatusSeam: Sendable {
+    let devices: @Sendable () -> [CameraDevice]
+    let captureIsFreshForSelectedDevice: @Sendable (String) -> Bool
+    let onAttachmentInvalidated: (@Sendable () async -> Void)?
+
+    init(
+        devices: @escaping @Sendable () -> [CameraDevice],
+        captureIsFreshForSelectedDevice: @escaping @Sendable (String) -> Bool,
+        onAttachmentInvalidated: (@Sendable () async -> Void)? = nil
+    ) {
+        self.devices = devices
+        self.captureIsFreshForSelectedDevice = captureIsFreshForSelectedDevice
+        self.onAttachmentInvalidated = onAttachmentInvalidated
+    }
+}
+
 public struct ServiceStatus: Codable, Sendable {
     public var appVersion: String = Pocket3Product.semanticVersion
     public var buildVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
@@ -39,6 +59,8 @@ public struct ServiceStatus: Codable, Sendable {
     public var lastCaptureAttempt: CaptureSampleDiagnostics? = nil
     public var power: USBPowerStatus? = nil
     public var controlTransport: String? = nil
+    public var controlReadIssueCode: String? = nil
+    public var lastControlReadFailureAt: Date? = nil
     public var nativeControl: NativeControlStatus? = nil
     /// Developer capture isolation only; nil remains compatible with older replies.
     public var uvcControlDisabledForCapture: Bool? = nil
@@ -87,7 +109,10 @@ struct ValidationPositionProbe: Sendable {
               fresh.position.tilt >= minimum.tilt, fresh.position.tilt <= maximum.tilt else {
             throw BridgeFailure("invalid_readback", "USB 原點或控制範圍無效，不能進行位置探測")
         }
-        let requested = (panDegrees ?? tiltDegrees!) * 3600
+        guard let requestedDegrees = panDegrees ?? tiltDegrees else {
+            throw BridgeFailure("invalid_position_probe", "探測只接受一個絕對軸目標")
+        }
+        let requested = requestedDegrees * 3600
         let current = Double(panDegrees == nil ? fresh.position.tilt : fresh.position.pan)
         guard requested.isFinite, abs(requested - current) <= Double(Self.maximumDelta) else {
             throw BridgeFailure("probe_distance_exceeded", "探測目標須在新鮮原點的 5 個 UVC 度以內")
@@ -116,6 +141,10 @@ public actor CameraService {
     private var uvc: (any CameraControlConnection)?
     private var uvcControlDisabledForCapture = false
     private var capabilities: UVCCapabilities?
+    private var controlReadIssueCode: String?
+    private var lastControlReadFailureAt: Date?
+    private var controlReadNeedsValidation = false
+    private var controlReadSequence: UInt64 = 0
     private var phase = "idle"
     private var access: AccessMode = .manual
     private var lastError: String?
@@ -152,14 +181,21 @@ public actor CameraService {
     private var usbActiveLease: ContinuousGimbalLease?
     private var usbLastStop: (lease: ContinuousGimbalLease, result: MotionResult)?
     private let usesTestConnection: Bool
+    private let statusSeam: CameraServiceStatusSeam?
     public init(stopValidated: Bool = false, validationEnabled: Bool = false) {
         self.stopValidated = stopValidated; self.validationEnabled = validationEnabled; usesTestConnection = false
+        statusSeam = nil
     }
     /// Internal-only fixture admission. No App/CLI/RPC route can enable it.
     /// Frames are supplied explicitly by tests; no AVF capture is started.
-    init(testConnection: any CameraControlConnection, testFrame: FramePacket) {
+    init(testConnection: any CameraControlConnection, testFrame: FramePacket,
+         statusSeam: CameraServiceStatusSeam? = nil) {
         validationEnabled = false; usesTestConnection = true
+        self.statusSeam = statusSeam
         stopValidated = true; uvc = testConnection; phase = "ready"; access = .control
+        if statusSeam != nil {
+            selected = CameraDevice(id: testFrame.info.deviceID, name: "Status fixture", location: nil)
+        }
         capture.store.reset(deviceID: testFrame.info.deviceID)
         capture.store.receive(testFrame.pixelBuffer, pts: testFrame.info.presentationTime)
     }
@@ -173,6 +209,11 @@ public actor CameraService {
         resetZoomHoldForConnectionChange(); resetRollHoldForConnectionChange()
         usbEndpoint?.connectionPermit.invalidate(); usbEndpoint = nil; usbAuthorization = nil; usbActiveLease = nil
         uvc = connection; phase = "ready"; access = .control; stopValidated = true
+        if statusSeam != nil {
+            selected = CameraDevice(id: frame.info.deviceID, name: "Status fixture", location: nil)
+        }
+        controlReadSequence &+= 1
+        controlReadIssueCode = nil; lastControlReadFailureAt = nil; controlReadNeedsValidation = false
         capture.store.reset(deviceID: frame.info.deviceID)
         capture.store.receive(frame.pixelBuffer, pts: frame.info.presentationTime)
     }
@@ -239,6 +280,7 @@ public actor CameraService {
         guard !connectionInProgress, nativeControl == nil, !nativeControlPending,
               ["ready", "moving", "stopping"].contains(phase), let uvc else { return nil }
         let sessionID = capture.store.stats().sessionID
+        let lifecycle = lifecycleGeneration
         guard !sessionID.isEmpty, capabilities?.writable == true,
               capabilities?.minimum != nil, capabilities?.maximum != nil else { return nil }
         let binding = ContinuousGimbalBinding(sessionID: sessionID, generation: UInt64(lifecycleGeneration))
@@ -257,9 +299,10 @@ public actor CameraService {
             },
             read: { [weak self] lease in
                 guard lease.binding == binding else { throw ContinuousGimbalError.staleLease }
+                guard let self else { throw CancellationError() }
                 let started = ProcessInfo.processInfo.systemUptime
-                let feedback = try await uvc.status()
-                await self?.recordUSBContinuousFeedback(lease, capabilities: feedback)
+                let feedback = try await self.readUVCStatus(uvc, expectedGeneration: lifecycle)
+                await self.recordUSBContinuousFeedback(lease, capabilities: feedback)
                 return USBContinuousGimbalFeedback(capabilities: feedback, observedAt: started)
             },
             write: { position, lease, deadline, permit in
@@ -434,22 +477,19 @@ public actor CameraService {
         phase = "suspended"; log("sleep", "主機休眠；喚醒後請重新連接", presentationKey: "camera.suspended")
     }
     public func status() async -> ServiceStatus {
-        let devices = CaptureEngine.devices()
+        var devices = statusDevices()
         if let selected, !devices.contains(where: { $0.id == selected.id }), ["ready", "moving", "stopping", "validating", "soaking"].contains(phase) {
             await invalidateAttachment()
+            devices = statusDevices()
         }
         if let uvc, usbActiveLease == nil, ["ready", "moving", "validating", "soaking"].contains(phase) {
             let generation = lifecycleGeneration
             do {
-                let current = try await uvc.status()
+                let current = try await readUVCStatus(uvc, expectedGeneration: generation)
                 if generation == lifecycleGeneration { capabilities = current }
             }
-            catch {
-                if generation == lifecycleGeneration {
-                    await invalidateAttachment()
-                    lastError = error.localizedDescription
-                }
-            }
+            catch { /* readUVCStatus records or invalidates the failure */ }
+            devices = statusDevices()
         }
         let nativeSnapshot: NativeControlStatus?
         if let reservation = nativeControl {
@@ -464,6 +504,11 @@ public actor CameraService {
         result.controlTransport = uvcControlDisabledForCapture ? "capture_only" : "usb_position"
         if usbActiveLease != nil { result.controlTransport = "usb_continuous_position" }
         if uvcControlDisabledForCapture { result.stopStrategy = "uvc_control_disabled_for_capture" }
+        result.controlReadIssueCode = controlReadIssueCode
+        result.lastControlReadFailureAt = lastControlReadFailureAt
+        if controlReadIssueCode != nil, let transport = result.controlTransport, !transport.contains("degraded") {
+            result.controlTransport = transport + "_degraded"
+        }
         result.nativeControl = nativeSnapshot
         if nativeControl != nil {
             result.controlTransport = "native_joystick"
@@ -473,6 +518,105 @@ public actor CameraService {
         }
         return result
     }
+
+    private func statusDevices() -> [CameraDevice] {
+        statusSeam?.devices() ?? CaptureEngine.devices()
+    }
+
+    private func captureIsFreshForSelectedDevice(_ deviceID: String) -> Bool {
+        if let statusSeam { return statusSeam.captureIsFreshForSelectedDevice(deviceID) }
+        let stats = capture.store.stats()
+        guard stats.frame?.deviceID == deviceID, let age = stats.age,
+              age.isFinite, age >= 0, age <= 1 else { return false }
+        return stats.frame?.sessionID == stats.sessionID
+    }
+
+    private func controlFailureCode(_ error: Error) -> String {
+        (error as? BridgeFailure)?.code ?? "uvc_status_read_failed"
+    }
+
+    private func isControlIdentityFailure(_ error: Error) -> Bool {
+        guard let code = (error as? BridgeFailure)?.code else { return false }
+        return ["uvc_attachment_changed", "hardware_identity", "uvc_connection_closed", "uvc_device_missing"].contains(code)
+    }
+
+    private func clearControlReadIssue() {
+        controlReadIssueCode = nil
+        lastControlReadFailureAt = nil
+        controlReadNeedsValidation = false
+    }
+
+    private func recordControlReadFailure(_ error: Error) {
+        let code = controlFailureCode(error)
+        if controlReadIssueCode != code {
+            log("uvc_status", "USB 控制讀取暫時失敗：\(code)；保留取像並要求下次寫入重新驗證", error: true,
+                presentationKey: "camera.control_read_degraded")
+        }
+        controlReadIssueCode = code
+        lastControlReadFailureAt = Date()
+        controlReadNeedsValidation = true
+    }
+
+    /// Reads capabilities and treats the UVC attachment as valid only after
+    /// the read succeeds. A generic read failure may degrade control while a
+    /// fresh frame proves the selected capture is still alive; identity or
+    /// actual-device failures retire the entire attachment.
+    private func readUVCStatus(
+        _ connection: any CameraControlConnection,
+        expectedGeneration: Int
+    ) async throws -> UVCCapabilities {
+        try Task.checkCancellation()
+        controlReadSequence &+= 1
+        let sequence = controlReadSequence
+        do {
+            let current = try await connection.status()
+            try Task.checkCancellation()
+            guard expectedGeneration == lifecycleGeneration, self.uvc === connection else {
+                throw BridgeFailure("session_changed", "USB 控制讀取期間相機連線已改變")
+            }
+            guard sequence == controlReadSequence else {
+                throw BridgeFailure("control_read_superseded", "較新的 USB 控制讀取已取代本次讀取")
+            }
+            if let selected {
+                let available = statusDevices()
+                guard available.contains(where: { $0.id == selected.id }) else {
+                    await invalidateAttachment()
+                    throw BridgeFailure("device_missing", "選定的 Pocket 3 已離線")
+                }
+            }
+            capabilities = current
+            clearControlReadIssue()
+            return current
+        } catch {
+            if error is CancellationError { throw error }
+            guard expectedGeneration == lifecycleGeneration, self.uvc === connection else { throw error }
+            guard sequence == controlReadSequence else {
+                throw BridgeFailure("control_read_superseded", "較新的 USB 控制讀取已取代本次讀取")
+            }
+            let available = statusDevices()
+            let selectedPresent = selected.map { device in available.contains(where: { $0.id == device.id }) } ?? false
+            let retainCapture = selectedPresent && selected.map { captureIsFreshForSelectedDevice($0.id) } == true
+            if isControlIdentityFailure(error) || !selectedPresent || !retainCapture {
+                await invalidateAttachment()
+            } else {
+                recordControlReadFailure(error)
+            }
+            throw error
+        }
+    }
+
+    /// After a degraded status read, do not allow an automation SET to reuse
+    /// stale capabilities. A successful status read clears the degraded state;
+    /// a repeated generic failure still blocks the write without guessing that
+    /// the device was unplugged.
+    private func validateControlAttachmentBeforeWrite(
+        _ connection: any CameraControlConnection,
+        expectedGeneration: Int
+    ) async throws {
+        guard controlReadNeedsValidation else { return }
+        _ = try await readUVCStatus(connection, expectedGeneration: expectedGeneration)
+    }
+
     private func invalidateAttachment() async {
         nativeControl?.writePermit?.invalidate()
         resetZoomHoldForConnectionChange()
@@ -484,8 +628,12 @@ public actor CameraService {
         usbAuthorization = nil; usbActiveLease = nil; usbEndpoint = nil
         // No hold write: this port may already contain a different attachment.
         uvc = nil; capabilities = nil; stopTask = nil; stopValidated = false; phase = "disconnected"
+        clearControlReadIssue()
         await capture.stop()
         log("disconnect", "Pocket 3 已離線或重新插入，先前操作已失效", error: true, presentationKey: "camera.disconnected")
+        if let onAttachmentInvalidated = statusSeam?.onAttachmentInvalidated {
+            await onAttachmentInvalidated()
+        }
     }
     private func requireObservation(_ origin: RequestOrigin) throws {
         if origin == .automation && access == .manual { throw BridgeFailure("access_denied", "請在 App 開放 AI 取像權限") }
@@ -557,6 +705,9 @@ public actor CameraService {
         }
         if origin == .manual { interactionEpoch += 1; access = .manual }
         let lifecycle = lifecycleGeneration, epoch = interactionEpoch
+        if controlReadNeedsValidation {
+            _ = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
+        }
         let before = try await uvc.zoomStatus()
         try USBZoomPolicy.validate(rawValue, capabilities: before)
         try Task.checkCancellation()
@@ -578,6 +729,7 @@ public actor CameraService {
         do {
             var verifier = try USBZoomReadbackVerifier(target: rawValue, capabilities: before)
             zoomNeedsHold = true; zoomHoldRevision &+= 1; zoomStopWork = nil
+            try await validateControlAttachmentBeforeWrite(uvc, expectedGeneration: lifecycle)
             try await uvc.setZoom(rawValue: rawValue, validUntil: ProcessInfo.processInfo.systemUptime + 0.25,
                                   permit: permit, connectionPermit: connectionPermit)
             var observed = before
@@ -679,6 +831,9 @@ public actor CameraService {
         if origin == .manual { interactionEpoch += 1; access = .manual }
         let lifecycle = lifecycleGeneration, epoch = interactionEpoch
         let readStarted = ProcessInfo.processInfo.systemUptime
+        if controlReadNeedsValidation {
+            _ = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
+        }
         let before = try await uvc.rollStatus()
         try USBRollPolicy.validate(rawValue, capabilities: before)
         try Task.checkCancellation()
@@ -750,7 +905,7 @@ public actor CameraService {
         try Task.checkCancellation()
         guard lifecycle == lifecycleGeneration, expectedGeneration == motionGeneration, stopped.verified,
               !connectionInProgress, let uvc else { throw BridgeFailure("control_cancelled", "視角切換已取消") }
-        let fresh = try await uvc.status()
+        let fresh = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
         guard lifecycle == lifecycleGeneration, expectedGeneration == motionGeneration else { throw CancellationError() }
         let front = try GimbalNavigationPolicy.home(capabilities: fresh)
         let target: GimbalPosition
@@ -777,7 +932,7 @@ public actor CameraService {
         _ = try capture.store.latest(maxAge: 1)
         guard !connectionInProgress, motionID == nil, let uvc else { throw BridgeFailure("motion_busy", "相機控制不可用或另一個動作進行中") }
         let lifecycle = lifecycleGeneration
-        let before = try await uvc.status()
+        let before = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
         let target: GimbalPosition
         if let positionProbe {
             guard isHardwareProbe, validationEnabled, origin == .manual, direction == "absolute" else {
@@ -809,6 +964,7 @@ public actor CameraService {
                     verification: "continuous_usb_approach_and_stable_readback", target: target, observed: observed,
                     message: "視角目標已完成")
             }
+            try await validateControlAttachmentBeforeWrite(uvc, expectedGeneration: lifecycle)
             try await uvc.set(target, permit: permit)
             var observed = before.position
             var stableCount = 0
@@ -817,7 +973,7 @@ public actor CameraService {
                 try Task.checkCancellation()
                 guard generation == motionGeneration, motionID == id else { throw BridgeFailure("cancelled", "動作已取消") }
                 try await Task.sleep(for: .milliseconds(100))
-                observed = try await uvc.status().position
+                observed = try await readUVCStatus(uvc, expectedGeneration: lifecycle).position
                 if observed.distance(to: target) <= MotionPolicy.readbackTolerance, let previous, observed.distance(to: previous) <= 360 { stableCount += 1 } else { stableCount = 0 }
                 previous = observed
                 if stableCount >= 3 {
@@ -856,7 +1012,7 @@ public actor CameraService {
             }
             _ = try capture.store.latest(maxAge: 1)
             let readStarted = ProcessInfo.processInfo.systemUptime
-            let fresh = try await uvc.status()
+            let fresh = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
             let now = ProcessInfo.processInfo.systemUptime
             guard fresh.minimum == before.minimum, fresh.maximum == before.maximum else {
                 throw BridgeFailure("usb_capabilities_changed", "USB 控制範圍已改變")
@@ -877,7 +1033,8 @@ public actor CameraService {
                 }
             } else { samples.removeAll() }
             let next = try approach.advance(observed: fresh.position, observedAt: readStarted, now: now)
-            try await uvc.setFast(next, validUntil: min(readStarted + 0.25, now + 0.10), permit: permit, connectionPermit: nil)
+                try await validateControlAttachmentBeforeWrite(uvc, expectedGeneration: lifecycle)
+                try await uvc.setFast(next, validUntil: min(readStarted + 0.25, now + 0.10), permit: permit, connectionPermit: nil)
             if next == target { submittedFinalTarget = true }
             // One target per slot; a slow operation never creates a catch-up burst.
             try await Task.sleep(for: .seconds(max(0, now + 0.05 - ProcessInfo.processInfo.systemUptime)), tolerance: .zero)
@@ -911,7 +1068,7 @@ public actor CameraService {
         }
         let lifecycle = lifecycleGeneration, epoch = interactionEpoch
         let sessionID = try capture.store.latest(maxAge: 1).info.sessionID
-        let before = try await uvc.status()
+        let before = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
         guard before.position == expected else { throw BridgeFailure("probe_origin_changed", "USB 原點已改變，沒有送出軌跡") }
         guard lifecycle == lifecycleGeneration, epoch == interactionEpoch, motionID == nil, phase == "ready",
               nativeControl == nil, !nativeControlPending else { throw BridgeFailure("session_changed", "控制狀態已改變") }
@@ -937,7 +1094,7 @@ public actor CameraService {
                 try permit.perform {}
                 guard generation == motionGeneration, lifecycle == lifecycleGeneration,
                       try capture.store.latest(maxAge: 1).info.sessionID == sessionID else { throw CancellationError() }
-                let fresh = try await uvc.status()
+                let fresh = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
                 let now = ProcessInfo.processInfo.systemUptime
                 guard now - deadline <= 0.025 else { throw BridgeFailure("trajectory_timing", "軌跡排程過期，已取消並請求保持") }
                 let reversed = tick > 12
@@ -947,6 +1104,7 @@ public actor CameraService {
                 let target = try trajectory.advance(x: x, y: y, speed: 0.5, now: now,
                     observed: fresh.position, observedAt: now)
                 let writeStarted = ProcessInfo.processInfo.systemUptime
+                try await validateControlAttachmentBeforeWrite(uvc, expectedGeneration: lifecycle)
                 try await uvc.setFast(target, validUntil: deadline + 0.025, permit: permit, connectionPermit: nil)
                 samples.append(USBTrajectoryProbeSample(elapsed: now - started, target: target, observed: fresh.position,
                     writeSeconds: ProcessInfo.processInfo.systemUptime - writeStarted, reversed: reversed))

@@ -161,7 +161,7 @@ import Testing
     @Test func unknownCodesClearValuesAndStalenessCannotUseLastSentFallback() throws {
         var state = try CameraSettingsState(binding: binding)
         state.apply(focus(0xb2),binding:binding,receivedUptime:0,now:0)
-        state.apply(focus(0x02),binding:binding,receivedUptime:1,now:1) // Writer code is not a readback code.
+        state.apply(focus(0xee),binding:binding,receivedUptime:1,now:1) // Unknown firmware value must not reuse the prior mode.
         #expect(state.currentValue(for:.lensState,now:1) == nil)
         #expect(throws: CameraSettingsError.noFreshBaseline) { try state.prepare(CameraSettingCommand(.focus(.single)),sequence:1,now:1) }
         state.apply(wb(),binding:binding,receivedUptime:1,now:1)

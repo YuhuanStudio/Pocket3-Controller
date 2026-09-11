@@ -47,6 +47,11 @@ public struct BluetoothDiscoveryStatus: Codable, Sendable {
     /// Same-paired-peer host receive age only, not cryptographic freshness or
     /// a USB association. Empty when unpaired, disconnected or older than 5 s.
     public var cameraSettingsObservations: [CameraSettingsObservation] = []
+    /// Fresh unsolicited `02/80` camera state from this exact paired peer.
+    public var cameraStatus: Pocket3CameraStatusObservation? = nil
+    public var storageStatus: Pocket3StorageObservation? = nil
+    /// Last passive cross-model tracking candidates; never a support claim.
+    public var trackingCandidates: [Pocket3TrackingCandidateFrame] = []
     public var recentHeaders: [BluetoothDUMLHeader] = []
     public var registrationAcknowledgmentSubmitted = false
     public var nativeProbeActive = false
@@ -73,6 +78,9 @@ extension BluetoothDiscoveryStatus {
         battery = try values.decodeIfPresent(BluetoothBatteryObservation.self, forKey: .battery)
         pose = try values.decodeIfPresent(BluetoothPoseObservation.self, forKey: .pose)
         cameraSettingsObservations = try values.decodeIfPresent([CameraSettingsObservation].self, forKey: .cameraSettingsObservations) ?? []
+        cameraStatus = try values.decodeIfPresent(Pocket3CameraStatusObservation.self, forKey: .cameraStatus)
+        storageStatus = try values.decodeIfPresent(Pocket3StorageObservation.self, forKey: .storageStatus)
+        trackingCandidates = try values.decodeIfPresent([Pocket3TrackingCandidateFrame].self, forKey: .trackingCandidates) ?? []
         recentHeaders = try values.decode([BluetoothDUMLHeader].self, forKey: .recentHeaders)
         registrationAcknowledgmentSubmitted = try values.decode(Bool.self, forKey: .registrationAcknowledgmentSubmitted)
         nativeProbeActive = try values.decode(Bool.self, forKey: .nativeProbeActive)

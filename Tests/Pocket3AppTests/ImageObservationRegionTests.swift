@@ -235,6 +235,22 @@ private func regionWorkspaceMovie(at url: URL) async throws {
 }
 
 extension ImageObservationRegionTests {
+    @MainActor @Test func remoteCameraTaskBlocksSourceReplacementUntilItFinishes() async throws {
+        let image = try regionWorkspaceAsset("fixture.png")
+        let analyzer = RegionWorkspaceAnalyzer()
+        let workspace = ImageObservationWorkspace(load: { _ in image },
+            analyze: { try await analyzer.analyze($0, $1, $2, $3) })
+        let app = AppModel(imageWorkspace: workspace)
+        app.remoteTaskCount = 1
+        #expect(!app.canChangeObservationSource)
+        await app.changeObservationSource(.image)
+        #expect(app.observationSource == .camera)
+        app.remoteTaskCount = 0
+        #expect(app.canChangeObservationSource)
+        await app.changeObservationSource(.image)
+        #expect(app.observationSource == .image)
+    }
+
     @MainActor @Test func seekingVideoClearsPreviousSnapshotAndFencesItsOwnPendingCroppedResult() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("workspace-roi-video-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

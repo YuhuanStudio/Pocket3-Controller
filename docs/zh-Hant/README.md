@@ -26,6 +26,7 @@
 
 | 文件 | 內容 |
 |---|---|
+| [目前 Pocket 3 支援矩陣](../POCKET3_SUPPORT_MATRIX.md) | 唯一 current state source：機身能力、App UI/API、讀寫證據、transport、發布界線與下一個 probe |
 | [連續雲台控制](../CONTINUOUS_GIMBAL.md) | USB 手勢、放開／Stop 及物理驗證界線 |
 | [Bluetooth 遙測](../BLUETOOTH_TELEMETRY.md) | 電量、充電、姿態、新鮮度及裝置關聯限制 |
 | [機身設定協定](../CAMERA_SETTINGS_PROTOCOL.md) | 只讀 AF、白平衡、曝光回報；協定資料不表示 setter 已可用 |

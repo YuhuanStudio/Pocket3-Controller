@@ -10,6 +10,12 @@ import Testing
         case .imageEffect: return Data(repeating: 0, count: 16)
         case .exposure:
             var bytes = Data(repeating: 0, count: 44); bytes[6] = 0x10; bytes[7] = 1; return bytes
+        case .videoParameters: return Data(repeating: 0, count: 9)
+        case .sensorAspectRatio: return Data([0])
+        case .photoParameters: return Data(repeating: 0, count: 13)
+        case .lapseParameters: return Data(repeating: 0, count: 21)
+        case .motionlapseParameters: return Data(repeating: 0, count: 8)
+        case .panoramaParameters: return Data(repeating: 0, count: 3)
         }
     }
     private func packet(_ property: CameraSettingsProperty = .lensState, sequence: UInt16 = 1, transaction: UInt32 = 1,

@@ -268,7 +268,7 @@ extension AppModel {
     var observationReady: Bool { !switchingObservationSource && (isCameraSource ? ready : imageWorkspace.ready) }
     var observationBusy: Bool { isCameraSource ? busy : imageWorkspace.isWorking }
     var canChangeObservationSource: Bool {
-        !switchingObservationSource && !isConnecting && !isManualPresetBusy && !continuousGimbal.canStop
+        !switchingObservationSource && remoteTaskCount == 0 && !isConnecting && !isManualPresetBusy && !continuousGimbal.canStop
             && status?.motionActive != true && !zoom.isWorking && !roll.isWorking
     }
     var observationQuestion: String {
@@ -295,7 +295,7 @@ extension AppModel {
         if source == .camera { imageWorkspace.clear() }
     }
     func chooseObservationImage() {
-        guard !switchingObservationSource else { return }
+        guard canChangeObservationSource else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image, .movie]
         panel.allowsMultipleSelection = false; panel.canChooseDirectories = false

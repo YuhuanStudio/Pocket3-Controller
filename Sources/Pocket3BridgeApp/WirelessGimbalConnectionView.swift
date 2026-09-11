@@ -7,7 +7,8 @@ struct WirelessGimbalConnectionView: View {
     @Bindable var model: WirelessGimbalModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Yun.Space.md) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Yun.Space.md) {
             HStack {
                 Text(loc("Bluetooth gimbal control")).font(Yun.Text.title)
                 Spacer(minLength: 0)
@@ -43,9 +44,9 @@ struct WirelessGimbalConnectionView: View {
                 }
             }
             if model.pairingStatus?.peerReportedPaired == true {
-                Label(loc("Camera paired"), systemImage: "checkmark.circle")
+                Label(loc("Bluetooth peer paired"), systemImage: "checkmark.circle")
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
-                Text(loc("Bluetooth movement is being verified for this camera."))
+                Text(loc("Pocket 3 identity and USB association are not verified."))
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
             }
             if let battery = model.freshBatteryAssessment {
@@ -56,6 +57,13 @@ struct WirelessGimbalConnectionView: View {
                 YunDivider()
                 BluetoothCameraSettingsView(observations: model.discovery.cameraSettingsObservations,
                     reading: model.readingCameraSettings, refresh: { model.readCameraSettings() })
+            }
+            if let camera = model.discovery.cameraStatus,
+               camera.sessionID == model.discovery.sessionID,
+               camera.peripheralID == model.discovery.selectedPeripheralID,
+               camera.isFresh(nowUptime: ProcessInfo.processInfo.systemUptime) {
+                YunDivider()
+                BluetoothCameraStatusView(observation: camera, storage: model.discovery.storageStatus)
             }
             if let pose = model.discovery.pose,
                pose.sessionID == model.discovery.sessionID,
@@ -80,8 +88,13 @@ struct WirelessGimbalConnectionView: View {
                 Button(loc("Disconnect wireless")) { Task { await model.disconnect() } }
                     .buttonStyle(YunButtonStyle(.ghost, small: true))
             }
-        }.padding(Yun.Space.lg).frame(width: 340, alignment: .leading)
-            .background(Yun.Palette.background)
+        }
+        .padding(Yun.Space.lg)
+        }
+        .scrollIndicators(.visible)
+        .frame(width: 340)
+        .frame(maxHeight: 680)
+        .background(Yun.Palette.background)
     }
 
     private var phaseTitle: String {
@@ -89,7 +102,7 @@ struct WirelessGimbalConnectionView: View {
             if pairing.credentialAccessFailed { return loc("Camera pairing was confirmed.") }
             switch pairing.phase {
             case .awaitingApproval: return loc("Approve pairing on the Pocket 3 screen.")
-            case .paired, .credentialsReady: return loc("Camera paired")
+            case .paired, .credentialsReady: return loc("Bluetooth peer paired")
             case .failed: return loc("Pairing did not finish. Scan and try again.")
             case .cancelled: return loc("Pairing cancelled")
             default: return loc("Pairing camera…")

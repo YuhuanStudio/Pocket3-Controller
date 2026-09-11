@@ -336,3 +336,12 @@ USB前後位置亦相同，cleanup target／observed保持−14040／6120且veri
 新版本再次進行實際MCP縮放中取消：原目標400，取消後保持200，獨立穩定窗口1.089544秒、clientStopSent=false、helper仍可用、取消回覆被抑制。這驗證共用清理重構沒有破壞已開始請求的真機取消；正常逾時路徑仍是上面的假UVC回歸，沒有製造或宣稱真機逾時成功。[實機取消](../artifacts/mcp-zoom-cancellation/522db46d-a71a-4358-8f3f-75ee0023e89e/result.json)
 
 其後明確恢復100並確認verified。最終4K30 NV12→BGRA約29.989fps、新影格age約0.00374秒、manual且motion inactive。[恢復](../artifacts/mcp-zoom-cancellation/522db46d-a71a-4358-8f3f-75ee0023e89e/explicit-restoration.json)、[最終狀態](../artifacts/mcp-cancel-build20/final-status.json)。本輪無照片或網路切換；原生preset、UYVY／4K60、早到取消、EOF及實際遠端桌面仍不據此宣稱完成。
+# Build 25：USB／BLE 唯讀相機狀態與設定（2026-09-11）
+
+build 25 的開發 App 以 `--hardware-validation` 啟動，USB 使用 `1920x1080@30`／NV12。兩秒後取像為 62 frames、30.04 fps、1920×1080、BGRA output，UVC 宣告 pan/tilt、zoom、roll，沒有送出雲台、縮放、對焦、設定或錄影命令。USB power registry 回報 500 mA／480 Mb/s；`chargingState` 仍是 `unknown`，不可由 USB allocation 推論正在充電。
+
+BLE 候選 `OsmoPocket3-7CF5` 完成 protocol pairing；身份仍為 `unverified_candidate`，沒有把 BLE peer 與 USB serial 關聯。App 沒有讀取 Wi-Fi credentials，也沒有加入相機網路。配對後的 `02/80`／`02/DC` 唯讀資料一致回報：未錄影、SD total 488,015 MiB、free 176,047 MiB、remaining 36,633 s、elapsed 0 s。Webcam 狀態的 shooting mode raw 是 `0x23`，目前 enum 沒有 capture-confirmed 名稱，因此保留 raw、不猜為 Video。
+
+九個 allowlisted named properties 依序查詢。AF、image effect、exposure 可直接收到 property push；其餘六個單獨 query 在各自兩秒 window 逾時。隨後 Wireless UI 的完整循序讀取收到全部九類 observation：1080p／30 fps／HEVC、landscape、Normal、AF-C、Auto WB、Auto EV 0，以及 photo/lapse/motionlapse/panorama raw/typed fields。未知 photo／panorama code 保留 `0x00`／`0x02`，沒有映射成未證實設定。所有單獨 query 都沒有 matching ACK，`propertyReceived` 與 ACK 分開記錄，不能稱 setter 或 subscription 已確認。
+
+被動 tracking candidate allowlist `02/89`、`02/A5`、`02/A6` 在本次基線為空；沒有送 tracking command，也不能由空集合推論 Pocket 3 不支援機身 ActiveTrack。UI 擷取排除 camera preview 與 private observation content。完整機器可讀摘要在 `artifacts/hardware-complete-2026-09-11/build25-hardware-summary.json`；各 property query、USB/BLE status 與無 preview 的 Wireless UI capture 位於同一目錄。

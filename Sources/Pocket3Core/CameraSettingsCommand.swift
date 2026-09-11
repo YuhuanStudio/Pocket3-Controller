@@ -14,9 +14,15 @@ public enum CameraExposureMode: UInt8, Codable, Sendable, Equatable {
     case automatic = 0x01, manual = 0x04
 }
 public enum CameraSettingsProperty: String, Codable, Sendable, Hashable, CaseIterable {
+    case videoParameters = "cam_video_param_v2"
+    case sensorAspectRatio = "cam_sensor_aspect_ratio"
     case imageEffect = "cam_image_effect"
     case exposure = "cam_expo_param"
     case lensState = "cam_lens_state"
+    case photoParameters = "cam_photo_param"
+    case lapseParameters = "cam_lapse_param"
+    case motionlapseParameters = "cam_motionlapse_params"
+    case panoramaParameters = "cam_pano_params"
 }
 public enum CameraSettingValue: Codable, Sendable, Equatable {
     case whiteBalance(CameraWhiteBalance)

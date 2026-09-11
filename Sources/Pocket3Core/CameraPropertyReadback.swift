@@ -13,7 +13,8 @@ public struct CameraPropertyPush: Sendable, Equatable {
 
 /// 00/99 named-property records, based on fixed Kaze captures and decoder facts.
 /// Provenance: research/2026-09-08/camera-settings/PROVENANCE.md.
-/// Only the three properties needed by WB, AF mode and AUTO EV are exposed.
+/// The property name is restricted to the complete read-only allowlist.  The
+/// value decoder separately enforces each property's capture-confirmed size.
 public enum CameraPropertyCodec {
     public static func subscription(_ property: CameraSettingsProperty, transactionID: UInt32, sequence: UInt16) -> DUMLFrame {
         let name = Array(property.rawValue.utf8)
@@ -71,10 +72,37 @@ public struct CameraSettingsObservation: Codable, Sendable, Equatable {
     public let property: CameraSettingsProperty
     /// Nil means an unrecognized setting code, not an optimistic requested value.
     public let value: CameraSettingValue?
+    /// Typed readback for both writer-backed and read-only properties.  The
+    /// associated value retains the complete raw property bytes and any
+    /// unknown enum codes.
+    public let readOnlyValue: CameraReadOnlyValue?
     public let exposureMode: CameraExposureMode?
     public let transactionID: UInt32
     public let binding: ContinuousGimbalBinding
     public let receivedUptime: TimeInterval
+
+    /// Backwards-compatible initializer for callers that only know the
+    /// original writer-backed value API.
+    public init(property: CameraSettingsProperty, value: CameraSettingValue?,
+                exposureMode: CameraExposureMode?, transactionID: UInt32,
+                binding: ContinuousGimbalBinding, receivedUptime: TimeInterval) {
+        self.init(property: property, value: value, readOnlyValue: nil,
+                  exposureMode: exposureMode, transactionID: transactionID,
+                  binding: binding, receivedUptime: receivedUptime)
+    }
+
+    public init(property: CameraSettingsProperty, value: CameraSettingValue?,
+                readOnlyValue: CameraReadOnlyValue?, exposureMode: CameraExposureMode?,
+                transactionID: UInt32, binding: ContinuousGimbalBinding,
+                receivedUptime: TimeInterval) {
+        self.property = property
+        self.value = value
+        self.readOnlyValue = readOnlyValue
+        self.exposureMode = exposureMode
+        self.transactionID = transactionID
+        self.binding = binding
+        self.receivedUptime = receivedUptime
+    }
 
     public func isFresh(now: TimeInterval, maximumAge: TimeInterval = 5) -> Bool {
         now.isFinite && receivedUptime.isFinite && receivedUptime >= 0 && maximumAge.isFinite && maximumAge > 0
@@ -83,32 +111,26 @@ public struct CameraSettingsObservation: Codable, Sendable, Equatable {
 
     static func decode(_ push: CameraPropertyPush, binding: ContinuousGimbalBinding, receivedUptime: TimeInterval) -> Self? {
         guard push.value.count <= DUMLCodec.maximumPayloadLength else { return nil }
-        let bytes = Array(push.value)
+        let readOnlyValue = CameraReadOnlyPropertyDecoder.decode(push.property, value: push.value)
+        guard let readOnlyValue else { return nil }
         let value: CameraSettingValue?
         var exposureMode: CameraExposureMode?
-        switch push.property {
-        case .imageEffect:
-            guard bytes.count >= 6 else { return nil }
-            switch bytes[4] {
-            case 0: value = .whiteBalance(.automatic)
-            case 6:
-                let kelvin = Int(bytes[5]) * 100
-                value = (2000...10000).contains(kelvin) ? .whiteBalance(.customKelvin(kelvin)) : nil
-            default: value = nil
-            }
-        case .lensState:
-            guard let code = bytes.first else { return nil }
-            switch code {
-            case 0xb1: value = .focus(.single)
-            case 0xb2: value = .focus(.continuous)
-            default: value = nil
-            }
-        case .exposure:
-            guard bytes.count >= 20 else { return nil }
-            value = (0x07...0x19).contains(bytes[6]) ? .autoEV(thirdStops: Int(bytes[6]) - 0x10) : nil
-            exposureMode = CameraExposureMode(rawValue: bytes[7])
+        switch readOnlyValue {
+        case .imageEffect(let observation):
+            if let balance = observation.whiteBalance { value = .whiteBalance(balance) }
+            else { value = nil }
+        case .lensState(let observation):
+            if let focus = observation.focusMode { value = .focus(focus) }
+            else { value = nil }
+        case .exposure(let observation):
+            if let thirds = observation.evThirdStops { value = .autoEV(thirdStops: thirds) }
+            else { value = nil }
+            exposureMode = observation.exposureMode
+        default:
+            value = nil
         }
-        return Self(property: push.property, value: value, exposureMode: exposureMode,
+        return Self(property: push.property, value: value, readOnlyValue: readOnlyValue,
+                    exposureMode: exposureMode,
                     transactionID: push.transactionID, binding: binding, receivedUptime: receivedUptime)
     }
 }
