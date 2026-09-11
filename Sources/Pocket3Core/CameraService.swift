@@ -491,7 +491,11 @@ public actor CameraService {
             await invalidateAttachment()
             devices = statusDevices()
         }
-        if let uvc, usbActiveLease == nil, ["ready", "moving", "validating", "soaking"].contains(phase) {
+        // A periodic status refresh must not supersede the serialized UVC
+        // feedback reads owned by an active motion/trajectory operation. It
+        // returns the last verified capability snapshot while motion runs;
+        // stop/completion performs the next authoritative read.
+        if let uvc, usbActiveLease == nil, motionID == nil, ["ready", "moving", "validating", "soaking"].contains(phase) {
             let generation = lifecycleGeneration
             do {
                 let current = try await readUVCStatus(uvc, expectedGeneration: generation)
