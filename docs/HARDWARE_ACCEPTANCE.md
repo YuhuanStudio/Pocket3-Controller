@@ -347,3 +347,11 @@ BLE 候選 `OsmoPocket3-7CF5` 完成 protocol pairing；身份仍為 `unverified
 被動 tracking candidate allowlist `02/89`、`02/A5`、`02/A6` 在本次基線為空；沒有送 tracking command，也不能由空集合推論 Pocket 3 不支援機身 ActiveTrack。UI 擷取排除 camera preview 與 private observation content。完整機器可讀摘要在 `artifacts/hardware-complete-2026-09-11/build25-hardware-summary.json`；各 property query、USB/BLE status 與無 preview 的 Wireless UI capture 位於同一目錄。
 
 收緊 readback 後的最終 build25 session `F6545D2B-764B-4CEA-9525-4B6AB73D7CAD` 再次完成 pairing。電池保留 `chargingStateRaw=0`；姿態額外保留未命名的 `modeStatusRaw=128`、`limitStatusRaw=0`，兩者只供診斷，不作模式或機械限位判斷。Lens decoder 現在只接受 capture-confirmed `0xB1/0xB2`，writer payload `0x01/0x02` 維持 unknown；非 video-like `02/80` 不再輸出 elapsed recording time。
+
+## Build 25：NV12 橫幅／直幅 metrics-only 矩陣（2026-09-11）
+
+`Scripts/validate-formats.py` 已改為只記錄串流 metrics，不再呼叫 snapshot 或保存相機畫面；每次 trial 綁定 exact device/session/mode/pixel format，核對新影格、freshness、尺寸、輸入 FourCC、BGRA output、rotation metadata 與 FPS，最後一定 `validation-pause`。第一次 4秒暖機只通過2/13，其他 trial 的形狀與影格正常但 session-lifetime `recentFPS` 尚未收斂；該次失敗保留，不解讀成格式不支援。
+
+以10秒暖機重跑後，以下13個實際 NV12／`420v` 模式全部通過：`1280x720@25/30`、`1920x1080@24/25/30`、`3840x2160@24/25/30`、`720x1280@25/30`、`1080x1920@24/25/30`。median FPS 分別落在23.975–25.028或29.949–29.970的對應目標附近；所有 frame 尺寸精確匹配、age <1秒、rotation metadata為0。結果目錄沒有JPEG，最後 phase為paused、frames歸零、access manual。[結果](../artifacts/hardware-complete-2026-09-11/build25-nv12-matrix-warm/51a6c591-668e-4474-bf39-7a3edcfd9901/result.json)
+
+這份矩陣證明 AVFoundation 串流協商、metadata和速率；因為刻意不保存／檢視感測器畫面，它**不證明**直幅內容方向、上下黑邊、鏡像或場景品質。這些需要另外明確授權的隱私安全視覺核對。

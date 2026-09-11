@@ -18,6 +18,7 @@
 - [x] build23媒體工作區：本機影片時間點、實際PTS與方向、VFR／長hold／GOP邊界、ROI拖選裁切／標記映回、JSON／Markdown不可變結果匯出。真App以合成圖片與影片完成MLX ROI計數、Vision OCR、Apple影片影格回答、匯出、快速seek取消與三語隱私截圖；相機狀態在離線gate維持零影格不變。[流程](artifacts/media-workspace-gate-1789044947/result.json)
 - [x] build23完整gate與安裝：534項執行通過、3項opt-in跳過；59張UI、三語、7個Yun共用設計檔、搬移App後MLX/CoreAI推論、ZIP/DMG與簽章通過。已安裝與gate相同的build23。[gate](artifacts/offline-media-build23/final/verification-gate.json)、[截圖manifest](docs/images/media-workspace-build23.json)、[安裝](artifacts/offline-media-build23/installed.json)
 - [x] build25 唯讀硬體基線：`02/80` camera status、`02/DC` storage、九類 named properties、未知 raw 值、被動 tracking candidates、BLE identity 邊界與 UVC transient-read resilience 已實作；Release tests 568次零失敗，USB 1080p30、BLE pairing/status/settings 已實測。[支援矩陣](docs/POCKET3_SUPPORT_MATRIX.md)、[真機紀錄](docs/HARDWARE_ACCEPTANCE.md)
+- [x] build25 metrics-only NV12 矩陣：10秒暖機後13個實際橫幅／直幅模式全部通過尺寸、FourCC、BGRA、新影格、freshness、session與FPS；不保存畫面，故內容方向與黑邊仍另待視覺驗收。[結果](artifacts/hardware-complete-2026-09-11/build25-nv12-matrix-warm/51a6c591-668e-4474-bf39-7a3edcfd9901/result.json)
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
