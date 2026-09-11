@@ -204,7 +204,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 
 ## 1.0 後、尚未提升為首發需求
 
-- [x] App Intents preview connect／privacy pause：macOS 26+ `Pocket3ConnectPreviewIntent`與`Pocket3PrivacyPauseIntent`共享AppModel/CameraService，不新增控制transport；Connect只採用已存的選擇／格式、保留manual access，Pause釋放session。Release build通過；Shortcuts實際系統發現與執行仍待安裝App後驗收。
+- [x] App Intents preview connect／privacy pause：macOS 26+ `Pocket3ConnectPreviewIntent`與`Pocket3PrivacyPauseIntent`共享AppModel/CameraService，不新增控制transport；Connect只採用已存的選擇／格式、保留manual access，Pause釋放session。`Pocket3AppShortcuts`提供兩個Shortcuts/Spotlight phrase、短標題與圖示；Release build通過。Shortcuts CLI只列使用者建立捷徑，不能作系統discovery verifier，安裝App後的Shortcuts實際執行仍待驗收。
 - [ ] 按鍵收音與 SpeechAnalyzer。
 - [ ] 指定觀察區域、look_at、同視角比較。
 - [ ] 遠端 HTTP／headless host 依具體部署需求決定。BLE／機身設定已屬本輪擴充，不能再一概延後；切換 Mac Wi-Fi 則不符合使用者限制。

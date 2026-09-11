@@ -1,4 +1,4 @@
-import AppIntents
+@preconcurrency import AppIntents
 import Foundation
 import Pocket3Core
 
@@ -43,4 +43,21 @@ struct Pocket3PrivacyPauseIntent: AppIntent {
         }
         return .result(dialog: "Pocket 3 preview paused")
     }
+}
+
+/// Advertises the two safe camera lifecycle actions to Shortcuts/Spotlight.
+/// More invasive control remains in the explicit App/MCP paths until it has
+/// the required hardware evidence.
+@available(macOS 26.0, *)
+struct Pocket3AppShortcuts: AppShortcutsProvider {
+    static let appShortcuts: [AppShortcut] = [
+        AppShortcut(intent: Pocket3ConnectPreviewIntent(),
+                    phrases: ["Connect \(.applicationName) preview"],
+                    shortTitle: "Connect Preview",
+                    systemImageName: "video"),
+        AppShortcut(intent: Pocket3PrivacyPauseIntent(),
+                    phrases: ["Pause \(.applicationName) preview"],
+                    shortTitle: "Pause Preview",
+                    systemImageName: "eye.slash")
+    ]
 }
