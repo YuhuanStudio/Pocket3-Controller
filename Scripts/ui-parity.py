@@ -59,6 +59,13 @@ for language in ['en','zh-Hant','zh-Hans']:
   assert result.get('simulation') is True and result['width']==536 and 80<=result['height']<=400,result
   results.append(result)
 for language in ['en','zh-Hant','zh-Hans']:
+ path=out/f'gimbal-range-{language}.png'
+ result=json.loads(subprocess.check_output([str(cli),'ui-capture','--surface','gimbal-range-fixture',
+  '--appearance','light' if language=='en' else 'dark','--language',language,'--output',str(path)],text=True))
+ assert result.get('simulation') is True and result['width']==680 and 160<=result['height']<=420,result
+ assert result['cameraPreviewIncluded'] is False and result['importedImageIncluded'] is False,result
+ results.append(result)
+for language in ['en','zh-Hant','zh-Hans']:
  for state in ['available','stale','manual']:
   path=out/f'settings-readback-{state}-{language}.png'
   result=json.loads(subprocess.check_output([str(cli),'ui-capture','--surface','settings-readback-fixture','--page',state,
