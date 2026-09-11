@@ -217,7 +217,7 @@ In the development CLI, introduced in build 22, `ask --intent observe|assistFram
 
 `assistFraming` still needs eligible camera-control permission and capabilities. Debug `evaluate-workflow` accepts the same intent for its simulated camera; it defaults to observation too, and a simulated action is not hardware evidence.
 
-MCP still exposes exactly six basic camera tools: `camera_status`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. CLI `ask`, media-file analysis and the evaluation endpoints are not new MCP wrapper tools.
+MCP exposes nine basic camera tools: `camera_status`, `camera_connect`, `camera_pause`, `camera_compare_frames`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. `camera_connect` starts the local USB preview explicitly; `camera_pause` releases it. `camera_compare_frames` requires observation access and returns only scalar difference metrics for two fresh frames in one session. CLI `ask`, media-file analysis and the evaluation endpoints are not new MCP wrapper tools.
 
 For MCP zoom, obtain `camera_status.capture.sessionID`, pass it as
 `expectedSessionID` to `camera_zoom_status`, and select an integer `rawValue`

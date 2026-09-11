@@ -127,6 +127,9 @@ MCP helper 使用 stdio，通过同用户私有 Unix socket 调用已开启的 A
 | 工具 | 用途 |
 |---|---|
 | `camera_status` | 读取选定相机、权限、能力及帧新鲜度，不自动开启相机 |
+| `camera_connect` | 明确启动本机 USB 预览，保留 manual access |
+| `camera_pause` | 释放 USB 预览与当前 session |
+| `camera_compare_frames` | 比较同一 session 的两张新帧，只返回 scalar 差异，不输出图像 |
 | `capture_frame` | 在允许观察时取得新 JPEG 与帧／session 信息 |
 | `move_gimbal` | 经验证与授权的有界 UVC 移动，返回动作后证据 |
 | `stop_gimbal` | 取消排队动作，报告停止及读回结果 |
