@@ -368,11 +368,11 @@ build25 隨後加入 scalar-only negotiation snapshot，並以新診斷只重測
 
 新增 developer-only `validation-wireless-camera-events`：只在明確 session/peripheral 已配對時，被動接收 CRC-valid `Camera01→App02`、flags0、set02 frame；每個 command ID 獨立做sequence/replay admission，payload上限128 bytes、20秒／512筆，內部只保存frame SHA-256去重。它沒有BLE write、subscription、pairing、Wi-Fi、USB control或tracking-success解讀。初版20秒窗口撞上IPC預設20秒receive timeout，client得到`ipc_disconnected`但App仍存活；現已把此明確operation列入120秒long-operation並補測試。
 
-使用者在機身開啟自動追蹤後，舊paired session的即時status仍只有一般`02/80`等header，既有`02/89/A5/A6`候選為空；這不證明沒有其他tracking事件。換入新recorder build後，BLE候選仍持續廣播（RSSI約−45至−50），但三次有間隔的GATT subscribe均以`bluetooth_gatt_timeout`結束，尚未能在tracking-active狀態重新pair。這是新相容性觀察，不能直接推論ActiveTrack造成timeout。下一步需先由使用者停止機身追蹤，使BLE重新pair，再在已arm的20秒window內重新啟動追蹤，才能取得可比較事件全集。
+使用者其後澄清：這一輪自動追蹤一直是關閉的。因此舊paired session只有一般`02/80`等header、既有`02/89/A5/A6`候選為空，只能作為tracking-off基線，不能代表tracking-active結果。換入新recorder build後，BLE候選仍持續廣播（RSSI約−45至−50），但三次有間隔的GATT subscribe均以`bluetooth_gatt_timeout`結束；這是連線相容性觀察，不能把它歸因於ActiveTrack。下一步是在新版已arm的20秒window內，由使用者明確切換off/on並記錄時點，再取得可比較事件全集。
 
-使用者停止追蹤後，下一次GATT連接與protocol pairing成功，session為`3B039472-FC64-4E49-8BF1-6E432DE4C25B`。在recorder已arm後，使用者依指示重新開啟追蹤；20秒window正常結束，收到148筆camera-domain frame：`02/80` 119筆、`02/DC` 29筆，兩種payload在窗口內各只有一個值，`89/A5/A6`仍未出現；前後`04/05` pose mode/limit raw也都是128/0。這證明已測的Camera set02候選沒有暴露狀態變化，但不能證明機內追蹤未運作或沒有其他domain事件。[完整事件](../artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)、[窗口後狀態](../artifacts/hardware-complete-2026-09-11/activetrack-window-1-after.json)
+下一次GATT連接與protocol pairing成功，session為`3B039472-FC64-4E49-8BF1-6E432DE4C25B`。recorder已arm的20秒window正常結束，收到148筆camera-domain frame：`02/80` 119筆、`02/DC` 29筆，兩種payload在窗口內各只有一個值，`89/A5/A6`仍未出現；前後`04/05` pose mode/limit raw也都是128/0。依使用者後續澄清，此窗口的自動追蹤也是關閉，因此它只證明已測Camera set02候選的off-baseline未變，不能證明機內追蹤未運作或沒有其他domain事件。[完整事件](../artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)、[窗口後狀態](../artifacts/hardware-complete-2026-09-11/activetrack-window-1-after.json)
 
-recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload變更**：每個route獨立sequence admission，route+payload SHA-256排除重複高頻telemetry，相同值另計`unchangedFrameCount`，A→B→A仍保留三個狀態。需在新版App、追蹤off/on的下一輪窗口取得實機差異。
+recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload變更**：每個route獨立sequence admission，route+payload SHA-256排除重複高頻telemetry，相同值另計`unchangedFrameCount`，A→B→A仍保留三個狀態。需在新版App、由使用者明確標記的tracking off/on下一輪窗口取得實機差異。
 
 ## Build 25：HEVC 機內錄影唯讀基準（2026-09-11）
 

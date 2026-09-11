@@ -23,11 +23,12 @@
 - [x] build25 scalar negotiation 診斷：2vuy 1080p30顯示active format正確、session/connection/device均active，但input port仍是420v且callback timeout/no sample；格式UI已分清host subtype與MJPEG/H.264 UVC路徑。[結果](artifacts/hardware-complete-2026-09-11/build25-uyvy-negotiation/6eae14d5-2d58-4077-a08b-be83852571b0/result.json)
 - [ ] 依[direct UVC H.264規格](docs/DIRECT_UVC_H264_PLAN.md)逐階段實作公開API backend：純parser/control→VS ownership→同步1080p30 VT decode→直幅／4K→async preview與App整合；不得與AVFoundation／OBS爭用endpoint。
 - [x] build25 ActiveTrack被動camera-event recorder：exact paired peer/session、Camera→App set02、20秒／512筆／128-byte payload、per-command sequence、SHA-256去重、取消／斷線與120秒IPC timeout均已實作；完全不送命令。
-- [ ] ActiveTrack live事件差異：使用者啟動追蹤後舊候選仍空；換新build時三次GATT subscribe timeout，候選仍有廣播。需先停止機身追蹤、重新pair，再於已arm window內啟動，不能把timeout歸因於追蹤或把空候選當不支援。
-- [x] 第一輪已arm的ActiveTrack窗口完成：148筆只有不變的`02/80`與`02/DC`，候選89/A5/A6及pose mode/limit均未變；因此recorder已擴到Camera＋Gimbal route並改為只保留payload變化，仍待新版off/on重測。[事件](artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)
+- [ ] ActiveTrack live事件差異：使用者已澄清自動追蹤在這些窗口一直關閉；舊候選為空只是一輪off-baseline。換新build時三次GATT subscribe timeout，候選仍有廣播，但不能把timeout歸因於追蹤。需在新版已arm window內，由使用者明確切換off/on並記錄時點後重測，不能把空候選當不支援。
+- [x] 第一輪已arm的ActiveTrack窗口完成：148筆只有不變的`02/80`與`02/DC`，候選89/A5/A6及pose mode/limit均未變；使用者後續澄清當時追蹤一直關閉，因此它只構成off-baseline。recorder已擴到Camera＋Gimbal route並改為只保留payload變化，仍待新版受控off/on重測。[事件](artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)
 - [x] direct UVC H.264 stage1純資料層：26-byte UVC1.0 PROBE/COMMIT與descriptor catalog、UVC bulk header/FID/EOF/PTS/SCR assembler、Annex-B/AVCC normalizer及SPS/PPS/IDR readiness均已實作；不含I/O或decode成功宣稱。
 - [x] build25 camera-side H.264／HEVC developer writer：`02/AB 0000/0100`、完整`cam_video_param_v2` baseline、單次送出、no-op零寫入、ACK＋matching readback與3秒窗口已實作；尚未在真機改值，且不冒稱USB HEVC。
-- [x] HEVC真機驗證器：`Scripts/validate-video-compression.py`預設只接受目前HEVC baseline的no-op，要求ready capture、exact paired BLE、完整property readback，並驗證`noOp=true/localSubmitted=false/end=noOp`。H.264或任何不同target必須明確`--allow-change`；尚待追蹤關閉後執行。
+- [x] HEVC真機驗證器：`Scripts/validate-video-compression.py`預設只接受目前HEVC baseline的no-op，要求ready capture、exact paired BLE、完整property readback，並驗證`noOp=true/localSubmitted=false/end=noOp`。H.264或任何不同target必須明確`--allow-change`；尚待下一個已連線硬體窗口執行。
+- [x] H.264↔HEVC controlled round-trip驗證器：`Scripts/validate-video-compression-roundtrip.py`預設dry-run；唯有`--execute`才容許一次H.264切換和一次回復。每次寫入需ACK＋matching readback；切換後先以獨立唯讀query確認H.264才回復原始完整baseline。若切換提交後逾時，先唯讀確認，只有實際讀到H.264才作一次回復，絕不盲寫或重試；尚待下一個已連線硬體窗口執行。
 - [x] direct UVC VS descriptor foundation：純decoder可從configuration descriptors辨識VC/VS interface、alternate setting、bulk IN endpoint、MJPEG/H.264 format並拒絕malformed資料；不開interface或pipe。
 - [x] direct UVC真機只讀inventory：IORegistry確認`Video Streaming@1`及既有AVFoundation/UVCAssistant client；ownership policy的停止AVF→acquire VS邊界已有硬體topology依據，尚未claim interface。
 - [x] `uvc-stream-interfaces` CLI：真機確認VC0/VS1/alt0/endpoints，缺失location明確回空；僅IORegistry讀取，無UVC controller/interface/pipe操作。
