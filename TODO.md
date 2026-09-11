@@ -27,6 +27,7 @@
 - [x] 第一輪已arm的ActiveTrack窗口完成：148筆只有不變的`02/80`與`02/DC`，候選89/A5/A6及pose mode/limit均未變；因此recorder已擴到Camera＋Gimbal route並改為只保留payload變化，仍待新版off/on重測。[事件](artifacts/hardware-complete-2026-09-11/activetrack-window-1.json)
 - [x] direct UVC H.264 stage1純資料層：26-byte UVC1.0 PROBE/COMMIT與descriptor catalog、UVC bulk header/FID/EOF/PTS/SCR assembler、Annex-B/AVCC normalizer及SPS/PPS/IDR readiness均已實作；不含I/O或decode成功宣稱。
 - [x] build25 camera-side H.264／HEVC developer writer：`02/AB 0000/0100`、完整`cam_video_param_v2` baseline、單次送出、no-op零寫入、ACK＋matching readback與3秒窗口已實作；尚未在真機改值，且不冒稱USB HEVC。
+- [x] HEVC真機驗證器：`Scripts/validate-video-compression.py`預設只接受目前HEVC baseline的no-op，要求ready capture、exact paired BLE、完整property readback，並驗證`noOp=true/localSubmitted=false/end=noOp`。H.264或任何不同target必須明確`--allow-change`；尚待追蹤關閉後執行。
 - [x] HEVC/H.265 decode foundation：Annex-B／HVCC、VPS/SPS/PPS、IRAP16…23、loss/reset/parameter-change及有界cache已完成；共用VideoToolbox decoder只接受canonical H.264或HEVC parameter sets及4-byte length access unit，輸出BGRA並有generation fence。尚未以實際encoded frame完成decode驗收。
 - [x] HEVC本機影片實際驗收：合成HEVC MP4經`ImportedVideoSource`實際seek、解碼為BGRA並核對像素內容；不使用Pocket 3、網路或持久素材。direct UVC HEVC仍不成立，因descriptor未宣告HEVC。
 - [x] AVFoundation↔direct capture ownership policy：stop＋frame queue drain、direct exclusive acquire/release、AVF restart證據與generation permit已完成純狀態機及actor tests；尚未接真實VS transport。

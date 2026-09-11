@@ -54,6 +54,8 @@
 | 對焦模式 | `02/24` → S-AF `01`、C-AF `02` | `cam_lens_state` ≥1；`[0]=B1`／`B2` | C/I/R；只確認模式，不證明已合焦、對焦距離或對焦點 |
 | AUTO EV | `02/2E` → `10+n`，`n=-9…9`，每格1/3 EV；−3=`07`、0=`10`、+3=`19` | `cam_expo_param` ≥20；`[6]−10` 為 third-stops；只接受 `[6]=07…19` | C/I/R；需 `[7]=01` 的 Auto 基準 |
 | 機內錄影壓縮 | `02/AB` → H.264 `00 00`、HEVC/H.265 `01 00` | `cam_video_param_v2` ≥9；compression=`[8]` | build25 developer writer要求完整9-byte fresh baseline、一次寫入、ACK＋寫後matching readback；尚待本機寫入驗收。這不是USB HEVC。 |
+
+真機驗證使用 `Scripts/validate-video-compression.py`。預設target為目前HEVC，且只接受no-op：它需要ready USB capture、明確paired BLE session/peripheral與完整fresh property baseline，最後必須回`noOp=true`、`localSubmitted=false`、`end=noOp`。任何不同target均須額外傳`--allow-change`，且驗證器不自動restore，因此切換前必須有使用者確認的復原計畫。它不匯出畫面、不操作Wi-Fi或雲台，也不把機內壓縮設定稱作USB codec。
 | 曝光模式 | `02/1E` → Auto `01 00`、Manual `04 00` | `cam_expo_param[7]`=`01`／`04` | C/I/R；切 Manual 後快門／ISO 的原值仍需另核對 |
 | 色彩模式 | `02/42` → Normal `00`、HLG `3C`、D-Log M `3D` | `cam_image_effect[2]` | C/I/R；設定回讀不等於 USB／預覽已驗證 HDR 或10-bit |
 
