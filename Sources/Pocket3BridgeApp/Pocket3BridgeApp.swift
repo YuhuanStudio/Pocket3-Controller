@@ -780,9 +780,15 @@ struct RootView: View {
                                         .foregroundStyle(model.outputPolicyRateLimited ? Yun.Palette.warning : Yun.Palette.textTertiary)
                                         .fixedSize(horizontal: false, vertical: true)
                                     if model.outputPolicyRateLimited {
-                                        Text(loc(model.status?.requestedOutputPolicy == .hevc ? "HEVC host output is below the requested frame rate." : "H.264 host output is below the requested frame rate."))
-                                            .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
-                                            .fixedSize(horizontal: false, vertical: true)
+                                        if model.status?.requestedOutputPolicy == .hevc {
+                                            Text(loc("HEVC host output is below the requested frame rate."))
+                                                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        } else {
+                                            Text(loc("H.264 host output is below the requested frame rate."))
+                                                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
                                     }
                                 }
                                 if model.hasPossibleHorizontalBlackBars {
