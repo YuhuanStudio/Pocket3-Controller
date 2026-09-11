@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-10。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）已發布**；build23完成媒體工作區與有界真機觀察／縮放驗收，build24以相同功能做exact-source封版、更新安裝與公開簽章驗證。原生快速預設、點按對焦及機身設定寫入仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。
+更新：2026-09-11。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）已發布**；main 的 build25 已完成 USB 1080p30 與 BLE 唯讀狀態／九類設定基線。原生快速預設、點按對焦、ActiveTrack host control、設定寫入、完整格式與全範圍物理驗收仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。
 
 ## 相機關閉期間：軟體與 AI
 
@@ -17,6 +17,7 @@
 - [x] build22完整gate與安裝：503項執行通過、3項opt-in跳過；59張UI、3語、7個Yun共用設計檔、搬移後MLX/CoreAI推論、ZIP/DMG驗證通過。另6項照片workspace回歸包含真實RootView隱私／marker渲染；3張照片工作區公開UI已逐張看過，所有圖片內容與分析均隱去。[gate](artifacts/offline-workspace-build22/final/verification-gate.json)、[安裝](artifacts/offline-workspace-build22/installed.json)、[公開截圖manifest](docs/images/image-workspace-build22.json)
 - [x] build23媒體工作區：本機影片時間點、實際PTS與方向、VFR／長hold／GOP邊界、ROI拖選裁切／標記映回、JSON／Markdown不可變結果匯出。真App以合成圖片與影片完成MLX ROI計數、Vision OCR、Apple影片影格回答、匯出、快速seek取消與三語隱私截圖；相機狀態在離線gate維持零影格不變。[流程](artifacts/media-workspace-gate-1789044947/result.json)
 - [x] build23完整gate與安裝：534項執行通過、3項opt-in跳過；59張UI、三語、7個Yun共用設計檔、搬移App後MLX/CoreAI推論、ZIP/DMG與簽章通過。已安裝與gate相同的build23。[gate](artifacts/offline-media-build23/final/verification-gate.json)、[截圖manifest](docs/images/media-workspace-build23.json)、[安裝](artifacts/offline-media-build23/installed.json)
+- [x] build25 唯讀硬體基線：`02/80` camera status、`02/DC` storage、九類 named properties、未知 raw 值、被動 tracking candidates、BLE identity 邊界與 UVC transient-read resilience 已實作；Release tests 566次零失敗，USB 1080p30、BLE pairing/status/settings 已實測。[支援矩陣](docs/POCKET3_SUPPORT_MATRIX.md)、[真機紀錄](docs/HARDWARE_ACCEPTANCE.md)
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
@@ -35,7 +36,7 @@
 - [x] 正式 Beta feed 已完成 Keychain 簽署與公開發布；重新取得的公開 feed／ZIP 經 CryptoKit 與本專案 Ed25519 公鑰驗證，`feedVerified=true`、`archiveVerified=true`。[公開簽章驗證](artifacts/public-beta1/public-signature-verification.json)。此項不包含跨版本安裝／重啟。
 - [x] 三語 README／文件索引／使用指南與九張排除取景照片的 UI 圖已完成，圖片與公開下載版本分別標明。[公開呈現清單](docs/RELEASE_PRESENTATION_CHECKLIST.md)
 - [x] beta 2 build 11 版面修正：AI卡等高與控制列齊、MCP長路徑、設定長標籤與更新列、權限圖示、診斷卡、音訊動態本地化；三語、兩種視窗尺寸已逐張視覺檢查，完整回歸測試另記。
-- [ ] 新版真正下載、更新安裝、重新啟動驗收；未公證可明示發布 beta，不把它描述成 Apple 已驗證。
+- [x] beta1→beta2 已以隔離正式 App 副本完成真正 archive 下載、替換、重啟、新 PID／IPC、偏好保存與 cleanup；公開 feed／ZIP 另以公開金鑰驗證。Developer ID／公證仍未完成。[beta2驗證](docs/releases/0.0.1-beta.2-verification.json)
 
 ## 本輪真機 AI、設定與完整配對
 

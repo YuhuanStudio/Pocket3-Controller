@@ -2,7 +2,13 @@
 
 > 本文件的 `artifacts/` 與 `research/` 連結指向本機證據目錄，不隨公開原始碼發布；版本摘要與公開下載驗證見 Release 說明。
 
-## 目前狀態（build5，2026-09-09）
+## 目前狀態（build25，2026-09-11）
+
+公開版本為 beta 2 build24；main 的 build25 已完成 USB 1080p30 NV12 與 BLE pairing 的唯讀基線。真機已收到 `02/80` camera status、`02/DC` storage、九類 named camera properties、battery、pose，以及未知值 raw preservation；BLE peer 身份仍未與 USB serial 關聯。ActiveTrack 候選 observer 已就緒但基線為空，需機身啟動追蹤後比較。原生 preset、tap AF、設定寫入、完整格式／直幅、全範圍物理控制、遠端桌面與公證仍待驗證。Mac 網路沒有切換至相機 Wi-Fi。
+
+build25 整合 checkpoint 的 Release tests 為 566 次執行、零失敗；後續收緊 lens/status 與 raw telemetry 的 focused tests 也通過，下一個完整 gate 尚待重跑。三語完整九欄設定 fixture 已逐張檢查，長英文值會換行，無線 popover 高度限制為 680 px 並可捲動。詳細 current source of truth 見 [Pocket 3 支援矩陣](POCKET3_SUPPORT_MATRIX.md) 與 [實機驗收](HARDWARE_ACCEPTANCE.md)。
+
+## build5 狀態（2026-09-09，歷史保留）
 
 **build5完整Release gate已通過**：`d26e463e-24b5-4ce0-9b9f-85feb904a6b4`，App SHA-256 `314f6cc8c769ce6640e36cbab6f989f71a4e192ce85c6947061b3904247751ac`。[固定報告](../artifacts/offline-telemetry-2026-09-09/final/verification-gate.json)。新增BLE低電量／持續下降提示與只讀姿態；351項Release測試、331條三語／7個共用設計檔、41張UI（29一般＋12遙測純fixture）、搬移推論／卸載、MCP、更新與ZIP／DMG payload均通過。[UI](../artifacts/offline-telemetry-2026-09-09/final/ui-gate.log)、[產物驗證](../artifacts/offline-telemetry-2026-09-09/final/release-artifacts-verification.json)。相機仍由使用者關閉，12個新UI案例不能當真實下降告警或姿態顯示的硬體驗收；新遙測實機／斷線回歸，以及原生快速preset、tap AF、H.264、全範圍、物理校準與公開發布條件仍待完成。本批鎖屏動畫未重驗；BLE資料不冒充USB供電或校準座標，Mac原網路不變。
 
