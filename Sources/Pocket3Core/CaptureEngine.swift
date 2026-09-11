@@ -53,6 +53,7 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
     public var h264DecodeFailureCount: Int? = 0
     public var h264DecodeTotalMilliseconds: Double? = 0
     public var h264DecodeMaximumMilliseconds: Double? = 0
+    public var edgeMetrics: FrameEdgeMetrics?
     public var lastVideoSampleFourCC: String?
     public var lastVideoInputFourCC: String?
     public var requestedOutputPolicy: String?
@@ -263,6 +264,9 @@ public final class FrameStore: @unchecked Sendable {
             diagnostics.h264DecodeTotalMilliseconds = (diagnostics.h264DecodeTotalMilliseconds ?? 0) + milliseconds
             diagnostics.h264DecodeMaximumMilliseconds = max(diagnostics.h264DecodeMaximumMilliseconds ?? 0, milliseconds)
         }
+    }
+    public func recordEdgeMetrics(_ metrics: FrameEdgeMetrics) {
+        lock.withLock { diagnostics.edgeMetrics = metrics }
     }
     public func recordOutputConfiguration(policy: String, pixelFormats: [UInt32], codecs: [String]) {
         lock.withLock {
@@ -730,6 +734,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                 }
             } else { decodedPixel = nil }
             let deliveredPixel = pixel ?? decodedPixel
+            let edgeMetrics = deliveredPixel.flatMap(FrameEdgeAnalyzer.measure)
             let metadata = deliveredPixel.map { CaptureVideoMetadata(buffer: $0,
                 pts: CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample)), inputMediaSubType: inputSubType,
                 receivedAt: receivedAt, receivedUptime: receivedUptime) }
@@ -737,6 +742,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                 store.recordVideoSample(hasImageBuffer: pixel != nil, hasBlockBuffer: hasBlockBuffer,
                     mediaSubType: mediaSubType, inputMediaSubType: inputSubType)
                 if let deliveredPixel, let metadata { store.receive(deliveredPixel, metadata: metadata) }
+                if let edgeMetrics { store.recordEdgeMetrics(edgeMetrics) }
             }
         } else if binding.kind == .audio,
                   let desc = description, let fmt = CMAudioFormatDescriptionGetStreamBasicDescription(desc)?.pointee,

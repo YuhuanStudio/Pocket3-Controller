@@ -43,6 +43,14 @@ import Testing
         #expect(diagnostics.lastVideoInputFourCC == "420v")
     }
 
+    @Test func edgeMetricsRemainScalarAndCodable() {
+        let store = FrameStore()
+        let metrics = FrameEdgeMetrics(topDarkFraction: 1, bottomDarkFraction: 1,
+            leftDarkFraction: 0.2, rightDarkFraction: 0.3, sampledPixelsPerEdge: 10)
+        store.recordEdgeMetrics(metrics)
+        #expect(store.sampleDiagnostics().edgeMetrics == metrics)
+    }
+
     @Test func copiedAttemptSurvivesStoreCleanupWithoutRetainingMedia() throws {
         let store = FrameStore()
         store.recordVideoSample(hasImageBuffer: false, hasBlockBuffer: true,

@@ -75,6 +75,8 @@ RSS 起點 256.61 MiB、終點 147.17 MiB，暖機後淨減 66.91 MiB，本次�
 
 最新 AppKit 畫面看到直幅影格內含上下黑邊；原始影像未被裁切。這次機身拍攝方向尚未重新確認，不能把之前五種直幅的內容驗收延伸為本次已核對。
 
+2026-09-11新增不保存像素的edge metrics後，1080×1920 NV12/BGRA的top/bottom dark fraction均為1.0、left/right為0.683（每邊1,080個抽樣像素），因此黑邊訊號已可量化。這只描述邊緣亮度，不能判定內容方向、場景、構圖或機身姿態是否正確。
+
 2026-09-08 延長啟動測試：`artifacts/hardware-resumed/uyvy-startup-20s.json` 中，1080×1920@30 UYVY／BGRA 等待 20.289 秒仍零影格回呼，無 runtime error／interruption；COMMIT 仍是 format2/frame4/H.264，測後 NV12 恢復。此結果排除了只依原本 4 秒觀察窗口作結論，但未證明所有模式的 H.264 都不支援。固定 OBS 來源 cb9b4f119ab4464f87f35a0f30b5f92887a40f86 的 legacy path 使用 `videoSettings=nil` 的系統預設未壓縮輸出，與空 dictionary 的 native output 不同，下一組有界對照將分別記錄。
 
 系統預設輸出對照也已完成：`artifacts/hardware-resumed/uyvy-system-output-20s.json` 中使用 videoSettings=nil 的 system_default policy，20.202 秒仍零影格回呼；COMMIT 為 H.264，無 runtime error／interruption。測試時用 CoreGraphics 狀態確認 Mac 的 screenLocked=true、displayAsleep=true，故仍需解鎖環境及 OBS 實際畫面交叉核對。測後已解除實驗環境並恢复 NV12／BGRA。
