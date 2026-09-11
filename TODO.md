@@ -19,6 +19,7 @@
 - [x] build23完整gate與安裝：534項執行通過、3項opt-in跳過；59張UI、三語、7個Yun共用設計檔、搬移App後MLX/CoreAI推論、ZIP/DMG與簽章通過。已安裝與gate相同的build23。[gate](artifacts/offline-media-build23/final/verification-gate.json)、[截圖manifest](docs/images/media-workspace-build23.json)、[安裝](artifacts/offline-media-build23/installed.json)
 - [x] build25 唯讀硬體基線：`02/80` camera status、`02/DC` storage、九類 named properties、未知 raw 值、被動 tracking candidates、BLE identity 邊界與 UVC transient-read resilience 已實作；Release tests 568次零失敗，USB 1080p30、BLE pairing/status/settings 已實測。[支援矩陣](docs/POCKET3_SUPPORT_MATRIX.md)、[真機紀錄](docs/HARDWARE_ACCEPTANCE.md)
 - [x] build25 metrics-only NV12 矩陣：10秒暖機後13個實際橫幅／直幅模式全部通過尺寸、FourCC、BGRA、新影格、freshness、session與FPS；不保存畫面，故內容方向與黑邊仍另待視覺驗收。[結果](artifacts/hardware-complete-2026-09-11/build25-nv12-matrix-warm/51a6c591-668e-4474-bf39-7a3edcfd9901/result.json)
+- [ ] build25 UYVY 代表重測：1080p30與4K60均 `no_frame`，各種 sample count為0且無 runtime/interruption；沒有自動重試。需先補 negotiation 診斷或替代 transport，不能把 advertised `2vuy` 當支援。[結果](artifacts/hardware-complete-2026-09-11/build25-uyvy-representative/a7abb20c-e58e-4c64-9d3c-b961cc5fd999/result.json)
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。

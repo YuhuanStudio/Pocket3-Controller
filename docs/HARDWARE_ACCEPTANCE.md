@@ -355,3 +355,7 @@ BLE 候選 `OsmoPocket3-7CF5` 完成 protocol pairing；身份仍為 `unverified
 以10秒暖機重跑後，以下13個實際 NV12／`420v` 模式全部通過：`1280x720@25/30`、`1920x1080@24/25/30`、`3840x2160@24/25/30`、`720x1280@25/30`、`1080x1920@24/25/30`。median FPS 分別落在23.975–25.028或29.949–29.970的對應目標附近；所有 frame 尺寸精確匹配、age <1秒、rotation metadata為0。結果目錄沒有JPEG，最後 phase為paused、frames歸零、access manual。[結果](../artifacts/hardware-complete-2026-09-11/build25-nv12-matrix-warm/51a6c591-668e-4474-bf39-7a3edcfd9901/result.json)
 
 這份矩陣證明 AVFoundation 串流協商、metadata和速率；因為刻意不保存／檢視感測器畫面，它**不證明**直幅內容方向、上下黑邊、鏡像或場景品質。這些需要另外明確授權的隱私安全視覺核對。
+
+同一 build25 metrics-only harness 隨後只測兩個 UYVY 代表模式：`1920x1080@30` 與僅宣告 UYVY 的 `3840x2160@60`。兩者均在 startup window 內回 `no_frame`，`videoSampleCount=0`、`pixelBufferCount=0`、`nonImageVideoSampleCount=0`、runtime/interruption均0；AVFoundation 仍列出 `2vuy` output 與 `avc1/jpeg` codec。最後已 pause，沒有影像檔、BLE、控制或機身設定寫入。[結果](../artifacts/hardware-complete-2026-09-11/build25-uyvy-representative/a7abb20c-e58e-4c64-9d3c-b961cc5fd999/result.json)、[失敗後診斷](../artifacts/hardware-complete-2026-09-11/build25-after-uyvy.json)
+
+這與先前 UYVY 零 callback 證據一致；本次沒有重播同模式。下一步需改善 active-format／output negotiation 診斷或找到不同 host transport，不能因裝置列出 `2vuy` 就在 UI 宣稱可用。

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify advertised camera modes without storing frames or changing camera controls."""
-import argparse,json,pathlib,statistics,subprocess,time,uuid
+import argparse,json,pathlib,subprocess,time,uuid
+from format_matrix_validation import validate_samples
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--binary',default='dist/Pocket 3 Controller.app/Contents/MacOS/pocket3')
 p.add_argument('--output',type=pathlib.Path,default=pathlib.Path('artifacts/capture-formats'))
@@ -55,19 +56,17 @@ try:
                     'rotationDegrees':frame.get('rotationDegrees'),'mirrored':frame.get('mirrored')})
                 if state['selected']['id']!=device_id or capture['sessionID']!=session:raise RuntimeError('Camera session changed during a format trial.')
                 time.sleep(.5)
-            fps=statistics.median(x['fps'] for x in samples)
-            entry.update(samples=samples,medianFPS=fps,fpsTolerance=max(1,mode['frameRate']*.05))
-            shape_ok=all(x['width']==mode['width'] and x['height']==mode['height'] and x['deviceID']==device_id
-                and x['inputPixelFormat']==a.pixel_format and x['outputPixelFormat']=='BGRA'
-                and isinstance(x['rotationDegrees'],int) and isinstance(x['mirrored'],bool)
-                and isinstance(x['age'],(int,float)) and 0<=x['age']<1 for x in samples)
-            if not shape_ok: raise RuntimeError('Received shape/format/freshness mismatch')
-            if len(samples)>1 and samples[-1]['frames']<=samples[0]['frames']: raise RuntimeError('Video did not advance')
-            if abs(fps-mode['frameRate'])>entry['fpsTolerance']: raise RuntimeError('Measured rate does not match requested rate')
+            fps,tolerance=validate_samples(mode,a.pixel_format,device_id,session,samples)
+            entry.update(samples=samples,medianFPS=fps,fpsTolerance=tolerance)
             entry['passed']=True
         except (RuntimeError,subprocess.TimeoutExpired) as error:
             entry['error']=str(error)
             state=call('status')
+            entry['failureStatus']={key:state.get(key) for key in
+                ('phase','requestedMode','requestedPixelFormat','lastCaptureAttempt')}
+            capture=state.get('capture') or {}
+            entry['failureStatus']['capture']={key:capture.get(key) for key in
+                ('sessionID','frames','recentFPS','sampleDiagnostics')}
             if not any(d['id']==device_id for d in state.get('devices',[])):
                 report['status']='interrupted';save();raise RuntimeError('Camera was disconnected; no further modes attempted.')
         save();print(json.dumps({'mode':mode['id'],'passed':entry['passed'],'fps':entry.get('medianFPS'),'error':entry.get('error')},ensure_ascii=False),flush=True)
