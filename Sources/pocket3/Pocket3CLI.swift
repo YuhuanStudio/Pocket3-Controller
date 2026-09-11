@@ -154,7 +154,7 @@ import MCP
             }
             if command == "image-workspace" {
                 let action = option("--action") ?? "status"
-                guard ["import", "run", "ocr", "cancel", "clear", "camera", "status", "region", "seek", "export"].contains(action) else {
+                guard ["import", "run", "ocr", "compare", "cancel", "clear", "camera", "status", "region", "seek", "export"].contains(action) else {
                     throw BridgeFailure("usage", "Unknown image-workspace action")
                 }
                 arguments["action"] = .string(action)
@@ -305,7 +305,7 @@ import MCP
           Imported-image developer evaluation; no camera control tools. Requires --hardware-validation on the App.
         pocket3 image-workspace --action import --image FILE
         pocket3 image-workspace --action run --kind ask|count|locate --question TEXT [--engine apple|mlx]
-        pocket3 image-workspace --action status|ocr|cancel|clear|camera
+        pocket3 image-workspace --action status|ocr|compare|cancel|clear|camera
         pocket3 image-workspace --action seek --seconds NUMBER
         pocket3 image-workspace --action region --region-json '{"x":0.1,"y":0.1,"width":0.4,"height":0.5}'
         pocket3 image-workspace --action export --format json|markdown --output FILE

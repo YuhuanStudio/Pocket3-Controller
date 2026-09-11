@@ -73,7 +73,7 @@ enum ImageObservationResponse: Sendable {
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
     private var importID = UUID()
     private var revision = 0
-    var isWorking: Bool { isImporting || isAnalyzing }
+    var isWorking: Bool { isImporting || isAnalyzing || isComparingFrames }
     var ready: Bool { asset != nil && !isImporting && !videoScrubbing }
 
     init(load: @escaping @Sendable (URL) async throws -> ImportedObservationImage = ImportedObservationImage.load,
@@ -384,6 +384,14 @@ extension AppModel {
             imageWorkspace.question = request.arguments["question"].string ?? imageWorkspace.question
             imageWorkspace.action = kind == .ocr ? .ask : kind
             imageWorkspace.begin(engine: engine, action: kind)
+        case "compare":
+            guard !isCameraSource, observationReady, !aiWorking else { throw BridgeFailure("image_workspace_busy", "Video workspace is not ready") }
+            imageWorkspace.compareNextSecond()
+            let deadline = ProcessInfo.processInfo.systemUptime + 10
+            while imageWorkspace.isComparingFrames, ProcessInfo.processInfo.systemUptime < deadline {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            guard !imageWorkspace.isComparingFrames else { throw BridgeFailure("video_compare_timeout", "Video frame comparison did not finish") }
         case "cancel": imageWorkspace.cancel()
         case "seek":
             guard let time = request.arguments["seconds"].number, let video = imageWorkspace.asset?.videoSource,
@@ -418,6 +426,7 @@ extension AppModel {
             "region": try file.region.map(JSONValue.encode) ?? .null,
             "video": try (file.asset?.videoSource?.metadata).map(JSONValue.encode) ?? .null,
             "videoSeekTime": .number(file.videoSeekTime),
+            "frameComparison": try file.frameComparison.map(JSONValue.encode) ?? .null,
             "exportAvailable": .bool(file.resultSnapshot != nil), "aiBusy": .bool(aiWorking),
             "marker": file.marker.map { .object(["x": .number($0.x), "y": .number($0.y)]) } ?? .null,
             "cameraActionReady": .bool(cameraActionReady), "cameraAccess": .string(access.rawValue)]
