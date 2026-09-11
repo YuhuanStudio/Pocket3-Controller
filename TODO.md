@@ -38,6 +38,7 @@
 - [x] H.264 host-output 4K30：相同fallback真機取得283個`avc1` samples並輸出3840×2160 BGRA，29.11fps、零runtime error，後續pause。4K高幀率與直幅不由此宣稱已通過。
 - [x] H.264 host-output產品選項：App與設定頁分開呈現USB輸入格式與預覽輸出，預設BGRA、可選實驗性H.264 host output並持久化；Service status回報requested/active policy。新版無環境變數實機透過明確`h264` policy取得169個decoded avc1 frames；公開UI擷取不含預覽內容且已檢視。
 - [ ] H.264 host-output直幅性能：1080×1920為23.74fps；720×1280為14.00fps，雖有174個samples／零decode failure且平均decode僅4.38ms，瓶頸在AVFoundation encoded-output供給率，非同步decoder。直幅30fps維持NV12/BGRA；H.264 output不可標為30fps支援。
+- [ ] 4K60 host capture：NV12未宣告；UYVY/H.264 input加host H.264 output仍0 sample／0 runtime error，不能以4K30標成4K60可用。需新的可合法交付callback的transport，decoder不在此輪資料路徑上。
 - [x] HEVC/H.265 decode foundation：Annex-B／HVCC、VPS/SPS/PPS、IRAP16…23、loss/reset/parameter-change及有界cache已完成；共用VideoToolbox decoder只接受canonical H.264或HEVC parameter sets及4-byte length access unit，輸出BGRA並有generation fence。尚未以實際encoded frame完成decode驗收。
 - [x] HEVC本機影片實際驗收：合成HEVC MP4經`ImportedVideoSource`實際seek、解碼為BGRA並核對像素內容；不使用Pocket 3、網路或持久素材。direct UVC HEVC仍不成立，因descriptor未宣告HEVC。
 - [x] AVFoundation↔direct capture ownership policy：stop＋frame queue drain、direct exclusive acquire/release、AVF restart證據與generation permit已完成純狀態機及actor tests；尚未接真實VS transport。

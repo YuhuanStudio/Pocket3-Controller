@@ -47,6 +47,8 @@ macOS SDK查核後已撤回「App首選IOUSBHostInterface」的假設：該類�
 
 後續720×1280@30測得174個H.264 samples、約14.00fps；decode平均4.38ms、最大76.78ms、零decode failure。平均decode成本遠低於33ms，所以這輪瓶頸是AVFoundation H.264 encoded-output供給率而非同步decoder。H.264 fallback維持可用，但直幅30fps仍應採既有NV12/BGRA preview；診斷會分開呈現sample rate與decode耗時，不能用async queue假裝補足遺失輸入。
 
+4K60實測仍不成立：裝置不宣告NV12 input；以其宣告的UYVY/H.264 input加上H.264 host-output policy嘗試15秒後仍是0 sample、0 runtime error、0 decode。這表示callback未到達decoder，不以4K30成果外推至4K60。
+
 1. 純資料：descriptor selection、26-byte control、UVC payload、FID/EOF/loss、Annex B/AVCC與SPS/PPS/IDR測試。
 2. raw transport：只取得VS ownership與scalar diagnostics；busy、拔除、timeout、取消、cleanup必須通過。
 3. 同步1080p30 VideoToolbox→FrameStore；不保存畫面，先驗尺寸/FPS/freshness/memory bounds。
