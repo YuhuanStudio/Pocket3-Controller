@@ -51,6 +51,7 @@
 - [ ] 構圖幾何、短期追蹤／場景事件時間軸、影片多影格比較；已新增privacy-preserving BGRA frame comparison並接入MCP `camera_compare_frames`（同session兩fresh frames、scalar差異、零像素持久化）及本機video workspace `Compare +1 s`（seek/replace/cancel revision fence）。實機frame10→11間隔44ms／51840 samples通過；合成影片 IPC gate 也通過0.25→1.25秒、38520 samples、mean absolute luma difference 16.99，且相機維持idle。尚待scene timeline；選單張影片影格不視為已完成連續影片理解。
 - [ ] 同題集比較另一個模型家族與2B／9B成本品質；量冷／暖延遲、影像大小、App記憶體與卸載，不以模型卡分數代替本機結果。
 - [x] CoreAI packaged Release perception baseline：同一合成 COCO fixture、每個 compute request 1 cold + 5 warm trials，CPU／GPU／Neural Engine request／automatic 的 warm median 分別為58.53／31.75／30.51／31.54 ms，物件清理輸出一致（2 cats、2 remotes、1 bed）。這是 request-level performance，不是 ANE execution proof；沒有相機輸入或影像保存。[結果](artifacts/evaluation/perception-release-20260912/results.json)
+- [x] CoreAI execution trace recorder：`Scripts/record-coreai-trace.py`會 attach packaged App、執行離線 perception、輸出 Core AI trace schema與ANE/MPS/Metal row counts。此機 neuralEngine request 的12秒 trace成功但三種interval均0，結果明確為`inconclusive`，不據此聲稱ANE或fallback；沒有相機、BLE、網路或媒體。[結果](artifacts/evaluation/coreai-trace-20260912-neural/result.json)
 - [ ] CoreAI Qwen3-VL recipe的小型數值一致性／前處理實驗，實測計算單元後才宣稱ANE；VLA示範資料與離線policy仍屬研究，不直接取代控制器。
 
 ## beta 1 發布與整理
