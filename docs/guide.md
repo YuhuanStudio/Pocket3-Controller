@@ -42,6 +42,13 @@ The menu bar icon opens the panel with a left click and its menu with a right cl
 
 ## Remote desktop and background use
 
+For a logged-in Mac used through SSH or Remote Desktop, launch the App once with
+`open -gj "Pocket 3 Controller.app" --args --background-bridge`. It starts the
+same user IPC/MCP bridge and menu-bar item while hiding the Dock icon and main
+window. It does not create a pre-login system daemon, keep the display awake,
+or bypass Camera/Bluetooth permissions. Opening the App normally brings the
+main window back.
+
 The camera service has no physical-display-on requirement. The app must remain
 running in the logged-in user's macOS session; the local CLI/MCP helper uses that
 same user's service and does not start a system daemon before login. Remote

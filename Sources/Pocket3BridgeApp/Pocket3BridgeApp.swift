@@ -608,6 +608,7 @@ final class AppModel {
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var terminationPending = false
+    private var backgroundBridge: Bool { CommandLine.arguments.contains("--background-bridge") }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !terminationPending else { return .terminateLater }; terminationPending = true
@@ -618,6 +619,15 @@ final class AppModel {
         guard let present = AppModel.shared.openMainWindow else { return true }; present(); return false
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if backgroundBridge {
+            // Keep the App and its same-user IPC server alive without a Dock
+            // icon or visible main window. This remains a logged-in user
+            // process; it is not a pre-login daemon and does not bypass TCC.
+            NSApp.setActivationPolicy(.accessory)
+            DispatchQueue.main.async {
+                for window in NSApp.windows where window.title == Pocket3Product.displayName { window.orderOut(nil) }
+            }
+        }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
             Task { @MainActor in
                 AppModel.shared.bluetoothProbePermit?.invalidate()

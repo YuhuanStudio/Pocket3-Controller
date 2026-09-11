@@ -262,6 +262,8 @@ import MCP
         Open the App and enable AI access before snapshot/move.
 
         pocket3 status [--json]
+        Pocket 3 Controller.app --background-bridge
+          Starts the logged-in user's local bridge without a Dock icon or visible main window.
         pocket3 doctor
         pocket3 devices
         pocket3 formats [device-id]
