@@ -142,7 +142,7 @@ build22曾在真App、無相機條件下通過Apple問答、MLX計數與定位�
 
 `assistFraming`仍需要符合條件的相機控制權與能力。Debug版 `evaluate-workflow` 的模擬相機也接受相同intent，省略時同樣只觀察；模擬動作不是硬體證據。
 
-MCP維持六個基礎相機工具：`camera_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。CLI的`ask`、媒體檔案分析及評測入口沒有另包成新的MCP工具。
+MCP目前有九個基礎相機工具：`camera_status`、`camera_connect`、`camera_pause`、`camera_compare_frames`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。`camera_connect`明確啟動本機USB預覽、`camera_pause`釋放它；`camera_compare_frames`需要觀察權限，僅回傳同一session兩張新影格的scalar差異。CLI的`ask`、媒體檔案分析及評測入口沒有另包成新的MCP工具。
 
 MCP 縮放先取得 `camera_status.capture.sessionID`，以 `expectedSessionID` 傳給 `camera_zoom_status`，再選擇符合其 minimum／maximum／step 刻度的整數 `rawValue` 呼叫 `camera_set_zoom`。檢查 `completed` 與 `verified`，再取得新影格。取消或未確認的動作不能觸發自動連續重試。
 
