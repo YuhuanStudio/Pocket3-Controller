@@ -89,6 +89,10 @@ def main():
         report["roiExport"] = export_pair("roi-analysis", frame, "single_image", question)
         workspace("region", "--region-json", "null"); cleared = settled()
         check(not cleared["exportAvailable"] and not cleared["answer"] and cleared["responseFrameID"] is None, "Region change retained old result")
+        # A completed local result can still be releasing the shared model
+        # ownership. Do not turn that valid fence into a false video-import
+        # failure; this gate owns the workspace and waits before switching it.
+        ready_to_run()
         workspace("import", "--image", str(fixtures / "media-two-scenes.mp4")); video = settled()
         check(video["video"] and video["frame"]["timestampSource"] == "local_video_import", "Video did not use file import")
         check(1.9 <= video["video"]["durationSeconds"] <= 2.1, "Unexpected generated clip duration")
