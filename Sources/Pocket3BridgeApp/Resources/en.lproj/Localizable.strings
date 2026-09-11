@@ -1475,3 +1475,4 @@
 "Normal preview path" = "Normal preview path";
 "H.264 host output" = "H.264 host output";
 "Experimental · host encoded" = "Experimental · host encoded";
+"H.264 host output is below the requested frame rate." = "H.264 host output is below the requested frame rate.";

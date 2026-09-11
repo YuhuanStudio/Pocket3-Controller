@@ -379,6 +379,15 @@ final class AppModel {
     }
     var isConnecting: Bool { connecting || status?.phase == "connecting" }
     var canConnect: Bool { isCameraSource && !isConnecting && capturePixelFormatSupported && status?.devices.contains(where: { $0.id == selectedID }) == true }
+    var outputPolicyStatus: String? {
+        guard let status, status.requestedOutputPolicy == .h264 else { return nil }
+        return "H.264 host output · " + String(format: "%.1f fps", status.capture.recentFPS)
+    }
+    var outputPolicyRateLimited: Bool {
+        guard let status, status.requestedOutputPolicy == .h264,
+              let requested = status.requestedMode?.frameRate, requested > 0 else { return false }
+        return status.capture.recentFPS > 0 && status.capture.recentFPS < requested * 0.9
+    }
     var cameraSelectionPlaceholder: String { loc(status?.devices.isEmpty != false ? "No camera detected" : "Select a camera") }
     func setAccess(_ mode: AccessMode) async { guard isCameraSource else { return }; zoomStorage?.cancel(); rollStorage?.cancel(); await service.setAccess(mode); await refresh() }
     func move(_ direction: String) async {
@@ -749,6 +758,17 @@ struct RootView: View {
                                     Spacer(minLength: 0)
                                     Text(verbatim: "\(frame.width)×\(frame.height)").font(Yun.Text.mono)
                                 }.font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
+                                if let output = model.outputPolicyStatus {
+                                    Label(output, systemImage: "video.badge.waveform")
+                                        .font(Yun.Text.caption)
+                                        .foregroundStyle(model.outputPolicyRateLimited ? Yun.Palette.warning : Yun.Palette.textTertiary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    if model.outputPolicyRateLimited {
+                                        Text(loc("H.264 host output is below the requested frame rate."))
+                                            .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
                             }
                             YunDivider()
                             YunSelect(selection: Binding(get: { model.access }, set: { value in Task { await model.setAccess(value) } }), options: AccessMode.allCases.map { .init(value: $0, title: loc($0.title)) })

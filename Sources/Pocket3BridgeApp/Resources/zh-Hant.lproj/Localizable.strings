@@ -1475,3 +1475,4 @@
 "Normal preview path" = "一般預覽路徑";
 "H.264 host output" = "H.264 主機輸出";
 "Experimental · host encoded" = "實驗性 · 由主機編碼";
+"H.264 host output is below the requested frame rate." = "H.264 主機輸出低於要求的幀率。";
