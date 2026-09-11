@@ -7,6 +7,7 @@ import Testing
         #expect(try MCPCameraToolContract.operation(name: "camera_status", arguments: .object([:])) == "status")
         #expect(try MCPCameraToolContract.operation(name: "stop_gimbal", arguments: .object([:])) == "stop")
         #expect(try MCPCameraToolContract.operation(name: "camera_pause", arguments: .object([:])) == "pause")
+        #expect(try MCPCameraToolContract.operation(name: "camera_compare_frames", arguments: .object([:])) == "compare-frames")
         #expect(try MCPCameraToolContract.operation(name: "camera_connect", arguments: .object([
             "modeID": .string("1920x1080@30"), "pixelFormat": .string("nv12"), "outputPolicy": .string("h264")])) == "connect")
         #expect(try MCPCameraToolContract.operation(name: "capture_frame", arguments: .object([:])) == "snapshot")
@@ -25,12 +26,12 @@ import Testing
     }
 
     @Test func allToolsRequireObjectsAndStatusStopAcceptNoFields() {
-        for name in ["camera_status", "capture_frame", "move_gimbal", "stop_gimbal", "camera_connect", "camera_pause"] {
+        for name in ["camera_status", "capture_frame", "move_gimbal", "stop_gimbal", "camera_connect", "camera_pause", "camera_compare_frames"] {
             for arguments in [JSONValue.null, .array([]), .string("{}"), .number(1), .bool(false)] {
                 #expect(throws: BridgeFailure.self) { try MCPCameraToolContract.operation(name: name, arguments: arguments) }
             }
         }
-        for name in ["camera_status", "stop_gimbal", "camera_pause"] {
+        for name in ["camera_status", "stop_gimbal", "camera_pause", "camera_compare_frames"] {
             #expect(throws: BridgeFailure.self) {
                 try MCPCameraToolContract.operation(name: name, arguments: .object(["unknown": .null]))
             }

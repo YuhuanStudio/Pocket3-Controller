@@ -45,3 +45,13 @@ public enum FrameComparison {
             darkPixelChangeFraction: Double(changed) / Double(samples), sampledPixels: samples)
     }
 }
+
+/// Metadata-only result for comparing two fresh frames from one capture
+/// session. No frame bytes, thumbnails or image paths are retained.
+public struct FrameComparisonObservation: Codable, Sendable, Equatable {
+    public let sessionID: String
+    public let firstFrameID: String
+    public let secondFrameID: String
+    public let intervalSeconds: Double
+    public let metrics: FrameComparisonMetrics
+}

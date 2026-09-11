@@ -676,6 +676,19 @@ public actor CameraService {
         } while ProcessInfo.processInfo.systemUptime < deadline
         throw BridgeFailure("stale_frame", "未取得新影格，請重新連接相機", retryable: true)
     }
+    public func compareFreshFrames(origin: RequestOrigin = .automation) async throws -> FrameComparisonObservation {
+        let stamp = try interactionStamp(origin: origin)
+        let first = try await frame(origin: origin)
+        let second = try await frame(origin: origin, after: first.info.receivedUptime)
+        try validateInteraction(stamp, origin: origin)
+        guard first.info.sessionID == second.info.sessionID else { throw BridgeFailure("session_changed", "影格比較期間相機連線已改變") }
+        let metrics = try await Task.detached(priority: .userInitiated) {
+            try FrameComparison.compare(first.pixelBuffer, second.pixelBuffer)
+        }.value
+        try validateInteraction(stamp, origin: origin)
+        return FrameComparisonObservation(sessionID: first.info.sessionID, firstFrameID: first.info.id,
+            secondFrameID: second.info.id, intervalSeconds: second.info.receivedUptime - first.info.receivedUptime, metrics: metrics)
+    }
     public func snapshot(origin: RequestOrigin = .manual, maxDimension: Int = 1920) async throws -> (FrameInfo, Data) {
         guard (320...3840).contains(maxDimension) else { throw BridgeFailure("invalid_size", "圖片最大邊長須在 320–3840") }
         let frame = try await frame(origin: origin)
@@ -1474,6 +1487,9 @@ public actor CameraService {
                 let requested = try MCPCameraToolContract.captureDimension(arguments: request.arguments)
                 let (info, data) = try await snapshot(origin: .automation, maxDimension: requested)
                 return ServiceReply(id: request.id, result: try .encode(info), imageJPEG: data)
+            case "compare-frames":
+                guard request.arguments == .object([:]) else { throw BridgeFailure("invalid_camera_arguments", "Frame comparison accepts no arguments") }
+                return ServiceReply(id: request.id, result: try .encode(try await compareFreshFrames(origin: .automation)))
             case "move":
                 let result: MotionResult
                 if request.arguments["direction"] != .null {
