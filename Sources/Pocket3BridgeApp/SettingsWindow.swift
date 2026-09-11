@@ -150,6 +150,10 @@ struct PreferencesWindow: View {
                         caption("This input format is not advertised for the selected mode.")
                     }
                 }
+                VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                    Text(loc("Preview output")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                    YunSelect(selection: $model.captureOutputPolicy, options: model.captureOutputPolicyOptions)
+                }
                 Button(loc("Connect")) { Task { await model.connect() } }.buttonStyle(YunButtonStyle(.primary, small: true)).disabled(!model.canConnect)
                 caption("Format changes take effect when reconnecting. Only the selected Pocket 3 is used.")
                 caption("Match the shooting orientation on Pocket 3 to this format to avoid black borders.")

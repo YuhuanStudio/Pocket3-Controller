@@ -1470,3 +1470,8 @@
 "Right to left" = "由右至左";
 "%d points" = "%d個位置";
 "Previewing" = "正在預覽路徑";
+"Preview output" = "預覽輸出";
+"BGRA preview" = "BGRA 預覽";
+"Normal preview path" = "一般預覽路徑";
+"H.264 host output" = "H.264 主機輸出";
+"Experimental · host encoded" = "實驗性 · 由主機編碼";

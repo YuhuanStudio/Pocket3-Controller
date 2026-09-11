@@ -112,6 +112,13 @@ final class AppModel {
             if !capturingUI { UserDefaults.standard.set(capturePixelFormat.rawValue, forKey: "Pocket3CapturePixelFormat") }
         }
     }
+    var captureOutputPolicy = CaptureOutputPolicy(rawValue: UserDefaults.standard.string(forKey: "Pocket3CaptureOutputPolicy") ?? "") ?? .bgra {
+        didSet { if !capturingUI { UserDefaults.standard.set(captureOutputPolicy.rawValue, forKey: "Pocket3CaptureOutputPolicy") } }
+    }
+    var captureOutputPolicyOptions: [YunSelect<CaptureOutputPolicy>.Option] {
+        [.init(value: .bgra, title: loc("BGRA preview"), detail: loc("Normal preview path")),
+         .init(value: .h264, title: loc("H.264 host output"), detail: loc("Experimental · host encoded"))]
+    }
     var capturePixelFormatSupported: Bool {
         captureMode != nil && (capturePixelFormat == .automatic || availableInputFormats[captureModeID]?.contains(capturePixelFormat) == true)
     }
@@ -358,9 +365,10 @@ final class AppModel {
         await wireless.disconnectNative()
         let requestedID = selectedID
         let requestedPixelFormat = capturePixelFormat
+        let requestedOutputPolicy = captureOutputPolicy
         do {
             guard let captureMode else { throw BridgeFailure("invalid_format", loc("Select a capture format")) }
-            try await service.connect(id: requestedID, mode: captureMode, pixelFormat: requestedPixelFormat)
+            try await service.connect(id: requestedID, mode: captureMode, pixelFormat: requestedPixelFormat, outputPolicy: requestedOutputPolicy)
             UserDefaults.standard.set(captureMode.id, forKey: "Pocket3CaptureModeID")
             // A different choice made while permission or connection was
             // pending remains the operator's next intended camera.
@@ -727,6 +735,10 @@ struct RootView: View {
                                 if model.captureMode != nil && !model.capturePixelFormatSupported {
                                     Text(loc("This input format is not advertised for the selected mode.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
                                 }
+                            }
+                            VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                                Text(loc("Preview output")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                                YunSelect(selection: $model.captureOutputPolicy, options: model.captureOutputPolicyOptions)
                             }
                             Text(loc("Match the shooting orientation on Pocket 3 to this format to avoid black borders.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
                             Button(model.isConnecting ? loc("Connecting…") : model.ready ? loc("Reconnect") : loc("Connect camera")) { Task { await model.connect() } }.buttonStyle(YunButtonStyle(.primary)).disabled(!model.canConnect)

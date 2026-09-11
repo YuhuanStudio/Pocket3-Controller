@@ -56,6 +56,7 @@ public struct ServiceStatus: Codable, Sendable {
     public var activities: [Activity]
     public var requestedMode: CaptureMode? = nil
     public var requestedPixelFormat: CapturePixelFormat? = nil
+    public var requestedOutputPolicy: CaptureOutputPolicy? = nil
     public var lastCaptureAttempt: CaptureSampleDiagnostics? = nil
     public var power: USBPowerStatus? = nil
     public var controlTransport: String? = nil
@@ -137,6 +138,7 @@ public actor CameraService {
     private var selected: CameraDevice?
     private var requestedMode: CaptureMode?
     private var requestedPixelFormat: CapturePixelFormat?
+    private var requestedOutputPolicy: CaptureOutputPolicy?
     private var lastCaptureAttempt: CaptureSampleDiagnostics?
     private var uvc: (any CameraControlConnection)?
     private var uvcControlDisabledForCapture = false
@@ -382,6 +384,7 @@ public actor CameraService {
             presentationKey: result.verified ? "control.stopped" : "control.stop_failed")
     }
     public func connect(id: String, resolution: Int = 1080, mode: CaptureMode? = nil, pixelFormat: CapturePixelFormat = .automatic,
+                        outputPolicy: CaptureOutputPolicy = .bgra,
                         validationStartupTimeout: TimeInterval? = nil, validationSkipUVC: Bool? = nil) async throws {
         guard validationSkipUVC == nil || validationEnabled else {
             throw BridgeFailure("validation_disabled", "略過 UVC 控制只供開發驗證")
@@ -410,7 +413,10 @@ public actor CameraService {
         resetZoomHoldForConnectionChange()
         resetRollHoldForConnectionChange()
         phase = "connecting"; lastError = nil; lastCaptureAttempt = nil
-        selected = device; requestedMode = captureMode; requestedPixelFormat = pixelFormat
+        guard outputPolicy.isUserSelectable || validationEnabled else {
+            throw BridgeFailure("invalid_output_policy", "只可選擇 BGRA preview 或 H.264 host output")
+        }
+        selected = device; requestedMode = captureMode; requestedPixelFormat = pixelFormat; requestedOutputPolicy = outputPolicy
         // The previous control's Stop cleanup has finished above. Do not create
         // a replacement UVC connection in capture-only isolation: its startup
         // status call and later status polls must not open the control interface.
@@ -420,7 +426,7 @@ public actor CameraService {
         if uvcControlDisabledForCapture { stopValidated = false }
         var captureStarted = false
         do {
-            try await capture.start(deviceID: id, mode: captureMode, pixelFormat: pixelFormat)
+            try await capture.start(deviceID: id, mode: captureMode, pixelFormat: pixelFormat, outputPolicy: outputPolicy)
             captureStarted = true
             try Task.checkCancellation()
             guard generation == lifecycleGeneration else { throw CancellationError() }
@@ -501,7 +507,7 @@ public actor CameraService {
         } else { nativeSnapshot = nil }
         let captureStats = capture.store.stats()
         let reportedPhase = phase == "ready" && (captureStats.age ?? .infinity) > 1 ? "stalled" : phase
-        var result = ServiceStatus(phase: reportedPhase, devices: devices, selected: selected, access: access, permission: CaptureEngine.permission(), capture: captureStats, gimbal: capabilities, motionActive: motionID != nil, stopValidated: stopValidated, lastError: lastError, activities: activities, requestedMode: requestedMode, requestedPixelFormat: requestedPixelFormat, lastCaptureAttempt: lastCaptureAttempt, power: selected?.location.map { USBPowerMonitor.read(location: $0) })
+        var result = ServiceStatus(phase: reportedPhase, devices: devices, selected: selected, access: access, permission: CaptureEngine.permission(), capture: captureStats, gimbal: capabilities, motionActive: motionID != nil, stopValidated: stopValidated, lastError: lastError, activities: activities, requestedMode: requestedMode, requestedPixelFormat: requestedPixelFormat, requestedOutputPolicy: requestedOutputPolicy, lastCaptureAttempt: lastCaptureAttempt, power: selected?.location.map { USBPowerMonitor.read(location: $0) })
         result.uvcControlDisabledForCapture = uvcControlDisabledForCapture
         result.rollStopValidated = rollStopValidated
         result.controlTransport = uvcControlDisabledForCapture ? "capture_only" : "usb_position"

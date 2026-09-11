@@ -87,8 +87,10 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
 
 /// One explicitly opted-in diagnostic policy. Normal application launches keep
 /// their BGRA conversion, even if the environment variable happens to be set.
-enum CaptureOutputPolicy: String, Sendable {
+public enum CaptureOutputPolicy: String, Codable, CaseIterable, Sendable, Identifiable {
     case bgra, native, systemDefault = "system_default", h264
+    public var id: String { rawValue }
+    public var isUserSelectable: Bool { self == .bgra || self == .h264 }
     static func selected(environment: [String: String], arguments: [String]) -> Self {
         guard arguments.contains("--hardware-validation") else { return .bgra }
         return Self(rawValue: environment["POCKET3_CAPTURE_OUTPUT"] ?? "") ?? .bgra
@@ -510,10 +512,11 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
         @unknown default: nil
         }
     }
-    public func start(deviceID: String, mode: CaptureMode = .default1080p30, pixelFormat: CapturePixelFormat = .automatic) async throws {
+    public func start(deviceID: String, mode: CaptureMode = .default1080p30, pixelFormat: CapturePixelFormat = .automatic,
+                      outputPolicy explicitOutputPolicy: CaptureOutputPolicy? = nil) async throws {
         lifecycleLock.withLock { failedStartDiagnostics = nil }
-        let outputPolicy = CaptureOutputPolicy.selected(environment: ProcessInfo.processInfo.environment,
-                                                        arguments: CommandLine.arguments)
+        let outputPolicy = explicitOutputPolicy ?? CaptureOutputPolicy.selected(environment: ProcessInfo.processInfo.environment,
+                                                                                arguments: CommandLine.arguments)
         guard mode.width > 0, mode.width <= Int32.max, mode.height > 0, mode.height <= Int32.max,
               mode.frameRate.isFinite, mode.frameRate > 0 else { throw BridgeFailure("invalid_format", "無效的影像格式") }
         let generation = advanceLifecycle()
