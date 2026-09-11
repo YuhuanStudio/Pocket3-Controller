@@ -1124,6 +1124,8 @@
 
 "Face back" = "背面";
 
+"UVC position range" = "UVC 位置范围";
+"UVC position targets are nominal values, not DJI native presets or calibrated physical angles." = "UVC 位置目标是名义值，不是 DJI 原生预设或已校准的实体角度。";
 "Pan" = "水平";
 
 "Tilt" = "俯仰";

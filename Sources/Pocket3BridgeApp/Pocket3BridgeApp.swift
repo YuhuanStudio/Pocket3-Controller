@@ -849,6 +849,7 @@ struct RootView: View {
                             }.buttonStyle(YunButtonStyle(.secondary, small: true))
                                 .popover(isPresented: $showWireless, arrowEdge: .trailing) { WirelessGimbalConnectionView(model: model.wireless) }
                             ContinuousGimbalControls(controller: model.continuousGimbal, interactionEnabled: model.isCameraSource)
+                            GimbalRangeControls(model: model)
                             HStack(spacing: Yun.Space.sm) {
                                 Button { Task { await model.manualGimbalPreset(flip: false) } } label: { Image(systemName: "scope").frame(maxWidth: .infinity) }
                                     .help(loc("Center view")).accessibilityLabel(loc("Center view"))

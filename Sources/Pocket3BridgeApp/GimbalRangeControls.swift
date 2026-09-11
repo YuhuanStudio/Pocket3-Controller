@@ -19,13 +19,9 @@ struct GimbalRangeControls: View {
            let minimum = capabilities.minimum, let maximum = capabilities.maximum,
            minimum.pan < maximum.pan, minimum.tilt < maximum.tilt {
             VStack(spacing: Yun.Space.sm) {
-                HStack(spacing: Yun.Space.sm) {
-                    preset("home", symbol: "scope", label: loc("Center view"))
-                    preset("front", symbol: "camera", label: loc("Face front"))
-                    preset("back", symbol: "camera.rotate", label: loc("Face back"))
-                }
-                .disabled(!canMove || capabilities.defaultPosition == nil)
-
+                Text(loc("UVC position range"))
+                    .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 GimbalAxisSlider(label: loc("Pan"),
                     position: Double(capabilities.position.pan) / 3600,
                     range: Double(minimum.pan) / 3600...Double(maximum.pan) / 3600,
@@ -42,26 +38,11 @@ struct GimbalRangeControls: View {
                         await point(pan: nil, tilt: value, session: session)
                     }
                     .id("\(sessionID):tilt")
+                Text(loc("UVC position targets are nominal values, not DJI native presets or calibrated physical angles."))
+                    .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    private func preset(_ direction: String, symbol: String, label: String) -> some View {
-        Button {
-            let requestedSession = sessionID
-            Task {
-                guard canMove, !requestedSession.isEmpty, requestedSession == sessionID,
-                      model.status?.gimbal?.defaultPosition != nil else { return }
-                isSubmitting = true
-                defer { isSubmitting = false }
-                await model.move(direction)
-            }
-        } label: {
-            Image(systemName: symbol).frame(maxWidth: .infinity)
-        }
-        .buttonStyle(YunButtonStyle(.secondary, small: true))
-        .help(label)
-        .accessibilityLabel(Text(label))
     }
 
     private func point(pan: Double?, tilt: Double?, session: String) async {
