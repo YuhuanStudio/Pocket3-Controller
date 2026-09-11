@@ -18,6 +18,8 @@ class VideoCompressionRoundTripTests(unittest.TestCase):
 
     def test_roundtrip_requires_independent_h264_then_exact_restore(self):
         self.assertIn("write(0, baseline, 'switch_to_h264')", self.text)
+        self.assertIn("command = {'videoCompression': {'_0': compression_raw}}", self.text)
+        self.assertNotIn("command = {'value': {'videoCompression'", self.text)
         self.assertIn("if observed_raw != 0", self.text)
         self.assertIn("write(original_raw, changed, 'restore_original')", self.text)
         self.assertIn("if restored_raw != original_raw or restored != baseline", self.text)

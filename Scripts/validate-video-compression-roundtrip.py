@@ -55,7 +55,9 @@ def read_video():
     return observed, raw, result
 
 def write(compression_raw, baseline, label):
-    command = {'value': {'videoCompression': {'_0': compression_raw}}}
+    # --value-json takes CameraSettingCommand itself; the IPC adapter adds the
+    # surrounding `value` argument after parsing CLI options.
+    command = {'videoCompression': {'_0': compression_raw}}
     result = call('validation-wireless-setting', '--session', report['bleSessionID'],
         '--peripheral', report['peripheralID'], '--capture-session', report['captureSessionID'],
         '--property', 'cam_video_param_v2', '--value-json', json.dumps(command),

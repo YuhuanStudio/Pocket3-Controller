@@ -14,6 +14,8 @@ class VideoCompressionValidatorTests(unittest.TestCase):
         self.assertIn("current != target_raw", text)
         self.assertIn("result.get('noOp') is not True", text)
         self.assertIn("result.get('localSubmitted') is not False", text)
+        self.assertIn("command = {'videoCompression': {'_0': target_raw}}", text)
+        self.assertNotIn("command = {'value': {'videoCompression'", text)
         self.assertTrue(any(isinstance(node, ast.Try) for node in ast.walk(tree)))
 
     def test_script_never_exports_camera_images_or_controls_wifi_gimbal(self):

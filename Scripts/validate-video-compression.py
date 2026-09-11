@@ -61,7 +61,9 @@ try:
                                  'propertyReceived': readback.get('propertyReceived')})
     if not args.allow_change and current != target_raw:
         raise RuntimeError('No-op mode refuses a different target; use --allow-change only after reviewing a restore plan')
-    command = {'value': {'videoCompression': {'_0': target_raw}}}
+    # --value-json takes CameraSettingCommand itself; the IPC adapter adds the
+    # surrounding `value` argument after parsing CLI options.
+    command = {'videoCompression': {'_0': target_raw}}
     result = call('validation-wireless-setting', '--session', ble_session,
         '--peripheral', peripheral, '--capture-session', capture_session,
         '--property', 'cam_video_param_v2', '--value-json', json.dumps(command),
