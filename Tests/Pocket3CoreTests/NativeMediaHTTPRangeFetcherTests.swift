@@ -101,10 +101,10 @@ struct NativeMediaHTTPRangeFetcherTests {
     }
 
     @Test func validatorAcceptsOnlyMatching206RangeAndLength() throws {
-        let request = try request()
+        let fullRequest = try request()
         let body = Data([1, 2, 3, 4, 5, 6, 7, 8])
         let result = try NativeMediaHTTPRangeResponseValidator.validate(
-            response(body: body), request: request)
+            response(body: body), request: fullRequest)
         #expect(result == body)
 
         let shorterRequest = try request(start: 10, end: 31)
