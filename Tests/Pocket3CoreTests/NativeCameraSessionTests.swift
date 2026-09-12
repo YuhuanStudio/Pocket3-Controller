@@ -81,10 +81,13 @@ import Testing
         let reconnectGeneration = session.generation
         #expect(reconnectGeneration != generation)
         #expect(session.state == .credentialsAvailable)
-        #expect(!session.observeDatalink(.ready, generation: generation))
+        let staleReady = session.observeDatalink(.ready, generation: generation)
+        #expect(!staleReady)
 
-        #expect(session.observeDatalink(.connecting, generation: reconnectGeneration))
-        #expect(session.observeDatalink(.ready, generation: reconnectGeneration))
+        let reconnecting = session.observeDatalink(.connecting, generation: reconnectGeneration)
+        #expect(reconnecting)
+        let reconnected = session.observeDatalink(.ready, generation: reconnectGeneration)
+        #expect(reconnected)
         #expect(session.state == .commandReady)
     }
 
