@@ -42,6 +42,9 @@
 - [x] Exposure developer validation：Auto/Manual、EV、ISO、shutter、ISO limit與manual preset已接App route、CLI與唯一datalink executor；預設dry-run，逐步single send、fresh baseline、ACK＋matching readback、unknown selected/partial/cancel/no retry。
 - [x] Safe media HTTP Range fetcher：Darwin `IP_BOUND_IF`、固定192.168.2.1:80、GET `/v2`、嚴格206/Content-Range/Length/framing、bounded path/range/bytes、cancel/timeout、無redirect/log/retry；unbound/default route拒絕，已接media range action。
 - [x] Passive live-view decode pipeline：可選pktType02 sink、assembler、bounded backpressure與VT decoder adapter已接datalink；預設sink nil，不送09/A8、不啟用live-view，generation-safe attach/detach與disconnect flush。第十三批Release gate共856項通過（Core713、Intelligence44、Evaluation1、App92、XCTest6）。
+- [x] Developer live-view session coordinator：可選02/68 hint、09/A8 IDR request、ingest-before-enable、single enable與cooldown、等待codec+首張IDR/IRAP、stall watchdog與disconnect flush已完成；預設不啟用、不auto join、不每秒重送。
+- [x] Metadata-only Camera Media Library：one-page index、session/generation/route freshness、name/type/duration/size/starred與range progress/partial/cancel已接可收合Diagnostics；不顯示thumbnail/影像、不保存credentials、無delete/favorite writer。
+- [x] Camera body capability新增compact Exposure Disclosure：Auto/Manual、EV、selected/effective ISO、shutter、ISO limit與unknown raw；developer才顯validation evidence，一般UI無writer。第十四批Release gate共865項通過（Core716、Intelligence44、Evaluation1、App98、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
