@@ -3,7 +3,7 @@ import Foundation
 /// A wire-independent DUML command template.  The sequence is intentionally
 /// absent: `Pocket3Datalink` is the only sequence owner and assigns it at the
 /// final serialized send point.
-public struct NativeCommandFrame: Sendable, Equatable {
+public struct NativeCommandFrame: Codable, Sendable, Equatable {
     public let source: UInt8
     public let destination: UInt8
     public let flags: UInt8

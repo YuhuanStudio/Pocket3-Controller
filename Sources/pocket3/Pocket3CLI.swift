@@ -108,8 +108,36 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
+                if command == "validation-wireless-body" {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled", "Body validation requires --hardware-validation")
+                    }
+                    guard let action = option("--action"), ["start", "stop", "format"].contains(action) else {
+                        throw BridgeFailure("usage", "Use validation-wireless-body --action start|stop|format")
+                    }
+                    arguments["action"] = .string(action)
+                    arguments["execute"] = .bool(args.contains("--execute"))
+                    if action == "format" {
+                        guard let resolution = option("--resolution"), let fps = option("--fps") else {
+                            throw BridgeFailure("usage", "Format validation requires --resolution NAME --fps FPS")
+                        }
+                        arguments["resolution"] = .string(resolution)
+                        arguments["fps"] = .string(fps)
+                    } else {
+                        guard !args.contains("--resolution"), !args.contains("--fps") else {
+                            throw BridgeFailure("usage", "--resolution and --fps are only valid with --action format")
+                        }
+                    }
+                    if let rawTimeout = option("--timeout") {
+                        guard let timeout = Double(rawTimeout), timeout.isFinite, timeout > 0,
+                              timeout <= NativeCommandTransactionRequest.maximumTimeout else {
+                            throw BridgeFailure("invalid_body_validation_timeout", "Use --timeout between 0 and 5 seconds")
+                        }
+                        arguments["timeout"] = .number(timeout)
+                    }
+                }
                 if command == "validation-wireless-pair", args.contains("--read-connection-details") {
                     arguments["pairOnly"] = .bool(false)
                 }
@@ -285,6 +313,8 @@ import MCP
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-read-settings
           Developer only: sequentially reads allowlisted paired-camera properties; never writes a setting or joins Wi-Fi.
+        pocket3 validation-wireless-body --action start|stop|format [--resolution NAME --fps FPS] [--execute] [--hardware-validation]
+          Developer only: dry-run by default; validates exact command-ready session, fresh 02/80/readback and legal capability evidence. An executor must be injected before any command can be submitted.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON

@@ -65,6 +65,8 @@ extension AppModel {
         case "validation-wireless-readiness":
             let result = try await wireless.bluetooth.queryNativeReadiness()
             return ServiceReply(id: request.id, result: try .encode(result))
+        case "validation-wireless-body":
+            return try await performNativeBodyValidation(request)
         case "validation-wireless-join", "validation-wireless-datalink":
             throw BridgeFailure("wifi_control_disabled", "This project keeps the Mac on its current network. Camera Wi-Fi control is not an active connection path.")
         case "validation-wireless-disconnect": await wireless.disconnect()
@@ -72,6 +74,157 @@ extension AppModel {
         }
         await wireless.refresh()
         return ServiceReply(id: request.id, result: try wireless.validationStatus())
+    }
+
+    /// Developer-only body command validation. The App supplies only the
+    /// exact readiness/readback snapshot already owned by WirelessGimbalModel;
+    /// command submission is intentionally absent until a future owner
+    /// injects a NativeBodyValidationService executor.
+    private func performNativeBodyValidation(_ request: ServiceRequest) async throws -> ServiceReply {
+        guard case .object(let fields) = request.arguments else {
+            throw BridgeFailure("invalid_body_validation_arguments", "Body validation requires an object of action options")
+        }
+        guard Set(fields.keys).isSubset(of: ["action", "execute", "resolution", "fps", "timeout"]) else {
+            throw BridgeFailure("invalid_body_validation_arguments", "Use action, execute, resolution, fps and timeout only")
+        }
+        guard let action = fields["action"]?.string,
+              let operation = NativeBodyValidationRequest.Operation(rawValue: action) else {
+            throw BridgeFailure("invalid_body_validation_action", "Use action start, stop or format")
+        }
+        let execute: Bool
+        if let value = fields["execute"] {
+            guard let bool = value.bool else {
+                throw BridgeFailure("invalid_body_validation_execute", "execute must be a Boolean")
+            }
+            execute = bool
+        } else {
+            execute = false
+        }
+        let timeout: TimeInterval
+        if let value = fields["timeout"] {
+            guard let number = value.number else {
+                throw BridgeFailure("invalid_body_validation_timeout", "timeout must be a finite number of seconds")
+            }
+            timeout = number
+        } else {
+            timeout = NativeBodyValidationService.defaultTimeout
+        }
+
+        let format: CameraBodyRecordingFormatCommand?
+        if operation == .format {
+            guard let resolutionName = fields["resolution"]?.string,
+                  let resolution = nativeBodyResolution(resolutionName),
+                  let frameRateName = fields["fps"]?.string,
+                  let frameRate = nativeBodyFrameRate(frameRateName) else {
+                throw BridgeFailure("invalid_body_format", "Format validation requires a known resolution and fps")
+            }
+            format = CameraBodyRecordingFormatCommand(resolution: resolution, frameRate: frameRate)
+        } else {
+            guard fields["resolution"] == nil, fields["fps"] == nil else {
+                throw BridgeFailure("invalid_body_validation_arguments", "resolution and fps are only valid for action format")
+            }
+            format = nil
+        }
+
+        let wireless = self.wireless
+        let readiness = wireless.nativeSessionStatus
+        let now = ProcessInfo.processInfo.systemUptime
+        let discovery = wireless.discovery
+        guard let sessionID = readiness.sessionID,
+              sessionID == discovery.sessionID,
+              let peripheralID = discovery.selectedPeripheralID else {
+            throw BridgeFailure("native_body_session_missing", "Body validation requires the current selected native session")
+        }
+
+        let bodyStatus = discovery.cameraStatus.flatMap { observation -> NativeBodyRecordingLifecycleSample? in
+            guard observation.sessionID == discovery.sessionID,
+                  observation.peripheralID == peripheralID,
+                  observation.isFresh(nowUptime: now,
+                                      maximumAge: NativeBodyRecordingCoordinator.maximumReadbackAge) else { return nil }
+            return NativeBodyRecordingLifecycleSample(sessionID: sessionID,
+                generation: readiness.generation, receivedUptime: observation.receivedUptime,
+                status: observation.recordingStatus)
+        }
+
+        let settingsBinding = "ble:\(discovery.sessionID.uuidString)"
+        let freshSettings = discovery.cameraSettingsObservations.filter {
+            $0.binding.sessionID == settingsBinding && $0.binding.generation == 0 &&
+            $0.isFresh(now: now, maximumAge: NativeBodyFormatCoordinator.maximumReadbackAge)
+        }
+        let parametersObservation = freshSettings.first(where: { $0.property == .videoParameters })
+        let formatParameters: CameraVideoParameters?
+        if let parametersObservation,
+           case .videoParameters(let parameters) = parametersObservation.readOnlyValue {
+            formatParameters = parameters
+        } else {
+            formatParameters = nil
+        }
+        let capabilities = freshSettings.first(where: { $0.property == .videoFormatCapabilities })?.bodyRecordingCapabilities
+        let formatBaseline: NativeBodyFormatReadback?
+        if let parametersObservation, let formatParameters {
+            formatBaseline = NativeBodyFormatReadback(sessionID: sessionID,
+                generation: readiness.generation,
+                receivedUptime: parametersObservation.receivedUptime,
+                parameters: formatParameters)
+        } else {
+            formatBaseline = nil
+        }
+        let validationRequest = NativeBodyValidationRequest(operation: operation,
+            execute: execute, format: format, timeout: timeout)
+        do {
+            // No production executor is installed here. This keeps the
+            // operation read-only by default and makes --execute report an
+            // explicit unavailable owner instead of touching another
+            // transport or hardware path.
+            let service = NativeBodyValidationService()
+            let result = try await service.run(validationRequest,
+                snapshot: NativeBodyValidationSnapshot(session: readiness,
+                    recordingBaseline: bodyStatus, formatBaseline: formatBaseline,
+                    formatCapabilities: capabilities, nowUptime: now))
+            return ServiceReply(id: request.id, result: try .encode(result))
+        } catch let error as NativeBodyValidationServiceError {
+            throw bodyValidationFailure(error)
+        } catch let error as NativeBodyRecordingCoordinatorError {
+            throw bodyValidationFailure(error)
+        } catch let error as NativeBodyFormatCoordinatorError {
+            throw bodyValidationFailure(error)
+        }
+    }
+
+    private func bodyValidationFailure(_ error: NativeBodyValidationServiceError) -> BridgeFailure {
+        switch error {
+        case .formatRequired: BridgeFailure("invalid_body_format", "Format validation requires resolution and fps")
+        case .recordingBaselineRequired: BridgeFailure("native_body_recording_baseline_missing", "No fresh current 02/80 body status is available")
+        case .formatBaselineRequired: BridgeFailure("native_body_format_baseline_missing", "No fresh current cam_video_param_v2 readback is available")
+        case .legalCapabilityRequired: BridgeFailure("native_body_format_capability_missing", "No fresh legal camcap_video_format readback is available")
+        case .invalidClock: BridgeFailure("native_body_validation_clock", "The monotonic validation clock is invalid")
+        case .invalidTimeout: BridgeFailure("native_body_validation_timeout", "timeout must be between 0 and 5 seconds")
+        }
+    }
+
+    private func bodyValidationFailure(_ error: NativeBodyRecordingCoordinatorError) -> BridgeFailure {
+        switch error {
+        case .sessionNotReady: BridgeFailure("native_body_command_not_ready", "The native session is not command-ready")
+        case .missingSessionIdentity: BridgeFailure("native_body_session_missing", "The native session has no exact identity")
+        case .invalidBaseline: BridgeFailure("native_body_recording_baseline_invalid", "The body status baseline is stale or belongs to another session")
+        case .alreadyAtTarget: BridgeFailure("native_body_recording_noop", "The camera is already in the requested recording state")
+        case .operationInFlight: BridgeFailure("native_body_validation_busy", "A body validation operation is already in flight")
+        case .staleTransaction: BridgeFailure("native_body_transaction_stale", "The transaction belongs to another session or generation")
+        case .staleObservation: BridgeFailure("native_body_readback_stale", "The terminal body readback is stale")
+        case .invalidReadback: BridgeFailure("native_body_readback_invalid", "The body readback is not a known terminal state")
+        }
+    }
+
+    private func bodyValidationFailure(_ error: NativeBodyFormatCoordinatorError) -> BridgeFailure {
+        switch error {
+        case .sessionNotReady: BridgeFailure("native_body_command_not_ready", "The native session is not command-ready")
+        case .missingSessionIdentity: BridgeFailure("native_body_session_missing", "The native session has no exact identity")
+        case .invalidBaseline: BridgeFailure("native_body_format_baseline_invalid", "The format baseline is stale or belongs to another session")
+        case .missingCapabilityEvidence: BridgeFailure("native_body_format_capability_missing", "No legal format capability evidence is available")
+        case .unsupportedFormat: BridgeFailure("native_body_format_unsupported", "The selected body format is not in the current legal capability table")
+        case .alreadyAtTarget: BridgeFailure("native_body_format_noop", "The camera already reports the selected body format")
+        case .operationInFlight: BridgeFailure("native_body_validation_busy", "A body validation operation is already in flight")
+        }
     }
 
     /// Shared by the developer RPC and the App's explicit setting action.
@@ -253,4 +406,35 @@ private struct BluetoothCameraWriteContext: Sendable {
     let permit: OperationPermit
     let validateCapture: @MainActor @Sendable () async throws -> Void
     let validateCaptureSynchronously: @MainActor @Sendable () throws -> Void
+}
+
+private func nativeBodyResolution(_ value: String) -> CameraVideoResolution? {
+    switch value.lowercased().replacingOccurrences(of: " ", with: "") {
+    case "p1080", "1080p": .p1080
+    case "p2.7k", "p27k", "2.7k", "27k": .p2_7K
+    case "p4k", "4k": .p4K
+    case "square1080", "1:1-1080": .square1080
+    case "square2160", "1:1-2160": .square2160
+    case "square3k", "1:1-3k": .square3K
+    case "portrait1080", "9:16-1080": .portrait1080
+    case "portrait2.7k", "portrait27k", "9:16-2.7k": .portrait2_7K
+    case "portrait3k", "9:16-3k": .portrait3K
+    default: nil
+    }
+}
+
+private func nativeBodyFrameRate(_ value: String) -> CameraFrameRate? {
+    let normalized = value.lowercased().replacingOccurrences(of: " ", with: "")
+    let number = normalized.hasPrefix("fps") ? String(normalized.dropFirst(3)) : normalized
+    switch number {
+    case "24": return .fps24
+    case "25": return .fps25
+    case "30": return .fps30
+    case "48": return .fps48
+    case "50": return .fps50
+    case "60": return .fps60
+    case "120": return .fps120
+    case "240": return .fps240
+    default: return nil
+    }
 }
