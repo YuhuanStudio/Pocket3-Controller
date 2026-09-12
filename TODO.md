@@ -18,6 +18,9 @@
 - [x] Body validation executor 已接到 `WirelessGimbalModel` 現有單一 `Pocket3Datalink.transact` owner：exact native session、busy/cancel permit、partial evidence與generation fence生效；不建立第二連線、不自動加入Wi-Fi、不重試。只有developer `--execute`可進入。
 - [x] ActiveTrack store 已接入實際Bluetooth discovery生命週期：session/connect時bind、scan/close時清空、validated A5/A89更新fresh current與bounded history；A6不進typed state也不送出。
 - [x] Camera能力區加入ActiveTrack唯讀Disclosure；developer mode才顯示body validation readiness與requested/submitted/acknowledged/observed/completed。一般使用者沒有writer、footer未變。第五批Release gate共717項通過（Core582、Intelligence44、Evaluation1、App84、XCTest6），三語507字串與62張UI parity通過。
+- [x] Route-safe native datalink foundation：explicit interface name/index、camera host、join policy=`never`、interface/route evidence與Darwin `IP_BOUND_IF`已型別化；指定介面未經allowed plan會在開socket前拒絕。測試沒有操作網路或加入Pocket Wi-Fi，legacy explicit-only路徑相容。
+- [x] Native setting coordinators：WB `02/2C`、focus `02/24`、color `02/42`、Product Showcase PID003B `02/8E`皆要求exact session/generation、新鮮baseline、no-op、single request、ACK＋matching readback；unknown raw保留，ACK-only不完成。
+- [x] ActiveTrack A6 developer validation：box finite/normalized/minimum size/bounds、identity/generation、command-ready與新鮮A5/A89 baseline皆有gate；set/clear單次且需目標readback。rotation/mirror尚未校準時execute明確拒絕，不碰硬體；一般UI無writer。第六批Release gate共738項通過（Core603、Intelligence44、Evaluation1、App84、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
