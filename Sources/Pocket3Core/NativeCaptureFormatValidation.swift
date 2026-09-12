@@ -326,6 +326,9 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
     public let height: Int?
     public let inputPixelFormat: CapturePixelFormat?
     public let inputFourCC: String?
+    /// FourCC of the AVFoundation sample before optional host decode.
+    public let videoSampleFourCC: String?
+    /// Pixel format published by FrameStore after any host decode.
     public let outputFourCC: String?
     public let rotationDegrees: Int?
     public let mirrored: Bool?
@@ -343,6 +346,7 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
     public init(sessionID: String, deviceID: String, frames: Int,
                 recentFPS: Double, age: Double?, width: Int?, height: Int?,
                 inputPixelFormat: CapturePixelFormat?, inputFourCC: String?,
+                videoSampleFourCC: String? = nil,
                 outputFourCC: String?, rotationDegrees: Int? = 0,
                 mirrored: Bool? = false, videoSampleCount: Int = 0,
                 pixelBufferCount: Int = 0,
@@ -362,6 +366,7 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
         self.height = height
         self.inputPixelFormat = inputPixelFormat
         self.inputFourCC = inputFourCC
+        self.videoSampleFourCC = videoSampleFourCC ?? outputFourCC
         self.outputFourCC = outputFourCC
         self.rotationDegrees = rotationDegrees
         self.mirrored = mirrored
@@ -386,6 +391,7 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
                   age: stats.age, width: frame?.width, height: frame?.height,
                   inputPixelFormat: frame?.inputPixelFormat,
                   inputFourCC: frame?.inputPixelFormatFourCC,
+                  videoSampleFourCC: diagnostics?.lastVideoSampleFourCC,
                   outputFourCC: frame?.outputPixelFormat,
                   rotationDegrees: frame?.rotationDegrees,
                   mirrored: frame?.mirrored,
@@ -605,6 +611,11 @@ public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
     public let sampleCount: Int
     public let videoSampleCount: Int
     public let decodedH264FrameCount: Int
+    public let medianFPS: Double?
+    public let minimumFPS: Double?
+    public let maximumFPS: Double?
+    public let videoSampleFourCC: String?
+    public let frameOutputFourCC: String?
     public let cleanupPassed: Bool
     public let outcome: NativeCaptureFormatTrialOutcome
     public let failureCode: String?
@@ -619,6 +630,13 @@ public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
         sampleCount = metrics.samples.count
         videoSampleCount = metrics.videoSampleCount
         decodedH264FrameCount = metrics.decodedH264FrameCount
+        let rates = metrics.samples.map(\.recentFPS)
+            .filter { $0.isFinite && $0 > 0 }.sorted()
+        medianFPS = rates.isEmpty ? nil : rates[rates.count / 2]
+        minimumFPS = rates.first
+        maximumFPS = rates.last
+        videoSampleFourCC = metrics.samples.last?.videoSampleFourCC
+        frameOutputFourCC = metrics.samples.last?.outputFourCC
         cleanupPassed = metrics.cleanup.isClean
         self.outcome = outcome
         self.failureCode = failureCode
@@ -858,7 +876,8 @@ public enum NativeCaptureFormatValidationService {
                 sample.height == definition.mode.height &&
                 sample.inputPixelFormat == definition.inputPixelFormat &&
                 sample.inputFourCC == definition.expectedInputFourCC &&
-                sample.outputFourCC == definition.expectedOutputFourCC &&
+                sample.videoSampleFourCC == definition.expectedOutputFourCC &&
+                sample.outputFourCC == "BGRA" &&
                 sample.age.map { $0.isFinite && $0 >= 0 && $0 < 1 } == true &&
                 sample.rotationDegrees == 0 && sample.mirrored == false &&
                 sample.requestedOutputPolicy == definition.outputPolicy.rawValue

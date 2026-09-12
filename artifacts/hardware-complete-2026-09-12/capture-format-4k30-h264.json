@@ -1,0 +1,64 @@
+{
+  "automaticFallback" : false,
+  "cameraImagesStored" : false,
+  "completed" : true,
+  "expectedDeviceID" : "0x11000002ca30023",
+  "expectedFailureCount" : 0,
+  "expectedSessionID" : "8A0C2664-7E98-4DBD-A989-441508927E28",
+  "failureCode" : "capture_format_rate_mismatch",
+  "operation" : "validation-capture-format-matrix",
+  "passed" : false,
+  "phase" : "completed",
+  "plan" : {
+    "automaticFallback" : false,
+    "cameraImagesStored" : false,
+    "cases" : [
+      {
+        "expectation" : "frames_required",
+        "expectedInputFourCC" : "420v",
+        "expectedOutputFourCC" : "avc1",
+        "fpsTolerance" : 0.05,
+        "id" : "nv12-h264-4k30",
+        "inputPixelFormat" : "nv12",
+        "mode" : {
+          "frameRate" : 30,
+          "height" : 2160,
+          "width" : 3840
+        },
+        "outputPolicy" : "h264"
+      }
+    ],
+    "executeRequested" : true,
+    "expectedDeviceID" : "0x11000002ca30023",
+    "expectedSessionID" : "8A0C2664-7E98-4DBD-A989-441508927E28",
+    "hardwareExecutionEnabled" : true,
+    "maximumSamplesPerCase" : 8,
+    "operation" : "validation-capture-format-matrix",
+    "sampleInterval" : 0.5,
+    "warmupSeconds" : 12
+  },
+  "restoration" : {
+    "attempted" : true,
+    "sessionID" : "04406FF8-1946-43AA-B97F-FE860EF8674C",
+    "succeeded" : true
+  },
+  "trials" : [
+    {
+      "caseID" : "nv12-h264-4k30",
+      "cleanupPassed" : true,
+      "decodedH264FrameCount" : 359,
+      "expectation" : "frames_required",
+      "failureCode" : "capture_format_rate_mismatch",
+      "frameOutputFourCC" : "BGRA",
+      "id" : "nv12-h264-4k30",
+      "maximumFPS" : 21.79262129389859,
+      "medianFPS" : 21.25038349936679,
+      "minimumFPS" : 20.964929278833015,
+      "outcome" : "failed",
+      "sampleCount" : 8,
+      "videoSampleCount" : 359,
+      "videoSampleFourCC" : "avc1"
+    }
+  ],
+  "verifiedCaseCount" : 0
+}

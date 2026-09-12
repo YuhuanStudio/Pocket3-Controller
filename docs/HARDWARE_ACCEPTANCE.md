@@ -402,6 +402,8 @@ recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload�
 
 Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程序完全結束後各做一次normal `USBInterfaceOpen`，兩次VS interface 1都回`kIOReturnExclusiveAccess`／`busy`；沒有seize、alternate切換、PROBE或pipe read。系統當時仍有CoreMediaIO `VDCAssistant`，公開API沒有安全釋放另一client的方法，因此direct VS維持unavailable，不以kill系統服務作產品方案。兩次pre-open均見`endpointCount=1`但properties為空，已促成第19批改成open成功後才查endpoint。[suspend](../artifacts/hardware-complete-2026-09-12/direct-uvc-after-suspend.json)、[App結束](../artifacts/hardware-complete-2026-09-12/direct-uvc-app-terminated.json)
 
+第20批capture format executor在修正IPC長任務timeout與encoded／decoded FourCC分離後完成四案例實機矩陣：1080p30 NV12/BGRA為237 samples、1080×1920@30 NV12/BGRA為232 samples，均verified；4K60 UYVY/H.264為0 callback並正確保留expected failure；4K30 NV12/H.264有179 avc1 samples、179次解碼、BGRA frame與clean pause，但未達30 fps門檻。獨立12秒warmup重測仍有359 avc1 samples／359 decode，median 21.25 fps、範圍20.96–21.79，因此維持`capture_format_rate_mismatch`。所有流程restore成功、未fallback、未保存影像。[矩陣](../artifacts/hardware-complete-2026-09-12/capture-format-matrix.json)、[4K30診斷](../artifacts/hardware-complete-2026-09-12/capture-format-4k30-h264.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

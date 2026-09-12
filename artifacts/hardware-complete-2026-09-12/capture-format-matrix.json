@@ -1,0 +1,131 @@
+{
+  "automaticFallback" : false,
+  "cameraImagesStored" : false,
+  "completed" : true,
+  "expectedDeviceID" : "0x11000002ca30023",
+  "expectedFailureCount" : 1,
+  "expectedSessionID" : "2625C089-D0BF-46EC-AB73-E9DB30E9A31B",
+  "failureCode" : "capture_format_rate_mismatch",
+  "operation" : "validation-capture-format-matrix",
+  "passed" : false,
+  "phase" : "completed",
+  "plan" : {
+    "automaticFallback" : false,
+    "cameraImagesStored" : false,
+    "cases" : [
+      {
+        "expectation" : "frames_required",
+        "expectedInputFourCC" : "420v",
+        "expectedOutputFourCC" : "BGRA",
+        "fpsTolerance" : 0.05,
+        "id" : "nv12-bgra-1080p30",
+        "inputPixelFormat" : "nv12",
+        "mode" : {
+          "frameRate" : 30,
+          "height" : 1080,
+          "width" : 1920
+        },
+        "outputPolicy" : "bgra"
+      },
+      {
+        "expectation" : "frames_required",
+        "expectedInputFourCC" : "420v",
+        "expectedOutputFourCC" : "BGRA",
+        "fpsTolerance" : 0.05,
+        "id" : "nv12-bgra-portrait-1080p30",
+        "inputPixelFormat" : "nv12",
+        "mode" : {
+          "frameRate" : 30,
+          "height" : 1920,
+          "width" : 1080
+        },
+        "outputPolicy" : "bgra"
+      },
+      {
+        "expectation" : "frames_required",
+        "expectedInputFourCC" : "420v",
+        "expectedOutputFourCC" : "avc1",
+        "fpsTolerance" : 0.05,
+        "id" : "nv12-h264-4k30",
+        "inputPixelFormat" : "nv12",
+        "mode" : {
+          "frameRate" : 30,
+          "height" : 2160,
+          "width" : 3840
+        },
+        "outputPolicy" : "h264"
+      },
+      {
+        "expectation" : "zero_callbacks",
+        "expectedInputFourCC" : "2vuy",
+        "fpsTolerance" : 0.05,
+        "id" : "uyvy-h264-4k60-zero-callback",
+        "inputPixelFormat" : "uyvy",
+        "mode" : {
+          "frameRate" : 60,
+          "height" : 2160,
+          "width" : 3840
+        },
+        "outputPolicy" : "h264"
+      }
+    ],
+    "executeRequested" : true,
+    "expectedDeviceID" : "0x11000002ca30023",
+    "expectedSessionID" : "2625C089-D0BF-46EC-AB73-E9DB30E9A31B",
+    "hardwareExecutionEnabled" : true,
+    "maximumSamplesPerCase" : 6,
+    "operation" : "validation-capture-format-matrix",
+    "sampleInterval" : 0.5,
+    "warmupSeconds" : 5
+  },
+  "restoration" : {
+    "attempted" : true,
+    "sessionID" : "0C4B0E41-106B-4FCA-87B8-F9C45B208531",
+    "succeeded" : true
+  },
+  "trials" : [
+    {
+      "caseID" : "nv12-bgra-1080p30",
+      "cleanupPassed" : true,
+      "decodedH264FrameCount" : 0,
+      "expectation" : "frames_required",
+      "id" : "nv12-bgra-1080p30",
+      "outcome" : "verified",
+      "sampleCount" : 6,
+      "videoSampleCount" : 237
+    },
+    {
+      "caseID" : "nv12-bgra-portrait-1080p30",
+      "cleanupPassed" : true,
+      "decodedH264FrameCount" : 0,
+      "expectation" : "frames_required",
+      "id" : "nv12-bgra-portrait-1080p30",
+      "outcome" : "verified",
+      "sampleCount" : 6,
+      "videoSampleCount" : 232
+    },
+    {
+      "caseID" : "nv12-h264-4k30",
+      "cleanupPassed" : true,
+      "decodedH264FrameCount" : 179,
+      "expectation" : "frames_required",
+      "failureCode" : "capture_format_rate_mismatch",
+      "id" : "nv12-h264-4k30",
+      "outcome" : "failed",
+      "sampleCount" : 6,
+      "videoSampleCount" : 179
+    },
+    {
+      "caseID" : "uyvy-h264-4k60-zero-callback",
+      "cleanupPassed" : true,
+      "decodedH264FrameCount" : 0,
+      "expectation" : "zero_callbacks",
+      "failureCode" : "capture_format_zero_callback_observed",
+      "id" : "uyvy-h264-4k60-zero-callback",
+      "outcome" : "expected_failure",
+      "sampleCount" : 0,
+      "videoSampleCount" : 0
+    }
+  ],
+  "verifiedCaseCount" : 2
+}

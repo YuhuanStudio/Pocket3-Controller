@@ -4,6 +4,10 @@ import Testing
 
 @Suite("Native capture format metrics matrix")
 struct NativeCaptureFormatValidationTests {
+    @Test func matrixUsesLongRunningIPCTimeout() {
+        #expect(IPCClient.timeoutSeconds(
+            for: NativeCaptureFormatValidationRequest.operation) == 120)
+    }
     private let sessionID = "capture-session-fixture"
     private let deviceID = "0x11000002ca30023"
 
@@ -43,7 +47,8 @@ struct NativeCaptureFormatValidationTests {
             width: definition.mode.width, height: definition.mode.height,
             inputPixelFormat: definition.inputPixelFormat,
             inputFourCC: definition.expectedInputFourCC,
-            outputFourCC: output ?? definition.expectedOutputFourCC,
+            videoSampleFourCC: output ?? definition.expectedOutputFourCC,
+            outputFourCC: "BGRA",
             rotationDegrees: 0, mirrored: false,
             videoSampleCount: videoSamples, pixelBufferCount: pixelBuffers,
             nonImageVideoSampleCount: definition.outputPolicy == .h264

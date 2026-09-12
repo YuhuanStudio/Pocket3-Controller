@@ -178,7 +178,8 @@ public enum IPCClient {
         if ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception",
             "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset",
             "validation-wireless-read-settings",
-            "move", BluetoothCameraEventRecordingRequest.operation].contains(operation) { return 120 }
+            "move", BluetoothCameraEventRecordingRequest.operation,
+            NativeCaptureFormatValidationRequest.operation].contains(operation) { return 120 }
         return 20
     }
     public static func call(_ operation: String, arguments: JSONValue = .object([:]), address: IPCAddress = .default, source: ServiceRequestSource? = nil) async throws -> ServiceReply {
