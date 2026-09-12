@@ -47,8 +47,8 @@ extension AppModel {
         let initialMode = initial.requestedMode
         let initialPixelFormat = initial.requestedPixelFormat ?? .automatic
         let initialOutputPolicy = initial.requestedOutputPolicy ?? .bgra
-        let adapter = NativeCaptureFormatValidationExecutorAdapter(
-            runCase: { definition, request in
+        let runCase: NativeCaptureFormatValidationExecutorAdapter.RunCase =
+            { definition, request in
                 do {
                     try Task.checkCancellation()
                     try await cameraService.connect(
@@ -130,17 +130,18 @@ extension AppModel {
                     throw BridgeFailure("capture_format_no_video_sample",
                         failure.message)
                 }
-            },
-            cleanup: {
+            }
+        let cleanup: NativeCaptureFormatValidationExecutorAdapter.Cleanup = {
                 await cameraService.pause()
                 let final = await cameraService.status()
                 return NativeCaptureFormatCleanupEvidence(
                     stopRequested: true, finalPhase: final.phase,
                     finalFrameCount: final.capture.frames,
                     finalSessionID: final.capture.sessionID)
-            },
-            restore: initialMode.map { mode in
-                { () async throws -> NativeCaptureFormatRestoreEvidence in
+            }
+        let restore: NativeCaptureFormatValidationExecutorAdapter.Restore?
+        if let mode = initialMode {
+            restore = { () async throws -> NativeCaptureFormatRestoreEvidence in
                     do {
                         try Task.checkCancellation()
                         try await cameraService.connect(
@@ -180,7 +181,11 @@ extension AppModel {
                             failureCode: "capture_format_restore_failed")
                     }
                 }
-            })
+        } else {
+            restore = nil
+        }
+        let adapter = NativeCaptureFormatValidationExecutorAdapter(
+            runCase: runCase, cleanup: cleanup, restore: restore)
         let report = await NativeCaptureFormatValidationService.execute(
             input, adapter: adapter)
         return ServiceReply(id: request.id, result: try .encode(report))

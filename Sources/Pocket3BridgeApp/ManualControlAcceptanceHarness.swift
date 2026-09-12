@@ -62,6 +62,13 @@ struct ManualControlAcceptanceProjection: Codable, Sendable, Equatable {
 /// hardware command, and every poll has a fixed upper bound.
 @MainActor
 enum ManualControlAcceptanceHarness {
+    private struct FixtureClock: ContinuousGimbalClock {
+        var now: TimeInterval { 0 }
+        func sleep(until _: TimeInterval) async throws {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
     private actor FakeTransport: ContinuousGimbalTransport {
         private(set) var commands: [DUMLJoystickCommand] = []
 
@@ -81,6 +88,7 @@ enum ManualControlAcceptanceHarness {
         let controller: ContinuousGimbalGestureController
         let scheduler: ContinuousGimbalScheduler
         let transport: FakeTransport
+        let binding: ContinuousGimbalBinding
     }
 
     static let version = 1
@@ -131,8 +139,9 @@ enum ManualControlAcceptanceHarness {
             surfaceID: focusSurface)
         let focusStarted = await waitUntil { focus.controller.isHolding }
         focus.controller.endSurface(focusSurface)
-        let focusLoss = await finish(
-            focus.controller, trigger: "focus_loss", scheduler: focus.scheduler)
+        let focusLoss = await observeCompletion(
+            focus.controller, trigger: "focus_loss", reason: .focusLost,
+            scheduler: focus.scheduler)
 
         let takeover = runFixture()
         _ = takeover.controller.beginGesture(
@@ -170,14 +179,18 @@ enum ManualControlAcceptanceHarness {
 
     private static func runFixture() -> Fixture {
         let transport = FakeTransport()
-        let scheduler = ContinuousGimbalScheduler(transport: transport)
+        // A fixed monotonic clock keeps this ownership harness independent of
+        // unrelated MainActor/render-test contention. Product schedulers keep
+        // the real 250 ms watchdog and are covered by their timing tests.
+        let scheduler = ContinuousGimbalScheduler(
+            transport: transport, clock: FixtureClock())
         let binding = ContinuousGimbalBinding(
             sessionID: "gui-fixture-\(UUID().uuidString)", generation: 1)
         let controller = ContinuousGimbalGestureController(monitorsEnabled: false)
         controller.configure(scheduler: scheduler, binding: binding,
                              availability: .ready)
         return Fixture(controller: controller, scheduler: scheduler,
-                       transport: transport)
+                       transport: transport, binding: binding)
     }
 
     private static func release(
@@ -198,6 +211,25 @@ enum ManualControlAcceptanceHarness {
     ) async -> ManualControlAcceptanceStep {
         await finish(controller, trigger: trigger, reason: .cancelled,
                      scheduler: scheduler)
+    }
+
+    private static func observeCompletion(
+        _ controller: ContinuousGimbalGestureController,
+        trigger: String,
+        reason: ContinuousGimbalStopReason,
+        scheduler: ContinuousGimbalScheduler
+    ) async -> ManualControlAcceptanceStep {
+        let completed = await waitUntil {
+            controller.lastStop?.reason == reason && !controller.canStop
+        }
+        let result = controller.lastStop
+        let schedulerIdle = await scheduler.status().phase == .idle
+        let passed = completed && result?.matchedLease == true &&
+            result?.neutralSent == true && schedulerIdle
+        return ManualControlAcceptanceStep(
+            trigger: trigger, stopReason: result?.reason,
+            neutralSent: result?.neutralSent == true,
+            schedulerIdle: schedulerIdle, passed: passed)
     }
 
     private static func finish(

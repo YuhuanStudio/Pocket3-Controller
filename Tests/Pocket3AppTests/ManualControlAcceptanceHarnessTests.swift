@@ -3,8 +3,9 @@ import Testing
 import Pocket3Core
 @testable import Pocket3BridgeApp
 
-@Suite(.serialized)
-struct ManualControlAcceptanceHarnessTests {
+// Extend the existing serialized controller suite so this harness cannot run
+// concurrently with its real-time 50 ms heartbeat test.
+extension ContinuousGimbalGestureTests {
     @MainActor @Test func disabledHarnessNeverClaimsHardwareExecution() async {
         let result = await ManualControlAcceptanceHarness.run(developerMode: false)
         #expect(result.developerOnly)
