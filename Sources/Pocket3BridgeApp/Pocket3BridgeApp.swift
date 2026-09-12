@@ -80,6 +80,8 @@ final class AppModel {
     /// Diagnostics and never exposed to normal users or persisted as a
     /// command replay surface.
     var developerBodyValidationResult: NativeBodyValidationResult?
+    @ObservationIgnored private var powerChargingReducer = Pocket3PowerChargingDiagnosisReducer()
+    var powerChargingDiagnosis: Pocket3PowerChargingDiagnosis?
     var modelStatus: IntelligenceStatus?
     var localStatus: LocalModelStatus?
     var selectedEngine = "apple"
@@ -368,6 +370,7 @@ final class AppModel {
             nativeSession: NativeSessionCapability.from(wireless.nativeSessionStatus),
             bodyRecordingFormats: wireless.bodyRecordingCapabilitySnapshot)
         status = await service.status()
+        updatePowerChargingDiagnosis()
         await configureUSBContinuousControls()
         await focus.refresh(capture: status?.capture, phase: status?.phase)
         if !capturingUI {
@@ -382,6 +385,32 @@ final class AppModel {
         cameraSelection.refresh(availableIDs: status?.devices.map(\.id) ?? [])
         availableModes = CaptureMode.available(deviceID: selectedID)
         availableInputFormats = CaptureMode.availableInputFormats(deviceID: selectedID)
+    }
+
+    private func updatePowerChargingDiagnosis() {
+        let now = Date()
+        let nowUptime = ProcessInfo.processInfo.systemUptime
+        let discovery = wireless.discovery
+        let paired = discovery.pairing?.peerReportedPaired == true
+        let sessionID = paired ? discovery.sessionID : nil
+        let peripheralID = paired ? discovery.selectedPeripheralID : nil
+        let battery: Pocket3PowerChargingBatterySample?
+        if paired, let observation = discovery.battery {
+            let age = now.timeIntervalSince(observation.telemetry.receivedAt)
+            battery = Pocket3PowerChargingBatterySample(
+                sessionID: observation.sessionID,
+                peripheralID: observation.peripheralID,
+                percent: observation.telemetry.percent,
+                chargingRaw: observation.telemetry.chargingStateRaw,
+                receivedUptime: nowUptime - age)
+        } else {
+            battery = nil
+        }
+        let input = Pocket3PowerChargingInput(
+            usb: Pocket3PowerChargingUSBInput(status?.power),
+            sessionID: sessionID, peripheralID: peripheralID,
+            battery: battery, nowUptime: nowUptime)
+        powerChargingDiagnosis = powerChargingReducer.reduce(input)
     }
     private func configureUSBContinuousControls() async {
         guard !wireless.ownsContinuousControls else { return }
@@ -1208,15 +1237,15 @@ struct RootView: View {
                 YunCard {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text(loc("USB audio")).font(Yun.Text.title); Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }; Spacer(); Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady) }
                 }
-                if let power = model.status?.power, power.present {
+                if let diagnosis = model.powerChargingDiagnosis,
+                   diagnosis.usbPresent || diagnosis.batteryPercent != nil {
+                    PowerChargingDiagnosticsCard(diagnosis: diagnosis)
+                } else if let power = model.status?.power, power.present {
                     YunCard {
                         VStack(alignment: .leading, spacing: Yun.Space.md) {
                             Text(loc("USB power & charging")).font(Yun.Text.title)
                             detail(loc("USB current allocation"), power.configuredMilliamps.map { "\($0) mA" } ?? loc("Unknown"))
                             detail(loc("Battery charging"), loc("Unknown"))
-                            if power.isPowerAllocationFailed == true {
-                                Text(loc("macOS reported a USB power allocation failure.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
-                            }
                             Text(loc("USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app."))
                                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
                         }

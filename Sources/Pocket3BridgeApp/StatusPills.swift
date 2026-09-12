@@ -33,7 +33,14 @@ struct StatusPills: View {
         }
         pills.append(Pill(id: "access", label: loc(model.access.title)))
         if model.access == .control && model.status?.stopValidated != true { pills.append(Pill(id: "validation", label: loc("Movement not validated"), tone: .warning, showsDot: true)) }
-        if let power = model.status?.power, power.present {
+        if let diagnosis = model.powerChargingDiagnosis,
+           diagnosis.usbPresent || diagnosis.batteryPercent != nil {
+            pills.append(Pill(id: "power", label: PowerChargingPresentation.title(diagnosis),
+                              value: PowerChargingPresentation.value(diagnosis),
+                              tone: PowerChargingPresentation.tone(diagnosis),
+                              showsDot: diagnosis.needsAttention,
+                              help: PowerChargingPresentation.reason(diagnosis)))
+        } else if let power = model.status?.power, power.present {
             pills.append(Pill(id: "power", label: loc(power.isPowerAllocationFailed == true ? "USB power issue" : "Charging unknown"), tone: power.isPowerAllocationFailed == true ? .warning : .neutral, help: loc("USB power is detected separately from battery charging. See Diagnostics for details.")))
         }
         if let battery = model.wireless.freshBatteryAssessment,
