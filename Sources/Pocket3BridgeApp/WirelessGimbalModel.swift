@@ -625,6 +625,27 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Returns the same single-owner transaction boundary for native camera
+    /// capture validation. It never creates a datalink or performs a read;
+    /// the capture service supplies fresh status/property evidence and invokes
+    /// this adapter at most once when `--execute` is explicit.
+    func nativeCameraCaptureValidationAdapter()
+        -> NativeCameraCaptureValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeCameraCaptureValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection,
+                expectedLink: expectedLink)
+        }
+    }
+
     /// Executes exactly one already-prepared transaction through the current
     /// Pocket3Datalink owner.  The surrounding service owns command-specific
     /// readback rules; this method owns model-level identity and busy fences.

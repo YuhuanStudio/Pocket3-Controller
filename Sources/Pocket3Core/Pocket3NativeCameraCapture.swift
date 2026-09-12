@@ -485,6 +485,19 @@ public struct Pocket3NativeCameraCaptureCoordinator: Sendable {
         return true
     }
 
+    /// Records an execution gate failure without sending a prepared frame.
+    /// The request and baseline remain in the result as partial evidence so a
+    /// developer route can explain why an explicit execute was not submitted.
+    @discardableResult
+    public mutating func blockExecution(reason: String) -> Bool {
+        guard phase == .awaitingAcknowledgment || phase == .awaitingReadback else {
+            return false
+        }
+        phase = .failed
+        failureCode = String(reason.prefix(128))
+        return true
+    }
+
     public var result: Pocket3NativeCameraCaptureResult? {
         guard let operation, let baseline else { return nil }
         return Pocket3NativeCameraCaptureResult(operation: operation,
