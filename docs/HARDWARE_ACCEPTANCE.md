@@ -400,6 +400,8 @@ recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload�
 
 同日第18批USB手動metrics route以exact device `0x11000002ca30023`／capture session `EAF313C1-B7D6-4507-A21A-D2107EFFBBA2` 執行一次1.2秒有界矩陣。pan near/far最終hold分別約5400／16920 raw；tilt near/far約5040／18720 raw。四組均取得18–19筆moving readback，release/Stop後5筆、約0.216–0.221秒穩定且restore verified。Zoom從100前進至111，途中Stop保持110、11筆／0.853秒穩定，之後恢復100。重新建立capture得到session `E625D633-1F50-43BB-8C76-9C3C4FE5EDDC`，舊session寫入被`session_changed` fence拒絕；所有evaluator checks通過。報告仍保留`physicalMotionVerified=false`，因為這輪只保存scalar metrics，未保存或檢視相機畫面，也未由操作者確認物理方向／光學取景。[結果](../artifacts/hardware-complete-2026-09-12/usb-manual-acceptance.json)
 
+Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程序完全結束後各做一次normal `USBInterfaceOpen`，兩次VS interface 1都回`kIOReturnExclusiveAccess`／`busy`；沒有seize、alternate切換、PROBE或pipe read。系統當時仍有CoreMediaIO `VDCAssistant`，公開API沒有安全釋放另一client的方法，因此direct VS維持unavailable，不以kill系統服務作產品方案。兩次pre-open均見`endpointCount=1`但properties為空，已促成第19批改成open成功後才查endpoint。[suspend](../artifacts/hardware-complete-2026-09-12/direct-uvc-after-suspend.json)、[App結束](../artifacts/hardware-complete-2026-09-12/direct-uvc-app-terminated.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

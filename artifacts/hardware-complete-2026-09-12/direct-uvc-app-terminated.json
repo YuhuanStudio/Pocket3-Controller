@@ -1,0 +1,14 @@
+{
+  "access" : "normal_open_immediate_close_no_seize_no_pipe",
+  "closeIOReturn" : -536870195,
+  "closed" : 0,
+  "deviceFound" : true,
+  "endpointCount" : 1,
+  "endpoints" : [
+
+  ],
+  "interfaceNumber" : 1,
+  "openIOReturn" : -536870203,
+  "opened" : false,
+  "result" : "busy"
+}
