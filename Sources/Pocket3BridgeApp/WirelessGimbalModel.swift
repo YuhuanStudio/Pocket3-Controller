@@ -686,6 +686,52 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Reuses the same single-owner datalink transaction boundary for the
+    /// developer-only exposure coordinator. The transaction itself remains
+    /// the only wire operation; this wrapper merely turns an adapter-validated
+    /// observed payload into the typed exposure/ISO-limit evidence expected by
+    /// the pure service.
+    func nativeExposureValidationAdapter()
+        -> NativeExposureValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeExposureValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            let transaction = try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection, expectedLink: expectedLink)
+            let receivedUptime = transaction.observedUptime
+                ?? transaction.finishedUptime
+            let exposureReadback: Pocket3ExposureObservation?
+            let isoLimitReadback: Pocket3AdvancedSettingObservation?
+            if let payload = transaction.observedPayload,
+               let receivedUptime, let sessionID = readiness.sessionID {
+                exposureReadback = Pocket3ExposureObservation(
+                    sessionID: sessionID,
+                    generation: readiness.generation,
+                    receivedUptime: receivedUptime, raw: payload)
+                if let keyed = Pocket3AdvancedSettingReadback.decode(payload,
+                    setting: .isoLimit, expectedValueLength: 1) {
+                    isoLimitReadback = Pocket3AdvancedSettingObservation(
+                        sessionID: sessionID, generation: readiness.generation,
+                        receivedUptime: receivedUptime, readback: keyed)
+                } else {
+                    isoLimitReadback = nil
+                }
+            } else {
+                exposureReadback = nil
+                isoLimitReadback = nil
+            }
+            return Pocket3ExposureExecutionResult(transaction: transaction,
+                exposureReadback: exposureReadback,
+                isoLimitReadback: isoLimitReadback)
+        }
+    }
+
     /// Executes exactly one already-prepared transaction through the current
     /// Pocket3Datalink owner.  The surrounding service owns command-specific
     /// readback rules; this method owns model-level identity and busy fences.

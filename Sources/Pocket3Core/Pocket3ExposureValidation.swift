@@ -19,6 +19,7 @@ public enum Pocket3ExposureMode: UInt8, Codable, Sendable, Equatable, Hashable,
 /// developer route can map these to JSON/CLI errors in a later slice without
 /// giving the pure coordinator any network or UI responsibilities.
 public enum Pocket3ExposureValidationError: Error, Codable, Sendable, Equatable {
+    case invalidArguments
     case invalidValue
     case invalidRequestIdentity
     case invalidTimeout
@@ -1284,6 +1285,7 @@ public enum NativeExposureValidationOperation: String, Codable, Sendable,
 }
 
 public struct NativeExposureValidationRequest: Codable, Sendable, Equatable {
+    public static let operation = "validation-wireless-native-exposure"
     public let action: NativeExposureValidationOperation
     public let expectedSessionID: UUID
     public let peripheralID: UUID
@@ -1364,6 +1366,157 @@ public struct NativeExposureValidationRequest: Codable, Sendable, Equatable {
     }
 
     public var typedOperation: Pocket3ExposureOperation? { operation }
+
+    public init(arguments: JSONValue) throws {
+        guard case .object(let fields) = arguments else {
+            throw Pocket3ExposureValidationError.invalidArguments
+        }
+        let allowed = Set(["action", "expectedSessionID", "peripheralID",
+                           "generation", "value", "iso", "shutter",
+                           "execute", "timeout"])
+        guard Set(fields.keys).isSubset(of: allowed),
+              let actionText = fields["action"]?.string,
+              let action = Self.parseAction(actionText),
+              let sessionText = fields["expectedSessionID"]?.string,
+              let expectedSessionID = UUID(uuidString: sessionText),
+              let peripheralText = fields["peripheralID"]?.string,
+              let peripheralID = UUID(uuidString: peripheralText),
+              let generationNumber = fields["generation"]?.number,
+              generationNumber.isFinite, generationNumber.rounded() == generationNumber,
+              generationNumber >= 1,
+              generationNumber < 18_446_744_073_709_551_616,
+              let generation = UInt64(exactly: generationNumber) else {
+            throw Pocket3ExposureValidationError.invalidArguments
+        }
+        let value = try Self.stringField(fields["value"], name: "value")
+        let iso = try Self.stringField(fields["iso"], name: "iso")
+        let shutter = try Self.stringField(fields["shutter"], name: "shutter")
+        let execute: Bool
+        if let encoded = fields["execute"] {
+            guard let parsed = encoded.bool else {
+                throw Pocket3ExposureValidationError.invalidArguments
+            }
+            execute = parsed
+        } else { execute = false }
+        let timeout: TimeInterval
+        if let encoded = fields["timeout"] {
+            guard let parsed = encoded.number else {
+                throw Pocket3ExposureValidationError.invalidTimeout
+            }
+            timeout = parsed
+        } else { timeout = 3 }
+        try self.init(action: action, expectedSessionID: expectedSessionID,
+                      peripheralID: peripheralID, generation: generation,
+                      value: value, iso: iso, shutter: shutter,
+                      execute: execute, timeout: timeout)
+    }
+
+    public init(cliArguments: [String]) throws {
+        var fields: [String: JSONValue] = [:]
+        let names = ["--action": "action", "--session": "expectedSessionID",
+                     "--peripheral": "peripheralID", "--generation": "generation",
+                     "--value": "value", "--iso": "iso", "--shutter": "shutter",
+                     "--timeout": "timeout"]
+        var index = 0
+        while index < cliArguments.count {
+            let argument = cliArguments[index]
+            if argument == "--execute" {
+                guard fields["execute"] == nil else {
+                    throw BridgeFailure("usage", "Duplicate --execute")
+                }
+                fields["execute"] = .bool(true)
+                index += 1
+                continue
+            }
+            guard let key = names[argument], index + 1 < cliArguments.count,
+                  fields[key] == nil else {
+                throw BridgeFailure("usage", "Unknown, duplicate or incomplete native exposure option")
+            }
+            let raw = cliArguments[index + 1]
+            switch key {
+            case "generation", "timeout":
+                guard let number = Double(raw), number.isFinite else {
+                    throw BridgeFailure("usage", "Native exposure numeric options must be finite")
+                }
+                fields[key] = .number(number)
+            default:
+                fields[key] = .string(raw)
+            }
+            index += 2
+        }
+        do {
+            try self.init(arguments: .object(fields))
+        } catch let error as Pocket3ExposureValidationError {
+            throw BridgeFailure("invalid_native_exposure_request", String(describing: error))
+        }
+    }
+
+    public var arguments: JSONValue {
+        var fields: [String: JSONValue] = [
+            "action": .string(action.rawValue),
+            "expectedSessionID": .string(expectedSessionID.uuidString),
+            "peripheralID": .string(peripheralID.uuidString),
+            "generation": .number(Double(generation)),
+            "execute": .bool(execute), "timeout": .number(timeout)
+        ]
+        if let value { fields["value"] = .string(value) }
+        if let iso { fields["iso"] = .string(iso) }
+        if let shutter { fields["shutter"] = .string(shutter) }
+        return .object(fields)
+    }
+
+    public static let schema: JSONValue = .object([
+        "type": .string("object"),
+        "properties": .object([
+            "action": .object(["type": .string("string"),
+                "enum": .array(NativeExposureValidationOperation.allCases.map { .string($0.rawValue) })]),
+            "expectedSessionID": .object(["type": .string("string"), "minLength": .number(1)]),
+            "peripheralID": .object(["type": .string("string"), "minLength": .number(1)]),
+            "generation": .object(["type": .string("integer"), "minimum": .number(1)]),
+            "value": .object(["type": .string("string")]),
+            "iso": .object(["type": .string("string")]),
+            "shutter": .object(["type": .string("string")]),
+            "execute": .object(["type": .string("boolean")]),
+            "timeout": .object(["type": .string("number"),
+                "exclusiveMinimum": .number(0), "maximum": .number(5)])
+        ]),
+        "required": .array([.string("action"), .string("expectedSessionID"),
+                             .string("peripheralID"), .string("generation")]),
+        "additionalProperties": .bool(false)
+    ])
+
+    public init(from decoder: Decoder) throws {
+        try self.init(arguments: JSONValue(from: decoder))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        try arguments.encode(to: encoder)
+    }
+
+    private static func stringField(_ value: JSONValue?, name: String)
+        throws -> String? {
+        guard let value else { return nil }
+        guard let string = value.string else {
+            throw Pocket3ExposureValidationError.invalidArguments
+        }
+        return string
+    }
+
+    private static func parseAction(_ value: String)
+        -> NativeExposureValidationOperation? {
+        if let action = NativeExposureValidationOperation(rawValue: value) {
+            return action
+        }
+        switch value.lowercased() {
+        case "set-mode", "exposure-mode": return .mode
+        case "ev", "auto-ev": return .ev
+        case "manual-iso": return .iso
+        case "manual-shutter": return .shutter
+        case "iso-max", "isomax": return .isoLimit
+        case "preset", "manual": return .manualPreset
+        default: return nil
+        }
+    }
 
     private static func parseMode(_ value: String) -> Pocket3ExposureMode? {
         switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
@@ -1546,8 +1699,24 @@ public struct NativeExposureValidationService: Sendable {
             do {
                 let execution = try await adapter.execute(current,
                     readiness: snapshot.session)
-                let receivedAt = execution.transaction.finishedUptime
-                    ?? execution.transaction.observedUptime ?? snapshot.nowUptime
+                // A typed readback may be delivered after the transaction's
+                // finished timestamp. Use the newest evidence timestamp as
+                // the observation clock; otherwise a valid post-ACK sample
+                // would fail the freshness check merely because the transport
+                // result was assembled first.
+                var receivedAt = snapshot.nowUptime
+                if let value = execution.transaction.finishedUptime {
+                    receivedAt = max(receivedAt, value)
+                }
+                if let value = execution.transaction.observedUptime {
+                    receivedAt = max(receivedAt, value)
+                }
+                if let value = execution.exposureReadback?.receivedUptime {
+                    receivedAt = max(receivedAt, value)
+                }
+                if let value = execution.isoLimitReadback?.receivedUptime {
+                    receivedAt = max(receivedAt, value)
+                }
                 _ = coordinator.apply(execution, nowUptime: receivedAt)
                 guard coordinator.phase == .awaitingNextStep else { break }
                 let nextSnapshot = Pocket3ExposureValidationSnapshot(
