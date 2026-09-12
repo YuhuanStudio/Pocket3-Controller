@@ -55,6 +55,7 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     case gimbal
     case gimbalPreset
     case zoom
+    case bodyFormat
 
     // Live view is a separate phase and is not implied by command readiness.
     case livePreview
@@ -67,6 +68,8 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
             .credentialsAvailable
         case .whiteBalance, .exposure, .focusMode, .colorProfile, .record,
              .tracking, .gimbal, .gimbalPreset, .zoom:
+            .commandReady
+        case .bodyFormat:
             .commandReady
         case .livePreview:
             .liveReady

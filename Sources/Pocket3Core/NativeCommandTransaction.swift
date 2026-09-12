@@ -80,6 +80,7 @@ public struct NativeCommandTransactionResult: Codable, Sendable, Equatable {
     public var id: UUID
     public var command: NativeCameraSessionCommand
     public var generation: UInt64
+    public var sessionID: UUID?
     public var sequence: UInt16?
     public var requested: Bool
     public var submitted: Bool
@@ -97,8 +98,9 @@ public struct NativeCommandTransactionResult: Codable, Sendable, Equatable {
     public var failureCode: String?
 
     public init(id: UUID, command: NativeCameraSessionCommand, generation: UInt64,
+                sessionID: UUID? = nil,
                 requested: Bool = true, end: NativeCommandTransactionEnd = .failed) {
-        self.id = id; self.command = command; self.generation = generation
+        self.id = id; self.command = command; self.generation = generation; self.sessionID = sessionID
         sequence = nil; self.requested = requested; submitted = false
         responseReceived = false; acknowledged = false; observed = false
         responseStatus = nil; observedPayload = nil
@@ -128,13 +130,14 @@ public struct NativeCommandTransactionRequest: Sendable {
     public let id: UUID
     public let command: NativeCameraSessionCommand
     public let generation: UInt64
+    public let sessionID: UUID?
     public let frame: NativeCommandFrame
     public let responseMatcher: NativeCommandResponseMatcher
     public let timeout: TimeInterval
     private let observation: (@Sendable (DUMLFrame) -> Data?)?
 
     public init(id: UUID = UUID(), command: NativeCameraSessionCommand,
-                generation: UInt64, frame: NativeCommandFrame,
+                generation: UInt64, sessionID: UUID? = nil, frame: NativeCommandFrame,
                 responseMatcher: NativeCommandResponseMatcher? = nil,
                 timeout: TimeInterval = 2,
                 observation: (@Sendable (DUMLFrame) -> Data?)? = nil) throws {
@@ -142,17 +145,17 @@ public struct NativeCommandTransactionRequest: Sendable {
               timeout <= Self.maximumTimeout else {
             throw NativeCommandTransactionError.invalidTimeout
         }
-        self.id = id; self.command = command; self.generation = generation
+        self.id = id; self.command = command; self.generation = generation; self.sessionID = sessionID
         self.frame = frame; self.responseMatcher = responseMatcher ?? .init(for: frame)
         self.timeout = timeout; self.observation = observation
     }
 
     public init(id: UUID = UUID(), command: NativeCameraSessionCommand,
-                generation: UInt64, frame: DUMLFrame,
+                generation: UInt64, sessionID: UUID? = nil, frame: DUMLFrame,
                 responseMatcher: NativeCommandResponseMatcher? = nil,
                 timeout: TimeInterval = 2,
                 observation: (@Sendable (DUMLFrame) -> Data?)? = nil) throws {
-        try self.init(id: id, command: command, generation: generation,
+        try self.init(id: id, command: command, generation: generation, sessionID: sessionID,
                       frame: NativeCommandFrame(frame: frame),
                       responseMatcher: responseMatcher, timeout: timeout,
                       observation: observation)
@@ -167,7 +170,7 @@ public struct NativeCommandTransactionRequest: Sendable {
 /// These functions only construct requests; the caller must own a
 /// command-ready session and explicitly invoke `Pocket3Datalink.transact`.
 public enum Pocket3NativeCommandAdapter {
-    public static func readGimbalParameters(generation: UInt64,
+    public static func readGimbalParameters(generation: UInt64, sessionID: UUID? = nil,
                                             timeout: TimeInterval = 2) throws -> NativeCommandTransactionRequest {
         let frame = try NativeCommandFrame(source: Pocket3GimbalParameterCommand.source,
                                            destination: Pocket3GimbalParameterCommand.destination,
@@ -176,7 +179,7 @@ public enum Pocket3NativeCommandAdapter {
                                            commandID: Pocket3GimbalParameterCommand.commandID,
                                            payload: Pocket3GimbalParameterCommand.get.payload)
         return try NativeCommandTransactionRequest(command: .gimbal, generation: generation,
-            frame: frame, timeout: timeout) { response in
+            sessionID: sessionID, frame: frame, timeout: timeout) { response in
                 guard response.source == frame.destination, response.destination == frame.source,
                       response.commandSet == frame.commandSet, response.commandID == frame.commandID else { return nil }
                 return Pocket3GimbalParameterReadback.decode(response.payload)?.raw
@@ -188,14 +191,15 @@ public enum Pocket3NativeCommandAdapter {
     /// in a later transaction if the camera returns one.
     public static func bodyRecordingFormatCandidate(
         _ command: CameraBodyRecordingFormatCommand,
-        generation: UInt64, timeout: TimeInterval = 2) throws -> NativeCommandTransactionRequest {
+        generation: UInt64, sessionID: UUID? = nil,
+        timeout: TimeInterval = 2) throws -> NativeCommandTransactionRequest {
         let frame = try NativeCommandFrame(source: CameraBodyRecordingFormatCommand.source,
                                            destination: CameraBodyRecordingFormatCommand.destination,
                                            flags: CameraBodyRecordingFormatCommand.requestFlags,
                                            commandSet: CameraBodyRecordingFormatCommand.commandSet,
                                            commandID: CameraBodyRecordingFormatCommand.commandID,
                                            payload: command.payload)
-        return try NativeCommandTransactionRequest(command: .record, generation: generation,
-            frame: frame, timeout: timeout)
+        return try NativeCommandTransactionRequest(command: .bodyFormat, generation: generation,
+            sessionID: sessionID, frame: frame, timeout: timeout)
     }
 }

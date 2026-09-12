@@ -18,13 +18,15 @@ private final class NativeCommandFakeWire: Pocket3DatalinkIO, @unchecked Sendabl
     let responseFlags: UInt8
     let responseSequenceOffset: UInt16
     let receiveDelay: TimeInterval
+    let terminalRecordingStatus: UInt8?
 
     init(responseCommand: (set: UInt8, id: UInt8)? = nil,
          responsePayload: Data = Data([0]), responseFlags: UInt8 = 0x80,
-         responseSequenceOffset: UInt16 = 0, receiveDelay: TimeInterval = 0) {
+         responseSequenceOffset: UInt16 = 0, receiveDelay: TimeInterval = 0,
+         terminalRecordingStatus: UInt8? = nil) {
         self.responseCommand = responseCommand; self.responsePayload = responsePayload
         self.responseFlags = responseFlags; self.responseSequenceOffset = responseSequenceOffset
-        self.receiveDelay = receiveDelay
+        self.receiveDelay = receiveDelay; self.terminalRecordingStatus = terminalRecordingStatus
     }
 
     var now: TimeInterval { lock.withLock { time } }
@@ -84,6 +86,14 @@ private final class NativeCommandFakeWire: Pocket3DatalinkIO, @unchecked Sendabl
                         flags: responseFlags, commandSet: command.commandSet,
                         commandID: command.commandID, payload: responsePayload)
                     incoming.append(try controlPacket(response, sessionID: sessionID))
+                    if command.commandSet == 2, command.commandID == 2,
+                       let terminalRecordingStatus {
+                        let status = DUMLFrame(source: 1, destination: 2,
+                            sequence: command.sequence &+ 1, flags: 0,
+                            commandSet: 2, commandID: 0x80,
+                            payload: Data([terminalRecordingStatus]))
+                        incoming.append(try controlPacket(status, sessionID: sessionID))
+                    }
                 } else if command.commandSet == 4 && command.commandID == 0x50,
                           command.payload == Pocket3DatalinkProtocol.heartbeat {
                     let response = DUMLFrame(source: 4, destination: 2,
@@ -170,7 +180,11 @@ private final class NativeCommandFakeWire: Pocket3DatalinkIO, @unchecked Sendabl
         let matchingCommands = wire.sentCommands.dropFirst(commandsBeforeTransaction).filter {
             $0.commandSet == 4 && $0.commandID == 0x50 && $0.sequence == result.sequence
         }
-        let command = try #require(matchingCommands.last)
+        guard let command = matchingCommands.last else {
+            Issue.record("The transaction did not emit one matching gimbal command")
+            _ = await link.disconnect()
+            return
+        }
         #expect(result.requested && result.submitted && result.responseReceived)
         #expect(result.acknowledged && result.observed && result.end == .observed)
         #expect(result.observedPayload == payload)
@@ -295,6 +309,30 @@ private final class NativeCommandFakeWire: Pocket3DatalinkIO, @unchecked Sendabl
         let result = try await link.transact(request, readiness: readiness)
         #expect(result.end == .failed && result.failureCode == "native_busy")
         #expect(wire.responseCommandCount == before)
+        _ = await link.disconnect()
+    }
+
+    @Test func bodyRecordCoordinatorCompletesOnlyAfterMatchingTerminalStatus() async throws {
+        let wire = NativeCommandFakeWire(responseCommand: (2, 2),
+            responsePayload: Data([0]), terminalRecordingStatus: 0x81)
+        let link = make(wire)
+        _ = try await link.connect()
+        let readiness = readySession()
+        var coordinator = try NativeBodyRecordingCoordinator(session: readiness)
+        let baseline = NativeBodyRecordingLifecycleSample(
+            sessionID: readiness.sessionID!, generation: readiness.generation,
+            receivedUptime: wire.now, statusByte: 0x01)
+        let request = try coordinator.prepareRecord(.start, baseline: baseline,
+            nowUptime: wire.now)
+
+        let transaction = try await link.transact(request, readiness: readiness)
+        let completed = coordinator.apply(transaction, nowUptime: wire.now)
+        #expect(completed)
+        #expect(transaction.submitted && transaction.acknowledged)
+        #expect(transaction.observed && transaction.end == .observed)
+        #expect(coordinator.result?.completed == true)
+        #expect(coordinator.result?.lifecycle?.status.lifecycle == .recording)
+        #expect(wire.commandCount(set: 2, id: 2) == 1)
         _ = await link.disconnect()
     }
 }

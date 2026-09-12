@@ -342,6 +342,9 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
         guard readiness.generation == request.generation else {
             throw NativeCommandTransactionError.staleGeneration
         }
+        guard request.sessionID == nil || request.sessionID == readiness.sessionID else {
+            throw NativeCommandTransactionError.staleGeneration
+        }
         guard readiness.isReady(for: request.command) else {
             throw NativeCommandTransactionError.commandNotReady
         }
@@ -378,7 +381,7 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
                                       binding: ContinuousGimbalBinding,
                                       permit: OperationPermit) -> NativeCommandTransactionResult {
         var result = NativeCommandTransactionResult(id: request.id, command: request.command,
-            generation: request.generation)
+            generation: request.generation, sessionID: request.sessionID)
         result.startedUptime = io.now
         defer {
             pendingNativeCommand = nil
