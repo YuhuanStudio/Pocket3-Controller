@@ -91,6 +91,7 @@ import Testing
                                         prepareManual: {})
         #expect(model.nativeBodyValidationAdapter() == nil)
         #expect(model.nativeTapFocusValidationAdapter() == nil)
+        #expect(model.nativeAudioDSPValidationAdapter() == nil)
         #expect(model.nativeBodyValidationBusy == false)
     }
 }

@@ -570,6 +570,24 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Reuses the same single-owner transaction boundary for the audio DSP
+    /// GET/SET/GET validator. The audio coordinator owns its three-step order;
+    /// this model only fences each individual transaction to the current link.
+    func nativeAudioDSPValidationAdapter() -> NativeAudioDSPValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeAudioDSPValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection, expectedLink: expectedLink)
+        }
+    }
+
     /// Returns the same single-owner transaction boundary for native zoom and
     /// gimbal validation. The adapter never creates a datalink or obtains a
     /// second connection; the motion service owns the one-request/readback

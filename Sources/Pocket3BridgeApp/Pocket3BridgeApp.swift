@@ -239,7 +239,7 @@ final class AppModel {
                         throw BridgeFailure("invalid_focus_point", "Pass normalized x and y with an active camera")
                     }
                     return ServiceReply(id: request.id, result: try .encode(try await service.capture.focus(at: CGPoint(x: x, y: y), sessionToken: token)))
-                case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", BluetoothCameraEventRecordingRequest.operation, "validation-wireless-tap-focus", NativeTapFocusValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-setting", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect":
+                case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", BluetoothCameraEventRecordingRequest.operation, "validation-wireless-tap-focus", NativeTapFocusValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, NativeAudioDSPValidationRequest.operation, "validation-wireless-setting", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect":
                     if request.operation == NativeActiveTrackValidationRequest.operation {
                         return try await AppModel.shared.handleActiveTrackValidation(request)
                     }
@@ -251,6 +251,9 @@ final class AppModel {
                     }
                     if request.operation == NativeSettingValidationRequest.operation {
                         return try await AppModel.shared.handleNativeSettingValidation(request)
+                    }
+                    if request.operation == NativeAudioDSPValidationRequest.operation {
+                        return try await AppModel.shared.handleNativeAudioDSPValidation(request)
                     }
                     return try await AppModel.shared.handleWirelessValidation(request)
                 case "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding":

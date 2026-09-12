@@ -56,6 +56,7 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     case gimbalPreset
     case zoom
     case productShowcase
+    case audioDSP
     case cameraCapture
     case bodyFormat
 
@@ -69,7 +70,7 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
         case .credentials:
             .credentialsAvailable
         case .whiteBalance, .exposure, .focusMode, .colorProfile, .record,
-             .tracking, .gimbal, .gimbalPreset, .zoom, .productShowcase,
+             .tracking, .gimbal, .gimbalPreset, .zoom, .productShowcase, .audioDSP,
              .cameraCapture:
             .commandReady
         case .bodyFormat:

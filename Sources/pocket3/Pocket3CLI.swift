@@ -108,8 +108,19 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
+                if command == NativeAudioDSPValidationRequest.operation {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled",
+                            "Audio DSP validation requires --hardware-validation")
+                    }
+                    let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
+                    let request = try NativeAudioDSPValidationRequest(cliArguments: requestArguments)
+                    let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                    print(reply.result?.pretty ?? "{}")
+                    return
+                }
                 if command == NativeTapFocusValidationRequest.operation {
                     guard args.contains("--hardware-validation") else {
                         throw BridgeFailure("validation_disabled",
@@ -396,6 +407,8 @@ import MCP
           Developer only: sequentially reads allowlisted paired-camera properties; never writes a setting or joins Wi-Fi.
         pocket3 validation-wireless-body --action start|stop|format [--resolution NAME --fps FPS] [--execute] [--hardware-validation]
           Developer only: dry-run by default; validates exact command-ready session, fresh 02/80/readback and legal capability evidence. An executor must be injected before any command can be submitted.
+        pocket3 validation-wireless-audio-dsp --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N [--wind off|on] [--direction all|front|frontAndBack] [--timeout SECONDS] [--execute] --hardware-validation
+          Developer only: A0 GET → one 9F byte-2 patch → matching A0 GET. Unknown bytes are preserved; dry-run is the default.
         pocket3 validation-wireless-tracking --action set|clear --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N [--id ID --x X --y Y --width W --height H] [--execute] --hardware-validation
           Developer only: dry-run by default. A6 set/clear requires fresh A5 and A89 readbacks; execute stays disabled until native rotation/mirror coordinates are calibrated.
         pocket3 validation-wireless-native-tap-focus --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N --x X --y Y [--timeout SECONDS] [--execute] --hardware-validation
