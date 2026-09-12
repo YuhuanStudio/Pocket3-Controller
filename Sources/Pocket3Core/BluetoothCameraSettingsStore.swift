@@ -100,6 +100,15 @@ struct BluetoothCameraSettingsStore: Sendable {
         }
     }
 
+    /// Returns the typed body-format capability from the same fresh,
+    /// session-bound snapshot used by the read-only settings surface. A
+    /// malformed envelope or a stale/different peer produces nil.
+    func bodyRecordingCapabilities(sessionID: UUID, peripheralID: UUID?, paired: Bool,
+                                   nowUptime: TimeInterval) -> CameraVideoFormatCapabilities? {
+        snapshot(sessionID: sessionID, peripheralID: peripheralID, paired: paired,
+                 nowUptime: nowUptime).first(where: { $0.property == .videoFormatCapabilities })?.bodyRecordingCapabilities
+    }
+
     /// Internal write-observation seed. No raw payload is retained or exposed;
     /// a setter cannot use an old replay to manufacture a fresh confirmation.
     func admissionSnapshot(for property: CameraSettingsProperty, sessionID: UUID,

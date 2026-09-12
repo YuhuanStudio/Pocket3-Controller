@@ -109,6 +109,19 @@ public struct CameraSettingsObservation: Codable, Sendable, Equatable {
             && now >= receivedUptime && now - receivedUptime <= maximumAge
     }
 
+    /// Typed body-recording capability when this observation is the
+    /// `camcap_video_format` property. The legacy opaque value remains the
+    /// source of truth for raw bytes; malformed envelopes therefore return
+    /// nil here without being mistaken for an empty capability list.
+    public var bodyRecordingCapabilities: CameraVideoFormatCapabilities? {
+        readOnlyValue?.typedVideoFormatCapabilities
+    }
+
+    /// Naming used by callers that work directly with the property name.
+    public var videoFormatCapabilities: CameraVideoFormatCapabilities? {
+        bodyRecordingCapabilities
+    }
+
     static func decode(_ push: CameraPropertyPush, binding: ContinuousGimbalBinding, receivedUptime: TimeInterval) -> Self? {
         guard push.value.count <= DUMLCodec.maximumPayloadLength else { return nil }
         let readOnlyValue = CameraReadOnlyPropertyDecoder.decode(push.property, value: push.value)

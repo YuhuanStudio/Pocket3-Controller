@@ -13,6 +13,71 @@ public enum Pocket3ShootingMode: UInt8, Codable, Sendable, CaseIterable {
     case lowLight = 0x28
 }
 
+/// Lifecycle encoded by the recording/transition bits in `02/80` byte 0.
+/// The raw byte is retained by `Pocket3BodyRecordingStatus`; values outside
+/// the four captured states stay `.unknown`.
+public enum Pocket3BodyRecordingLifecycle: Codable, Sendable, Equatable {
+    case idle
+    case transitioningToIdle
+    case recording
+    case transitioningToRecording
+    case unknown(raw: UInt8)
+
+    public static let starting = Self.transitioningToRecording
+    public static let stopping = Self.transitioningToIdle
+    public static let transitionRecording = Self.transitioningToRecording
+    public static let transitionIdle = Self.transitioningToIdle
+
+    public init(rawValue: UInt8) {
+        switch rawValue {
+        case 0x01: self = .idle
+        case 0x41: self = .transitioningToIdle
+        case 0x81: self = .recording
+        case 0xC1: self = .transitioningToRecording
+        default: self = .unknown(raw: rawValue)
+        }
+    }
+
+    public var rawValue: UInt8 {
+        switch self {
+        case .idle: 0x01
+        case .transitioningToIdle: 0x41
+        case .recording: 0x81
+        case .transitioningToRecording: 0xC1
+        case .unknown(let raw): raw
+        }
+    }
+
+    /// The recording bit as received, including for unknown future states.
+    public var recordingBit: Bool { rawValue & 0x80 != 0 }
+    /// The transition bit as received, including for unknown future states.
+    public var transitionBit: Bool { rawValue & 0x40 != 0 }
+    public var isRecording: Bool { recordingBit }
+    public var isTransitioning: Bool { transitionBit }
+}
+
+/// Typed `02/80` byte-0 status. This value describes camera-reported state;
+/// it does not imply that a start/stop command was sent or accepted.
+public struct Pocket3BodyRecordingStatus: Codable, Sendable, Equatable {
+    public let rawValue: UInt8
+    public let lifecycle: Pocket3BodyRecordingLifecycle
+
+    public init(rawValue: UInt8) {
+        self.rawValue = rawValue
+        lifecycle = Pocket3BodyRecordingLifecycle(rawValue: rawValue)
+    }
+
+    public var recording: Bool { lifecycle.recordingBit }
+    public var transitioning: Bool { lifecycle.transitionBit }
+    public var isRecording: Bool { recording }
+    public var isTransitioning: Bool { transitioning }
+    public var state: Pocket3BodyRecordingLifecycle { lifecycle }
+    public var isKnown: Bool {
+        if case .unknown = lifecycle { return false }
+        return true
+    }
+}
+
 /// Read-only camera-domain state. It never implies that a record or mode
 /// request was sent, and it carries no media, credential or file path.
 public struct Pocket3CameraStatusObservation: Codable, Sendable, Equatable {
@@ -31,8 +96,19 @@ public struct Pocket3CameraStatusObservation: Codable, Sendable, Equatable {
     public let remainingRecordSeconds: UInt16?
     public let elapsedRecordSeconds: UInt16?
 
+    /// Typed lifecycle projection of `statusByte`. Unknown low/status bits
+    /// remain available through `recordingStatus.rawValue`.
+    public var recordingStatus: Pocket3BodyRecordingStatus {
+        Pocket3BodyRecordingStatus(rawValue: statusByte)
+    }
+    public var bodyRecordingStatus: Pocket3BodyRecordingStatus { recordingStatus }
+    public var recordingLifecycle: Pocket3BodyRecordingLifecycle { recordingStatus.lifecycle }
+    public var bodyRecordingLifecycle: Pocket3BodyRecordingLifecycle { recordingLifecycle }
+    public var recordingState: Pocket3BodyRecordingLifecycle { recordingLifecycle }
+    public var bodyRecordingState: Pocket3BodyRecordingLifecycle { recordingLifecycle }
+
     public func isFresh(nowUptime: TimeInterval, maximumAge: TimeInterval = 5) -> Bool {
-        nowUptime.isFinite && receivedUptime.isFinite && maximumAge.isFinite && maximumAge >= 0 &&
+        receivedAt.timeIntervalSinceReferenceDate.isFinite && nowUptime.isFinite && receivedUptime.isFinite && maximumAge.isFinite && maximumAge >= 0 &&
             nowUptime >= receivedUptime && nowUptime - receivedUptime <= maximumAge
     }
 }

@@ -23,6 +23,15 @@ public struct BluetoothCameraPropertyQueryResult: Codable, Sendable {
     public var valueLength: Int?
     public var valueTruncated = false
     public var observed: CameraSettingsObservation?
+    /// Typed only after a complete, valid `camcap_video_format` envelope is
+    /// received. This is derived from `observed`, so it carries that
+    /// observation's session binding and freshness timestamp.
+    public var bodyRecordingCapabilities: CameraVideoFormatCapabilities? {
+        observed?.bodyRecordingCapabilities
+    }
+    public var videoFormatCapabilities: CameraVideoFormatCapabilities? {
+        bodyRecordingCapabilities
+    }
     public var startedUptime: TimeInterval
     public var submittedUptime: TimeInterval?
     public var finishedUptime: TimeInterval?

@@ -95,14 +95,15 @@ public struct CameraVideoFormatCapabilities: Codable, Sendable, Equatable {
 }
 
 public enum CameraVideoFormatCapabilityDecoder {
-    /// A malformed envelope returns nil. Unknown version/entry values return a
-    /// typed object with their raw bytes intact.
+    /// Only the captured version-1 envelope is decoded. Unknown entry values
+    /// remain typed objects with raw selectors; an unknown envelope version is
+    /// left to the legacy opaque readback instead of being misparsed.
     public static func decode(_ value: Data) -> CameraVideoFormatCapabilities? {
         guard value.count >= 5, value.count <= DUMLCodec.maximumPayloadLength else { return nil }
         let bytes = Array(value)
         let innerLength = u16(bytes, 1)
         let bodyEnd = 3 + Int(innerLength)
-        guard innerLength >= 2, bodyEnd <= bytes.count else { return nil }
+        guard bytes[0] == 0x01, innerLength >= 2, bodyEnd <= bytes.count else { return nil }
         let body = Array(bytes[3..<bodyEnd])
         let count = Int(body[0])
         guard count > 0, count <= (body.count - 1) / 3 else { return nil }
