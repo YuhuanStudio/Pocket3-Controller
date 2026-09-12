@@ -80,6 +80,9 @@ final class AppModel {
     /// Diagnostics and never exposed to normal users or persisted as a
     /// command replay surface.
     var developerBodyValidationResult: NativeBodyValidationResult?
+    /// Metadata-only camera media library projection used by developer
+    /// Diagnostics. It never stores media bytes, thumbnails or credentials.
+    var mediaLibrary = Pocket3MediaLibraryModel()
     /// Last developer-only exposure validation evidence. The body capability
     /// Disclosure shows this only when developer mode is explicitly enabled.
     var developerExposureValidationResult: NativeExposureValidationResult?
@@ -1256,6 +1259,9 @@ struct RootView: View {
                                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                }
+                if CommandLine.arguments.contains("--hardware-validation") {
+                    Pocket3MediaLibraryDiagnostics(model: $model.mediaLibrary)
                 }
                 if let gimbal = model.status?.gimbal { YunDisclosure(loc("Raw UVC data"), isExpanded: $showUVC) { Text((try? JSONValue.encode(gimbal).pretty) ?? "").font(Yun.Text.mono).textSelection(.enabled) } }
                 activity

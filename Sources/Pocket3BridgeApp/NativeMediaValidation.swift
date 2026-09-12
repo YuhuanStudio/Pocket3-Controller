@@ -56,6 +56,12 @@ extension AppModel {
             let result = try await NativeMediaValidationService(
                 adapter: adapter, rangeFetcher: rangeFetcher).run(
                     input, snapshot: snapshot)
+            if let identity = try? Pocket3MediaSessionIdentity(status: readiness) {
+                _ = mediaLibrary.apply(result, expectedIdentity: identity,
+                    routeStatus: snapshot.routeStatus,
+                    receivedUptime: snapshot.nowUptime,
+                    nowUptime: ProcessInfo.processInfo.systemUptime)
+            }
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as NativeMediaValidationError {
             throw nativeMediaValidationFailure(error)

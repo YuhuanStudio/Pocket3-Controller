@@ -204,6 +204,9 @@ struct PreferencesWindow: View {
                 caption("Exports omit camera images and device identifiers by default.")
             } }
             BodyCapabilitySummary(model: model)
+            if CommandLine.arguments.contains("--hardware-validation") {
+                Pocket3MediaLibraryDiagnostics(model: $model.mediaLibrary)
+            }
             settingsCard { VStack(alignment: .leading, spacing: Yun.Space.md) {
                 Text(loc("USB audio test")).font(Yun.Text.title)
                 Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
