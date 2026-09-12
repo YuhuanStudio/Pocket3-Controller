@@ -7,6 +7,8 @@
 - [x] Phase 0 capability graph：明確分開 UVC capture、host output codec、機身錄影格式、native/live readiness、A–E 證據及 read/write/verified availability；`ServiceStatus` 已輸出 graph，未知 raw 值保留。
 - [x] Phase 0 native session readiness：`disconnected → paired → credentialsAvailable → datalinkHandshaking → commandReady → liveReady` 已接到既有 datalink；generation fence 阻止舊 callback 恢復權限，BLE pairing 不會直接授權 writer，也不會自動改 Mac 網路。
 - [x] Phase 0 Pocket 3 typed protocol：機身格式／FPS（含 9:16、1:1、3K）、原生 zoom、`FE08/FE09`、`04/50`、tracking `A5/A6/89` 與四步 tap AF 的純 encoder／decoder／validator 已實作。整合 Release gate 共 667 項通過（Core 540、Intelligence 44、Evaluation 1、App 76、XCTest 6）；尚未宣稱真機 writer 成功。
+- [x] Phase 1 readback／transaction 基礎：`camcap_video_format` 已接入 observation/query/store，`02/80` 已分清 starting／recording／stopping／idle；native command transaction 由既有 datalink 單一 sequence owner 執行，一次送出、ACK correlation、timeout、取消、generation 與連續雲台 ownership 均有界。
+- [x] Capability graph 已進入 App Diagnostics、CLI、MCP `camera_status`／`camera_body_status`；完整內容不塞入底部狀態列，保留既有 Yun footer 結構。第二批整合 Release gate 共 684 項通過（Core 554、Intelligence 44、Evaluation 1、App 79、XCTest 6），三語449字串、7個Yun共用設計檔未變。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
