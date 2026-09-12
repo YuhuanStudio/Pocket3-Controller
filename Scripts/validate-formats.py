@@ -56,8 +56,12 @@ try:
                     'rotationDegrees':frame.get('rotationDegrees'),'mirrored':frame.get('mirrored')})
                 if state['selected']['id']!=device_id or capture['sessionID']!=session:raise RuntimeError('Camera session changed during a format trial.')
                 time.sleep(.5)
+            # Keep scalar samples even when validation fails; otherwise a
+            # frame-rate mismatch loses the evidence needed to distinguish a
+            # fallback rate from a stale/missing-frame failure.
+            entry['samples'] = samples
             fps,tolerance=validate_samples(mode,a.pixel_format,device_id,session,samples)
-            entry.update(samples=samples,medianFPS=fps,fpsTolerance=tolerance)
+            entry.update(medianFPS=fps,fpsTolerance=tolerance)
             entry['passed']=True
         except (RuntimeError,subprocess.TimeoutExpired) as error:
             entry['error']=str(error)
