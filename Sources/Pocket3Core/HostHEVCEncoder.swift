@@ -339,7 +339,7 @@ public actor HostHEVCEncoder {
     /// Stops accepting frames, cancels queued work and invalidates the backend.
     /// In-flight output is still fenced by the phase/generation checks.
     public func stop() async -> HostHEVCEncoderSnapshot {
-        guard phase == .running else { return snapshot() }
+        guard phase != .stopped else { return snapshot() }
         phase = .stopping
         cancelledFrames += pending.count
         pending.removeAll(keepingCapacity: false)

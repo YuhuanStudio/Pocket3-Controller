@@ -48,6 +48,13 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
     public var pixelBufferCount = 0
     public var nonImageVideoSampleCount = 0
     public var nonImageVideoBlockBufferCount = 0
+    /// AVFoundation's didDrop callback count. This is observed delivery
+    /// evidence, not a claim about why the camera produced fewer frames.
+    public var droppedVideoFrameCount: Int? = 0
+    /// Count only drops whose CoreMedia reason explicitly indicates lateness
+    /// or exhausted output buffers.
+    public var backpressureEventCount: Int? = 0
+    public var lastDroppedFrameReason: String?
     // Optional for backward-compatible decoding of persisted diagnostics.
     public var decodedH264FrameCount: Int? = 0
     public var h264DecodeFailureCount: Int? = 0
@@ -264,6 +271,18 @@ public final class FrameStore: @unchecked Sendable {
             }
             diagnostics.lastVideoSampleFourCC = mediaSubType.map(CapturePixelFormat.fourCCString)
             diagnostics.lastVideoInputFourCC = inputMediaSubType.map(CapturePixelFormat.fourCCString)
+        }
+    }
+    public func recordVideoDrop(reason: String? = nil,
+                                backpressure: Bool = false) {
+        lock.withLock {
+            diagnostics.droppedVideoFrameCount =
+                (diagnostics.droppedVideoFrameCount ?? 0) + 1
+            if backpressure {
+                diagnostics.backpressureEventCount =
+                    (diagnostics.backpressureEventCount ?? 0) + 1
+            }
+            diagnostics.lastDroppedFrameReason = reason
         }
     }
     public func recordH264Decode(success: Bool, durationSeconds: Double) {
@@ -848,5 +867,13 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                 store.receiveAudio(frames: frames, rate: fmt.mSampleRate, channels: Int(fmt.mChannelsPerFrame), rms: rms, peak: peak)
             }
         }
+    }
+    public func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard output is AVCaptureVideoDataOutput else { return }
+        let reason = sampleBuffer.attachments[.droppedFrameReason]?.value
+            as? CMDroppedFrameReason
+        store.recordVideoDrop(
+            reason: reason?.rawValue,
+            backpressure: reason == .frameWasLate || reason == .outOfBuffers)
     }
 }

@@ -313,6 +313,80 @@ public struct NativeCaptureFormatValidationPlan: Codable, Sendable,
     }
 }
 
+public enum NativeCaptureFormatEvidenceStatus: String, Codable, Sendable,
+    Equatable, CaseIterable {
+    case verified
+    case failed
+    case notApplicable = "not_applicable"
+    case unknown
+}
+
+/// Scalar performance evidence retained with each format sample. Counts come
+/// from the capture callback/decoder diagnostics; no sample buffers or image
+/// bytes are retained. A low realtime rate can therefore be reported while
+/// codec and decode evidence remain independently successful.
+public struct NativeCaptureFormatPerformanceEvidence: Codable, Sendable,
+    Equatable, Hashable {
+    public let encodedVideoSampleCount: Int
+    public let decodedH264FrameCount: Int
+    public let h264DecodeFailureCount: Int
+    public let h264DecodeSubmittedCount: Int
+    public let h264DecodeDroppedFrameCount: Int
+    public let h264DecodeQueueLatencyTotalMilliseconds: Double
+    public let h264DecodeQueueLatencyMaximumMilliseconds: Double
+    public let h264DecodeTotalMilliseconds: Double
+    public let h264DecodeMaximumMilliseconds: Double
+    public let decodedHEVCFrameCount: Int
+    public let droppedVideoFrameCount: Int
+    public let backpressureEventCount: Int
+    public let callbackTimeoutCount: Int
+    public let callbackWaitTimedOut: Bool
+    public let lastDroppedFrameReason: String?
+
+    public init(encodedVideoSampleCount: Int = 0,
+                decodedH264FrameCount: Int = 0,
+                h264DecodeFailureCount: Int = 0,
+                h264DecodeSubmittedCount: Int = 0,
+                h264DecodeDroppedFrameCount: Int = 0,
+                h264DecodeQueueLatencyTotalMilliseconds: Double = 0,
+                h264DecodeQueueLatencyMaximumMilliseconds: Double = 0,
+                h264DecodeTotalMilliseconds: Double = 0,
+                h264DecodeMaximumMilliseconds: Double = 0,
+                decodedHEVCFrameCount: Int = 0,
+                droppedVideoFrameCount: Int = 0,
+                backpressureEventCount: Int = 0,
+                callbackTimeoutCount: Int = 0,
+                callbackWaitTimedOut: Bool = false,
+                lastDroppedFrameReason: String? = nil) {
+        self.encodedVideoSampleCount = max(0, encodedVideoSampleCount)
+        self.decodedH264FrameCount = max(0, decodedH264FrameCount)
+        self.h264DecodeFailureCount = max(0, h264DecodeFailureCount)
+        self.h264DecodeSubmittedCount = max(0, h264DecodeSubmittedCount)
+        self.h264DecodeDroppedFrameCount = max(0, h264DecodeDroppedFrameCount)
+        self.h264DecodeQueueLatencyTotalMilliseconds =
+            h264DecodeQueueLatencyTotalMilliseconds
+        self.h264DecodeQueueLatencyMaximumMilliseconds =
+            h264DecodeQueueLatencyMaximumMilliseconds
+        self.h264DecodeTotalMilliseconds = h264DecodeTotalMilliseconds
+        self.h264DecodeMaximumMilliseconds = h264DecodeMaximumMilliseconds
+        self.decodedHEVCFrameCount = max(0, decodedHEVCFrameCount)
+        self.droppedVideoFrameCount = max(0, droppedVideoFrameCount)
+        self.backpressureEventCount = max(0, backpressureEventCount)
+        self.callbackTimeoutCount = max(0, callbackTimeoutCount)
+        self.callbackWaitTimedOut = callbackWaitTimedOut
+        self.lastDroppedFrameReason = lastDroppedFrameReason
+    }
+
+    public static let zero = Self()
+
+    public var h264DecodeAverageMilliseconds: Double? {
+        let count = decodedH264FrameCount + h264DecodeFailureCount
+        guard count > 0, h264DecodeTotalMilliseconds.isFinite,
+              h264DecodeTotalMilliseconds >= 0 else { return nil }
+        return h264DecodeTotalMilliseconds / Double(count)
+    }
+}
+
 /// One scalar callback/status sample. No CVPixelBuffer, JPEG, block bytes or
 /// file path is retained.
 public struct NativeCaptureFormatValidationSample: Codable, Sendable,
@@ -342,6 +416,7 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
     public let interruptionCount: Int
     public let requestedOutputPolicy: String?
     public let fallbackUsed: Bool
+    public let performance: NativeCaptureFormatPerformanceEvidence
 
     public init(sessionID: String, deviceID: String, frames: Int,
                 recentFPS: Double, age: Double?, width: Int?, height: Int?,
@@ -354,9 +429,14 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
                 nonImageVideoBlockBufferCount: Int = 0,
                 decodedH264FrameCount: Int = 0,
                 h264DecodeFailureCount: Int = 0,
+                h264DecodeSubmittedCount: Int = 0,
+                h264DecodeDroppedFrameCount: Int = 0,
+                h264DecodeQueueLatencyTotalMilliseconds: Double = 0,
+                h264DecodeQueueLatencyMaximumMilliseconds: Double = 0,
                 runtimeErrorCount: Int = 0, interruptionCount: Int = 0,
                 requestedOutputPolicy: String? = nil,
-                fallbackUsed: Bool = false) {
+                fallbackUsed: Bool = false,
+                performance: NativeCaptureFormatPerformanceEvidence? = nil) {
         self.sessionID = sessionID
         self.deviceID = deviceID
         self.frames = frames
@@ -380,6 +460,16 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
         self.interruptionCount = interruptionCount
         self.requestedOutputPolicy = requestedOutputPolicy
         self.fallbackUsed = fallbackUsed
+        self.performance = performance ?? NativeCaptureFormatPerformanceEvidence(
+            encodedVideoSampleCount: videoSampleCount,
+            decodedH264FrameCount: decodedH264FrameCount,
+            h264DecodeFailureCount: h264DecodeFailureCount,
+            h264DecodeSubmittedCount: h264DecodeSubmittedCount,
+            h264DecodeDroppedFrameCount: h264DecodeDroppedFrameCount,
+            h264DecodeQueueLatencyTotalMilliseconds:
+                h264DecodeQueueLatencyTotalMilliseconds,
+            h264DecodeQueueLatencyMaximumMilliseconds:
+                h264DecodeQueueLatencyMaximumMilliseconds)
     }
 
     public init(stats: CaptureStats, expectedDeviceID: String) {
@@ -403,7 +493,35 @@ public struct NativeCaptureFormatValidationSample: Codable, Sendable,
                   h264DecodeFailureCount: diagnostics?.h264DecodeFailureCount ?? 0,
                   runtimeErrorCount: diagnostics?.runtimeErrorCount ?? 0,
                   interruptionCount: diagnostics?.interruptionCount ?? 0,
-                  requestedOutputPolicy: diagnostics?.requestedOutputPolicy)
+                  requestedOutputPolicy: diagnostics?.requestedOutputPolicy,
+                  performance: .init(
+                      encodedVideoSampleCount: diagnostics?.videoSampleCount ?? 0,
+                      decodedH264FrameCount: diagnostics?.decodedH264FrameCount ?? 0,
+                      h264DecodeFailureCount: diagnostics?.h264DecodeFailureCount ?? 0,
+                      h264DecodeSubmittedCount:
+                          diagnostics?.h264DecodeSubmittedCount ?? 0,
+                      h264DecodeDroppedFrameCount:
+                          diagnostics?.h264DecodeDroppedFrameCount ?? 0,
+                      h264DecodeQueueLatencyTotalMilliseconds:
+                          diagnostics?.h264DecodeQueueLatencyTotalMilliseconds ?? 0,
+                      h264DecodeQueueLatencyMaximumMilliseconds:
+                          diagnostics?.h264DecodeQueueLatencyMaximumMilliseconds ?? 0,
+                      h264DecodeTotalMilliseconds:
+                          diagnostics?.h264DecodeTotalMilliseconds ?? 0,
+                      h264DecodeMaximumMilliseconds:
+                          diagnostics?.h264DecodeMaximumMilliseconds ?? 0,
+                      decodedHEVCFrameCount:
+                          diagnostics?.decodedHEVCFrameCount ?? 0,
+                      droppedVideoFrameCount:
+                          diagnostics?.droppedVideoFrameCount ?? 0,
+                      backpressureEventCount:
+                          diagnostics?.backpressureEventCount ?? 0,
+                      callbackTimeoutCount:
+                          diagnostics?.callbackTimeoutCount ?? 0,
+                      callbackWaitTimedOut:
+                          diagnostics?.callbackWaitTimedOut ?? false,
+                      lastDroppedFrameReason:
+                          diagnostics?.lastDroppedFrameReason))
     }
 }
 
@@ -460,6 +578,7 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
     public let requestedOutputPolicy: String?
     public let fallbackUsed: Bool
     public let executionFailureCode: String?
+    public let performance: NativeCaptureFormatPerformanceEvidence
     public let cleanup: NativeCaptureFormatCleanupEvidence
 
     public init(caseID: String, sessionID: String, deviceID: String,
@@ -471,11 +590,53 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
                 nonImageVideoBlockBufferCount: Int? = nil,
                 decodedH264FrameCount: Int? = nil,
                 h264DecodeFailureCount: Int? = nil,
+                h264DecodeSubmittedCount: Int? = nil,
+                h264DecodeDroppedFrameCount: Int? = nil,
+                h264DecodeQueueLatencyTotalMilliseconds: Double? = nil,
+                h264DecodeQueueLatencyMaximumMilliseconds: Double? = nil,
+                h264DecodeTotalMilliseconds: Double? = nil,
+                h264DecodeMaximumMilliseconds: Double? = nil,
+                decodedHEVCFrameCount: Int? = nil,
+                droppedVideoFrameCount: Int? = nil,
+                backpressureEventCount: Int? = nil,
+                callbackTimeoutCount: Int? = nil,
+                callbackWaitTimedOut: Bool? = nil,
+                lastDroppedFrameReason: String? = nil,
                 runtimeErrorCount: Int? = nil, interruptionCount: Int? = nil,
                 requestedOutputPolicy: String? = nil,
                 fallbackUsed: Bool = false,
-                executionFailureCode: String? = nil) {
+                executionFailureCode: String? = nil,
+                performance: NativeCaptureFormatPerformanceEvidence? = nil) {
         let last = samples.last
+        let encodedSamples = videoSampleCount ?? last?.videoSampleCount ?? 0
+        let decodedH264 = decodedH264FrameCount ??
+            last?.performance.decodedH264FrameCount ?? 0
+        let decodeFailures = h264DecodeFailureCount ??
+            last?.performance.h264DecodeFailureCount ?? 0
+        let decodeSubmitted = h264DecodeSubmittedCount ??
+            last?.performance.h264DecodeSubmittedCount ?? 0
+        let decodeDropped = h264DecodeDroppedFrameCount ??
+            last?.performance.h264DecodeDroppedFrameCount ?? 0
+        let queueLatencyTotal = h264DecodeQueueLatencyTotalMilliseconds ??
+            last?.performance.h264DecodeQueueLatencyTotalMilliseconds ?? 0
+        let queueLatencyMaximum = h264DecodeQueueLatencyMaximumMilliseconds ??
+            last?.performance.h264DecodeQueueLatencyMaximumMilliseconds ?? 0
+        let decodeTotal = h264DecodeTotalMilliseconds ??
+            last?.performance.h264DecodeTotalMilliseconds ?? 0
+        let decodeMaximum = h264DecodeMaximumMilliseconds ??
+            last?.performance.h264DecodeMaximumMilliseconds ?? 0
+        let decodedHEVC = decodedHEVCFrameCount ??
+            last?.performance.decodedHEVCFrameCount ?? 0
+        let dropped = droppedVideoFrameCount ??
+            last?.performance.droppedVideoFrameCount ?? 0
+        let backpressure = backpressureEventCount ??
+            last?.performance.backpressureEventCount ?? 0
+        let callbackTimeouts = callbackTimeoutCount ??
+            last?.performance.callbackTimeoutCount ?? 0
+        let callbackTimedOut = callbackWaitTimedOut ??
+            last?.performance.callbackWaitTimedOut ?? false
+        let dropReason = lastDroppedFrameReason ??
+            last?.performance.lastDroppedFrameReason
         self.caseID = caseID
         self.initialSessionID = initialSessionID
         self.sessionID = sessionID
@@ -499,6 +660,23 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
             last?.requestedOutputPolicy
         self.fallbackUsed = fallbackUsed || samples.contains { $0.fallbackUsed }
         self.executionFailureCode = executionFailureCode
+        self.performance = performance ??
+            NativeCaptureFormatPerformanceEvidence(
+                encodedVideoSampleCount: encodedSamples,
+                decodedH264FrameCount: decodedH264,
+                h264DecodeFailureCount: decodeFailures,
+                h264DecodeSubmittedCount: decodeSubmitted,
+                h264DecodeDroppedFrameCount: decodeDropped,
+                h264DecodeQueueLatencyTotalMilliseconds: queueLatencyTotal,
+                h264DecodeQueueLatencyMaximumMilliseconds: queueLatencyMaximum,
+                h264DecodeTotalMilliseconds: decodeTotal,
+                h264DecodeMaximumMilliseconds: decodeMaximum,
+                decodedHEVCFrameCount: decodedHEVC,
+                droppedVideoFrameCount: dropped,
+                backpressureEventCount: backpressure,
+                callbackTimeoutCount: callbackTimeouts,
+                callbackWaitTimedOut: callbackTimedOut,
+                lastDroppedFrameReason: dropReason)
         self.cleanup = cleanup
     }
 
@@ -528,7 +706,8 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
              interruptionCount: interruptionCount,
              requestedOutputPolicy: requestedOutputPolicy,
              fallbackUsed: fallbackUsed,
-             executionFailureCode: executionFailureCode)
+             executionFailureCode: executionFailureCode,
+             performance: performance)
     }
 
     func withExecutionFailure(_ code: String) -> Self {
@@ -545,7 +724,8 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
              interruptionCount: interruptionCount,
              requestedOutputPolicy: requestedOutputPolicy,
              fallbackUsed: fallbackUsed,
-             executionFailureCode: code)
+             executionFailureCode: code,
+             performance: performance)
     }
 }
 
@@ -603,6 +783,75 @@ public enum NativeCaptureFormatTrialOutcome: String, Codable, Sendable,
     case failed
 }
 
+private func nativeCaptureFormatEncodedCount(
+    _ metrics: NativeCaptureFormatValidationMetrics
+) -> Int {
+    max(metrics.videoSampleCount,
+        metrics.performance.encodedVideoSampleCount)
+}
+
+private func nativeCaptureFormatCodecStatus(
+    definition: NativeCaptureFormatValidationCase,
+    metrics: NativeCaptureFormatValidationMetrics
+) -> NativeCaptureFormatEvidenceStatus {
+    guard !definition.expectsZeroCallbacks, let sample = metrics.samples.last else {
+        return definition.expectsZeroCallbacks ? .notApplicable : .unknown
+    }
+    let expectedSampleFourCC = definition.expectedOutputFourCC ?? "BGRA"
+    let metadataMatches = sample.sessionID == metrics.sessionID &&
+        sample.deviceID == metrics.deviceID &&
+        sample.width == definition.mode.width &&
+        sample.height == definition.mode.height &&
+        sample.inputPixelFormat == definition.inputPixelFormat &&
+        sample.inputFourCC == definition.expectedInputFourCC &&
+        sample.videoSampleFourCC == expectedSampleFourCC &&
+        sample.outputFourCC == "BGRA" &&
+        sample.requestedOutputPolicy == definition.outputPolicy.rawValue
+    return metadataMatches && nativeCaptureFormatEncodedCount(metrics) > 0
+        ? .verified : .failed
+}
+
+private func nativeCaptureFormatDecodeStatus(
+    definition: NativeCaptureFormatValidationCase,
+    metrics: NativeCaptureFormatValidationMetrics
+) -> NativeCaptureFormatEvidenceStatus {
+    guard !definition.expectsZeroCallbacks else { return .notApplicable }
+    guard definition.outputPolicy == .h264 else { return .notApplicable }
+    let decoded = max(metrics.decodedH264FrameCount,
+                      metrics.performance.decodedH264FrameCount)
+    let failures = max(metrics.h264DecodeFailureCount,
+                       metrics.performance.h264DecodeFailureCount)
+    let timingValid = metrics.performance.h264DecodeTotalMilliseconds.isFinite &&
+        metrics.performance.h264DecodeTotalMilliseconds >= 0 &&
+        metrics.performance.h264DecodeMaximumMilliseconds.isFinite &&
+        metrics.performance.h264DecodeMaximumMilliseconds >= 0 &&
+        metrics.performance.h264DecodeTotalMilliseconds >=
+            metrics.performance.h264DecodeMaximumMilliseconds
+    return decoded > 0 && failures == 0 && timingValid ? .verified : .failed
+}
+
+private func nativeCaptureFormatRealtimeRateStatus(
+    definition: NativeCaptureFormatValidationCase,
+    metrics: NativeCaptureFormatValidationMetrics
+) -> NativeCaptureFormatEvidenceStatus {
+    guard !definition.expectsZeroCallbacks else { return .notApplicable }
+    let rates = metrics.samples.map(\.recentFPS)
+        .filter { $0.isFinite && $0 > 0 }.sorted()
+    guard let median = rates.isEmpty ? nil : rates[rates.count / 2] else {
+        return .unknown
+    }
+    let tolerance = max(1, definition.mode.frameRate * definition.fpsTolerance)
+    guard abs(median - definition.mode.frameRate) <= tolerance else {
+        return .failed
+    }
+    let performance = metrics.performance
+    return performance.droppedVideoFrameCount == 0 &&
+        performance.h264DecodeDroppedFrameCount == 0 &&
+        performance.backpressureEventCount == 0 &&
+        performance.callbackTimeoutCount == 0 &&
+        !performance.callbackWaitTimedOut ? .verified : .failed
+}
+
 public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
     Equatable, Identifiable {
     public let id: String
@@ -614,6 +863,10 @@ public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
     public let medianFPS: Double?
     public let minimumFPS: Double?
     public let maximumFPS: Double?
+    public let performance: NativeCaptureFormatPerformanceEvidence
+    public let codecStatus: NativeCaptureFormatEvidenceStatus
+    public let decodeStatus: NativeCaptureFormatEvidenceStatus
+    public let realtimeRateStatus: NativeCaptureFormatEvidenceStatus
     public let videoSampleFourCC: String?
     public let frameOutputFourCC: String?
     public let cleanupPassed: Bool
@@ -635,6 +888,13 @@ public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
         medianFPS = rates.isEmpty ? nil : rates[rates.count / 2]
         minimumFPS = rates.first
         maximumFPS = rates.last
+        performance = metrics.performance
+        codecStatus = nativeCaptureFormatCodecStatus(
+            definition: definition, metrics: metrics)
+        decodeStatus = nativeCaptureFormatDecodeStatus(
+            definition: definition, metrics: metrics)
+        realtimeRateStatus = nativeCaptureFormatRealtimeRateStatus(
+            definition: definition, metrics: metrics)
         videoSampleFourCC = metrics.samples.last?.videoSampleFourCC
         frameOutputFourCC = metrics.samples.last?.outputFourCC
         cleanupPassed = metrics.cleanup.isClean
@@ -890,24 +1150,43 @@ public enum NativeCaptureFormatValidationService {
         }
         let rates = metrics.samples.map(\.recentFPS)
         guard rates.allSatisfy({ $0.isFinite && $0 > 0 }) else {
-            return "capture_format_rate_missing"
+            return "capture_format_realtime_rate_missing"
         }
         let sorted = rates.sorted()
         let median = sorted[sorted.count / 2]
         let tolerance = max(1, definition.mode.frameRate * definition.fpsTolerance)
         guard abs(median - definition.mode.frameRate) <= tolerance else {
-            return "capture_format_rate_mismatch"
+            return "capture_format_realtime_rate_failed"
+        }
+        guard metrics.performance.droppedVideoFrameCount == 0,
+              metrics.performance.h264DecodeDroppedFrameCount == 0,
+              metrics.performance.backpressureEventCount == 0,
+              metrics.performance.callbackTimeoutCount == 0,
+              !metrics.performance.callbackWaitTimedOut else {
+            return "capture_format_realtime_drop_or_backpressure"
         }
         if definition.outputPolicy == .bgra,
            metrics.pixelBufferCount == 0 {
             return "capture_format_pixel_buffer_missing"
         }
         if definition.outputPolicy == .h264 {
-            guard metrics.decodedH264FrameCount > 0 else {
+            let decoded = max(metrics.decodedH264FrameCount,
+                              metrics.performance.decodedH264FrameCount)
+            let decodeFailures = max(metrics.h264DecodeFailureCount,
+                                     metrics.performance.h264DecodeFailureCount)
+            guard decoded > 0 else {
                 return "capture_format_h264_decode_missing"
             }
-            guard metrics.h264DecodeFailureCount == 0 else {
+            guard decodeFailures == 0 else {
                 return "capture_format_h264_decode_failed"
+            }
+            guard metrics.performance.h264DecodeTotalMilliseconds.isFinite,
+                  metrics.performance.h264DecodeTotalMilliseconds >= 0,
+                  metrics.performance.h264DecodeMaximumMilliseconds.isFinite,
+                  metrics.performance.h264DecodeMaximumMilliseconds >= 0,
+                  metrics.performance.h264DecodeTotalMilliseconds >=
+                      metrics.performance.h264DecodeMaximumMilliseconds else {
+                return "capture_format_h264_decode_timing_invalid"
             }
         }
         return nil

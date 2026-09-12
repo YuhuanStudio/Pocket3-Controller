@@ -104,6 +104,36 @@ extension AppModel {
                     let failed = await cameraService.status()
                     let diagnostics = failed.lastCaptureAttempt
                         ?? CaptureSampleDiagnostics()
+                    let performance = NativeCaptureFormatPerformanceEvidence(
+                        encodedVideoSampleCount: diagnostics.videoSampleCount,
+                        decodedH264FrameCount:
+                            diagnostics.decodedH264FrameCount ?? 0,
+                        h264DecodeFailureCount:
+                            diagnostics.h264DecodeFailureCount ?? 0,
+                        h264DecodeSubmittedCount:
+                            diagnostics.h264DecodeSubmittedCount ?? 0,
+                        h264DecodeDroppedFrameCount:
+                            diagnostics.h264DecodeDroppedFrameCount ?? 0,
+                        h264DecodeQueueLatencyTotalMilliseconds:
+                            diagnostics.h264DecodeQueueLatencyTotalMilliseconds ?? 0,
+                        h264DecodeQueueLatencyMaximumMilliseconds:
+                            diagnostics.h264DecodeQueueLatencyMaximumMilliseconds ?? 0,
+                        h264DecodeTotalMilliseconds:
+                            diagnostics.h264DecodeTotalMilliseconds ?? 0,
+                        h264DecodeMaximumMilliseconds:
+                            diagnostics.h264DecodeMaximumMilliseconds ?? 0,
+                        decodedHEVCFrameCount:
+                            diagnostics.decodedHEVCFrameCount ?? 0,
+                        droppedVideoFrameCount:
+                            diagnostics.droppedVideoFrameCount ?? 0,
+                        backpressureEventCount:
+                            diagnostics.backpressureEventCount ?? 0,
+                        callbackTimeoutCount:
+                            diagnostics.callbackTimeoutCount ?? 0,
+                        callbackWaitTimedOut:
+                            diagnostics.callbackWaitTimedOut ?? false,
+                        lastDroppedFrameReason:
+                            diagnostics.lastDroppedFrameReason)
                     return NativeCaptureFormatValidationMetrics(
                         caseID: definition.id,
                         sessionID: failed.capture.sessionID,
@@ -124,7 +154,10 @@ extension AppModel {
                         runtimeErrorCount: diagnostics.runtimeErrorCount,
                         interruptionCount: diagnostics.interruptionCount,
                         requestedOutputPolicy:
-                            diagnostics.requestedOutputPolicy)
+                            diagnostics.requestedOutputPolicy,
+                        fallbackUsed: false,
+                        executionFailureCode: nil,
+                        performance: performance)
                 } catch let failure as BridgeFailure
                     where failure.code == "no_frame" {
                     throw BridgeFailure("capture_format_no_video_sample",
