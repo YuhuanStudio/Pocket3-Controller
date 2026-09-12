@@ -553,12 +553,26 @@ public extension BluetoothDiscoveryStatus {
             $0.binding == binding &&
             $0.isFresh(now: nowUptime, maximumAge: maximumAge)
         }?.bodyRecordingCapabilities
-        let currentTrack = trackingCandidates.reversed().compactMap {
-            $0.activeTrackObservation(binding: binding)
-        }.first {
+        let currentTrack: Pocket3ActiveTrackObservation?
+        if let typed = activeTrackObservation,
+           typed.isFresh(sessionID: sessionID, peripheralID: peripheralID,
+                        binding: binding, paired: pairedNow, nowUptime: nowUptime,
+                        maximumAge: maximumAge) {
+            currentTrack = typed
+        } else if let typed = activeTrackHistory.reversed().first(where: {
             $0.isFresh(sessionID: sessionID, peripheralID: peripheralID,
                       binding: binding, paired: pairedNow, nowUptime: nowUptime,
                       maximumAge: maximumAge)
+        }) {
+            currentTrack = typed
+        } else {
+            currentTrack = trackingCandidates.reversed().compactMap {
+                $0.activeTrackObservation(binding: binding)
+            }.first {
+                $0.isFresh(sessionID: sessionID, peripheralID: peripheralID,
+                          binding: binding, paired: pairedNow, nowUptime: nowUptime,
+                          maximumAge: maximumAge)
+            }
         }
         return Pocket3CameraBodyReadOnlyContext(sessionID: sessionID,
             peripheralID: peripheralID, paired: pairedNow,

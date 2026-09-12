@@ -52,6 +52,16 @@ public struct BluetoothDiscoveryStatus: Codable, Sendable {
     public var storageStatus: Pocket3StorageObservation? = nil
     /// Last passive cross-model tracking candidates; never a support claim.
     public var trackingCandidates: [Pocket3TrackingCandidateFrame] = []
+    /// Fresh, typed A5/A89 state from the current paired session. This is
+    /// intentionally separate from the older raw candidate evidence above so
+    /// callers can migrate without treating A6 as a readback.
+    public var activeTrackObservation: Pocket3ActiveTrackObservation? = nil
+    /// Bounded fresh history for diagnostics/read-only consumers. The store
+    /// owns admission and generation fencing; status only publishes its
+    /// already-filtered snapshot.
+    public var activeTrackHistory: [Pocket3ActiveTrackObservation] = []
+    public var activeTrackObservations: [Pocket3ActiveTrackObservation] { activeTrackHistory }
+    public var activeTrackHistoryCount: Int { activeTrackHistory.count }
     public var recentHeaders: [BluetoothDUMLHeader] = []
     public var registrationAcknowledgmentSubmitted = false
     public var nativeProbeActive = false
@@ -81,6 +91,8 @@ extension BluetoothDiscoveryStatus {
         cameraStatus = try values.decodeIfPresent(Pocket3CameraStatusObservation.self, forKey: .cameraStatus)
         storageStatus = try values.decodeIfPresent(Pocket3StorageObservation.self, forKey: .storageStatus)
         trackingCandidates = try values.decodeIfPresent([Pocket3TrackingCandidateFrame].self, forKey: .trackingCandidates) ?? []
+        activeTrackObservation = try values.decodeIfPresent(Pocket3ActiveTrackObservation.self, forKey: .activeTrackObservation)
+        activeTrackHistory = try values.decodeIfPresent([Pocket3ActiveTrackObservation].self, forKey: .activeTrackHistory) ?? []
         recentHeaders = try values.decode([BluetoothDUMLHeader].self, forKey: .recentHeaders)
         registrationAcknowledgmentSubmitted = try values.decode(Bool.self, forKey: .registrationAcknowledgmentSubmitted)
         nativeProbeActive = try values.decode(Bool.self, forKey: .nativeProbeActive)

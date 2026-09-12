@@ -55,6 +55,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     private var cameraStatus: Pocket3CameraStatusObservation?
     private var storageStatus: Pocket3StorageObservation?
     private var trackingCandidates: [Pocket3TrackingCandidateFrame] = []
+    private var activeTrackStore = Pocket3ActiveTrackObservationStore()
     private var recentHeaders: [BluetoothDUMLHeader] = []
     private var registrationAcknowledgmentSession: UUID?
     private var probeOperation: BluetoothProbeOperation?
@@ -79,6 +80,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     public override init() { super.init() } // Does not create a CBCentralManager.
 
     public var status: BluetoothDiscoveryStatus {
+        let nowUptime = ProcessInfo.processInfo.systemUptime
         var result = BluetoothDiscoveryStatus(phase: state.phase, sessionID: state.generation,
             candidates: state.candidates, selectedPeripheralID: state.selected,
             issueCode: state.issueCode, identityVerification: "unverified_candidate",
@@ -91,24 +93,31 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             battery: battery.flatMap { $0.telemetry.isFresh(now: Date()) ? $0 : nil }, recentHeaders: recentHeaders)
         result.registrationAcknowledgmentSubmitted = registrationAcknowledgmentSession != nil
         result.pose = poseStore.snapshot(sessionID: state.generation, peripheralID: state.selected,
-            paired: pairer?.paired == true, nowUptime: ProcessInfo.processInfo.systemUptime)
+            paired: pairer?.paired == true, nowUptime: nowUptime)
         result.cameraSettingsObservations = cameraSettingsStore.snapshot(sessionID: state.generation, peripheralID: state.selected,
-            paired: pairer?.paired == true, nowUptime: ProcessInfo.processInfo.systemUptime)
+            paired: pairer?.paired == true, nowUptime: nowUptime)
         if pairer?.paired == true, cameraStatus?.sessionID == state.generation,
            cameraStatus?.peripheralID == state.selected,
-           cameraStatus?.isFresh(nowUptime: ProcessInfo.processInfo.systemUptime) == true {
+           cameraStatus?.isFresh(nowUptime: nowUptime) == true {
             result.cameraStatus = cameraStatus
         }
         if pairer?.paired == true, storageStatus?.sessionID == state.generation,
            storageStatus?.peripheralID == state.selected,
-           storageStatus?.isFresh(nowUptime: ProcessInfo.processInfo.systemUptime) == true {
+           storageStatus?.isFresh(nowUptime: nowUptime) == true {
             result.storageStatus = storageStatus
         }
         if pairer?.paired == true {
             result.trackingCandidates = trackingCandidates.filter {
                 $0.sessionID == state.generation && $0.peripheralID == state.selected &&
-                    ProcessInfo.processInfo.systemUptime >= $0.receivedUptime &&
-                    ProcessInfo.processInfo.systemUptime - $0.receivedUptime <= 30
+                    nowUptime >= $0.receivedUptime &&
+                    nowUptime - $0.receivedUptime <= 30
+            }
+            if let peripheralID = state.selected, let binding = activeTrackStore.binding {
+                let freshHistory = activeTrackStore.snapshot(sessionID: state.generation,
+                    peripheralID: peripheralID, binding: binding, paired: true,
+                    nowUptime: nowUptime)
+                result.activeTrackHistory = freshHistory
+                result.activeTrackObservation = freshHistory.last
             }
         }
         result.nativeProbeActive = settingWriteOperation != nil || tapFocusOperation != nil || probeOperation != nil || nativePresetOperation != nil || lensStateOperation != nil || cameraPropertyOperation != nil || lensPointOperation != nil
@@ -148,7 +157,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         let session = state.beginScan()
         poseStore.clear()
         cameraSettingsStore.clear()
-        decoders = [:]; receivedFrames = 0; fff4Properties = nil; fff5Properties = nil; pairer = nil; battery = nil; cameraStatus = nil; storageStatus = nil; trackingCandidates = []; recentHeaders = []; registrationAcknowledgmentSession = nil
+        decoders = [:]; receivedFrames = 0; fff4Properties = nil; fff5Properties = nil; pairer = nil; battery = nil; cameraStatus = nil; storageStatus = nil; trackingCandidates = []; activeTrackStore.clear(); recentHeaders = []; registrationAcknowledgmentSession = nil
         deadlineTask = Task { @MainActor [weak self] in
             // First-run authorization is a separate, bounded operator wait.
             // It must not consume the actual radio discovery budget.
@@ -193,6 +202,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         central.stopScan(); deadlineTask?.cancel()
         poseStore.bind(sessionID: session, peripheralID: peripheralID)
         cameraSettingsStore.bind(sessionID: session, peripheralID: peripheralID)
+        _ = activeTrackStore.bindBluetooth(sessionID: session, peripheralID: peripheralID)
         selectedPeripheral = peripheral
         let delegate = BluetoothPeripheralDelegate(owner: self, session: session)
         peripheralDelegate = delegate; peripheral.delegate = delegate
@@ -1211,7 +1221,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         deadlineTask?.cancel(); deadlineTask = nil
         expirationTask?.cancel(); expirationTask = nil
         pairingTasks.forEach { $0.cancel() }; pairingTasks.removeAll()
-        keepaliveTask?.cancel(); keepaliveTask = nil; writeQueue.reset(); battery = nil; cameraStatus = nil; storageStatus = nil; trackingCandidates = []; poseStore.clear(); cameraSettingsStore.clear()
+        keepaliveTask?.cancel(); keepaliveTask = nil; writeQueue.reset(); battery = nil; cameraStatus = nil; storageStatus = nil; trackingCandidates = []; activeTrackStore.clear(); poseStore.clear(); cameraSettingsStore.clear()
         if let issue { pairer?.fail(issue) } else { pairer?.cancel() }
         // Invalidate generation/delegates before cancelling the OS operation.
         state.finish(phase, issue: issue)
@@ -1411,6 +1421,11 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
                 }
                 handlePairing(packet.frame, peripheral: peripheral, session: session)
                 guard accepts(peripheral, session: session) else { return }
+                _ = activeTrackStore.receive(packet, sessionID: session,
+                    peripheralID: peripheral.identifier,
+                    binding: activeTrackStore.binding ?? Pocket3ActiveTrackObservation.bluetoothBinding(sessionID: session),
+                    paired: pairer?.paired == true, hostReceivedAt: hostReceivedAt,
+                    uptime: receivedUptime)
                 if pairer?.paired == true,
                    let telemetry = BluetoothBatteryTelemetryParser.parse(packet.frame, receivedAt: Date()) {
                     battery = BluetoothBatteryObservation(sessionID: session, peripheralID: peripheral.identifier, telemetry: telemetry)
