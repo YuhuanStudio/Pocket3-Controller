@@ -446,6 +446,21 @@ public struct NativeMediaValidationSnapshot: Codable, Sendable, Equatable {
              .cameraRouteUnavailable, .defaultRouteChanged: false
         }
     }
+
+    /// HTTP media is stricter than the existing native command route: an
+    /// unbound legacy route would let the kernel choose an unrelated default
+    /// interface, so only a live, explicitly identified camera interface is
+    /// accepted for a range fetch.
+    public var rangeRouteAllowed: Bool {
+        guard routeAllowed,
+              routeStatus.cameraHost == Pocket3MediaHTTPRangeRequest.host,
+              let interfaceIndex = routeStatus.interfaceIndex,
+              interfaceIndex != 0,
+              routeStatus.cameraRouteReachable == true,
+              routeStatus.defaultRouteChanged != true,
+              routeStatus.samePrimaryRoute != false else { return false }
+        return [.interfaceBound, .samePrimaryRoute].contains(routeStatus.state)
+    }
 }
 
 public struct NativeMediaValidationRequestEvidence: Codable, Sendable,
@@ -563,6 +578,20 @@ public struct NativeMediaValidationExecutorAdapter: Sendable {
 public protocol NativeMediaHTTPRangeFetching: Sendable {
     func fetch(_ request: Pocket3MediaHTTPRangeRequest,
                readiness: NativeCameraSessionStatus) async throws -> Data
+    func fetch(_ request: Pocket3MediaHTTPRangeRequest,
+               readiness: NativeCameraSessionStatus,
+               timeout: TimeInterval) async throws -> Data
+}
+
+public extension NativeMediaHTTPRangeFetching {
+    /// Existing fake adapters can remain two-argument closures. Production
+    /// transports override this overload so the request timeout reaches the
+    /// socket deadline instead of being silently ignored.
+    func fetch(_ request: Pocket3MediaHTTPRangeRequest,
+               readiness: NativeCameraSessionStatus,
+               timeout: TimeInterval) async throws -> Data {
+        try await fetch(request, readiness: readiness)
+    }
 }
 
 public struct NativeMediaHTTPRangeFetcherAdapter: NativeMediaHTTPRangeFetching,
@@ -683,9 +712,9 @@ public struct NativeMediaListCollectorSnapshot: Codable, Sendable,
 }
 
 /// Developer-only media service. The command adapter is the current
-/// Pocket3Datalink owner; this type never opens a socket, joins Wi-Fi,
-/// retries, or schedules pagination. The range fetcher is a protocol/fake
-/// seam and is absent from the production App route in this batch.
+/// Pocket3Datalink owner; this type never joins Wi-Fi, retries, or schedules
+/// pagination. Range execution requires a separately validated explicit
+/// interface route and an injected fetcher.
 public struct NativeMediaValidationService: Sendable {
     public static let defaultTimeout: TimeInterval = 3
 
@@ -831,7 +860,7 @@ public struct NativeMediaValidationService: Sendable {
                 requested: true, submitted: false, acknowledged: false,
                 observed: false, completed: false, failureCode: nil)
         }
-        guard snapshot.routeAllowed else {
+        guard snapshot.rangeRouteAllowed else {
             return NativeMediaValidationResult(
                 action: request.action, executeRequested: true,
                 routeStatus: snapshot.routeStatus, request: nil,
@@ -840,7 +869,7 @@ public struct NativeMediaValidationService: Sendable {
                     request: rangeRequest, data: nil), phase: .routeRejected,
                 requested: true, submitted: false, acknowledged: false,
                 observed: false, completed: false,
-                failureCode: "native_media_route_invalid")
+                failureCode: "native_media_http_route_invalid")
         }
         guard let rangeFetcher else {
             return NativeMediaValidationResult(
@@ -854,8 +883,9 @@ public struct NativeMediaValidationService: Sendable {
                 failureCode: "native_media_range_fetcher_unavailable")
         }
         do {
-            let data = try await rangeFetcher.fetch(rangeRequest,
-                                                    readiness: snapshot.session)
+            let data = try await rangeFetcher.fetch(
+                rangeRequest, readiness: snapshot.session,
+                timeout: request.timeout)
             guard UInt64(data.count) <= rangeRequest.range.length else {
                 return NativeMediaValidationResult(
                     action: request.action, executeRequested: true,
@@ -884,6 +914,16 @@ public struct NativeMediaValidationService: Sendable {
                     request: rangeRequest, data: nil), phase: .cancelled,
                 requested: true, submitted: true, acknowledged: false,
                 observed: false, completed: false, failureCode: "cancelled")
+        } catch let error as NativeMediaHTTPRangeFetcherError {
+            return NativeMediaValidationResult(
+                action: request.action, executeRequested: true,
+                routeStatus: snapshot.routeStatus, request: nil,
+                transaction: nil, list: nil, mediaIndex: nil,
+                range: NativeMediaRangeValidationResult(
+                    request: rangeRequest, data: nil), phase: .failed,
+                requested: true, submitted: true, acknowledged: false,
+                observed: false, completed: false,
+                failureCode: error.failureCode)
         } catch {
             return NativeMediaValidationResult(
                 action: request.action, executeRequested: true,

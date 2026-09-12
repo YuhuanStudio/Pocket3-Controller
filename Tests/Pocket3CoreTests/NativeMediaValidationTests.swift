@@ -253,7 +253,7 @@ struct NativeMediaValidationTests {
         #expect(blockedCounter.count == 0)
     }
 
-    @Test func playbackUsesExactCommandAndRangeRemainsProtocolOnlyWithoutFetcher() async throws {
+    @Test func playbackUsesExactCommandAndRangeRejectsUnboundRouteWithoutFetcher() async throws {
         let session = readySession()
         let request = try NativeMediaValidationRequest(
             action: .playbackEnter, expectedSessionID: sessionID,
@@ -280,7 +280,8 @@ struct NativeMediaValidationTests {
             rangeStart: 0, rangeEnd: 31, execute: true)
         let rangeResult = try await NativeMediaValidationService().run(
             range, snapshot: snapshot(session))
-        #expect(rangeResult.phase == .fetcherUnavailable)
+        #expect(rangeResult.phase == .routeRejected)
+        #expect(rangeResult.failureCode == "native_media_http_route_invalid")
         #expect(!rangeResult.submitted && !rangeResult.completed)
     }
 }

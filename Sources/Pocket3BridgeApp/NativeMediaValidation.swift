@@ -3,10 +3,10 @@ import Pocket3Core
 
 extension AppModel {
     /// Developer-only media browsing validation. The route uses the current
-    /// native readiness and route snapshot, then delegates one prepared media
-    /// command to WirelessGimbalModel's existing datalink owner. It never
-    /// joins Wi-Fi, creates a second transport, or installs a real HTTP
-    /// downloader.
+    /// native readiness and route snapshot, then delegates media commands to
+    /// the existing datalink owner. HTTP range execution gets one explicit
+    /// interface-bound fetcher; it never joins Wi-Fi or changes the default
+    /// route.
     func handleNativeMediaValidation(_ request: ServiceRequest) async throws
         -> ServiceReply {
         guard CommandLine.arguments.contains("--hardware-validation") else {
@@ -39,13 +39,23 @@ extension AppModel {
             session: readiness, routeStatus: wireless.nativeRouteStatus,
             nowUptime: ProcessInfo.processInfo.systemUptime)
         do {
-            // Explicit command execution is the only path that obtains the
-            // adapter. Range fetching intentionally has no App adapter in
-            // this batch, so it remains dry-run/protocol-only here.
+            // Explicit command execution is the only path that obtains an
+            // adapter. Range execution additionally requires the route proof
+            // consumed by the Darwin IP_BOUND_IF fetcher; dry-run never opens
+            // a socket.
             let adapter = input.execute
                 ? wireless.nativeMediaValidationAdapter() : nil
+            let rangeFetcher: (any NativeMediaHTTPRangeFetching)?
+            if input.execute, input.action == .range,
+               snapshot.rangeRouteAllowed {
+                rangeFetcher = try? NativeMediaHTTPRangeFetcher(
+                    routeStatus: wireless.nativeRouteStatus)
+            } else {
+                rangeFetcher = nil
+            }
             let result = try await NativeMediaValidationService(
-                adapter: adapter).run(input, snapshot: snapshot)
+                adapter: adapter, rangeFetcher: rangeFetcher).run(
+                    input, snapshot: snapshot)
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as NativeMediaValidationError {
             throw nativeMediaValidationFailure(error)
@@ -92,7 +102,7 @@ private func nativeMediaValidationFailure(
             "The existing native datalink owner is unavailable")
     case .fetcherUnavailable:
         BridgeFailure("native_media_range_fetcher_unavailable",
-            "HTTP range fetching is protocol-only in this batch")
+            "HTTP range fetching requires an explicit validated camera interface")
     case .responseTooLarge:
         BridgeFailure("native_media_response_too_large",
             "The media page or range exceeded its bound")
