@@ -76,6 +76,10 @@ final class AppModel {
         return value
     }
     var status: ServiceStatus?
+    /// Last developer-only body validation evidence. It is kept in memory for
+    /// Diagnostics and never exposed to normal users or persisted as a
+    /// command replay surface.
+    var developerBodyValidationResult: NativeBodyValidationResult?
     var modelStatus: IntelligenceStatus?
     var localStatus: LocalModelStatus?
     var selectedEngine = "apple"

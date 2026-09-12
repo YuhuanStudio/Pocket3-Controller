@@ -7,9 +7,23 @@ import YunDesign
 /// candidate writer to a normal user.
 struct BodyCapabilitySection: View {
     @Bindable var model: AppModel
+    let developerMode: Bool
+    let developerValidationExpanded: Bool
+
+    init(model: AppModel,
+         developerMode: Bool = CommandLine.arguments.contains("--hardware-validation"),
+         developerValidationExpanded: Bool = false) {
+        self.model = model
+        self.developerMode = developerMode
+        self.developerValidationExpanded = developerValidationExpanded
+    }
 
     var body: some View {
-        YunCard { BodyCapabilityDetails(model: model, showsHeader: true) }
+        YunCard {
+            BodyCapabilityDetails(model: model, showsHeader: true,
+                                  showsDeveloperValidation: developerMode,
+                                  developerValidationExpanded: developerValidationExpanded)
+        }
             .accessibilityIdentifier("Pocket3BodyCapabilitySection")
             .measuredForLayout("bodyCapabilitySection")
     }
@@ -19,14 +33,26 @@ struct BodyCapabilitySection: View {
 /// regular Diagnostics page does not repeat the full Camera settings card.
 struct BodyCapabilitySummary: View {
     @Bindable var model: AppModel
+    let developerMode: Bool
+    let developerValidationExpanded: Bool
     @State private var formatsExpanded = false
+
+    init(model: AppModel,
+         developerMode: Bool = CommandLine.arguments.contains("--hardware-validation"),
+         developerValidationExpanded: Bool = false) {
+        self.model = model
+        self.developerMode = developerMode
+        self.developerValidationExpanded = developerValidationExpanded
+    }
 
     var body: some View {
         let graph = model.status?.capabilities ?? Pocket3CapabilityGraph()
         YunDisclosure(loc("Camera body capabilities"),
                       subtitle: summary(graph),
                       isExpanded: $formatsExpanded) {
-            BodyCapabilityDetails(model: model, showsHeader: false)
+            BodyCapabilityDetails(model: model, showsHeader: false,
+                                  showsDeveloperValidation: developerMode,
+                                  developerValidationExpanded: developerValidationExpanded)
         }
         .accessibilityIdentifier("Pocket3BodyCapabilitySummary")
         .measuredForLayout("bodyCapabilitySummary")
@@ -45,6 +71,17 @@ struct BodyCapabilitySummary: View {
 private struct BodyCapabilityDetails: View {
     @Bindable var model: AppModel
     let showsHeader: Bool
+    let showsDeveloperValidation: Bool
+    @State private var activeTrackExpanded = false
+    @State private var validationExpanded: Bool
+
+    init(model: AppModel, showsHeader: Bool, showsDeveloperValidation: Bool,
+         developerValidationExpanded: Bool = false) {
+        self.model = model
+        self.showsHeader = showsHeader
+        self.showsDeveloperValidation = showsDeveloperValidation
+        _validationExpanded = State(initialValue: developerValidationExpanded)
+    }
 
     var body: some View {
         let graph = model.status?.capabilities ?? Pocket3CapabilityGraph()
@@ -58,6 +95,18 @@ private struct BodyCapabilityDetails: View {
 
             Text(loc("Current body recording")).font(Yun.Text.label)
             bodyLifecycle(graph: graph)
+
+            YunDisclosure(loc("ActiveTrack (read-only)"),
+                          subtitle: CapabilityPresentation.activeTrackState(currentActiveTrack),
+                          isExpanded: $activeTrackExpanded) {
+                capabilityRow(loc("ActiveTrack state"),
+                              CapabilityPresentation.activeTrackState(currentActiveTrack),
+                              availability: CapabilityPresentation.activeTrackAvailability(currentActiveTrack),
+                              evidence: CapabilityPresentation.activeTrackEvidence(currentActiveTrack))
+                Text(loc("ActiveTrack state is read-only; the A6 command path is not exposed."))
+                    .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             YunDivider()
             Text(loc("Legal body formats")).font(Yun.Text.label)
@@ -81,6 +130,14 @@ private struct BodyCapabilityDetails: View {
             Text(loc("Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass."))
                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if showsDeveloperValidation {
+                YunDisclosure(loc("Developer body validation"),
+                              subtitle: validationReadiness(graph).value,
+                              isExpanded: $validationExpanded) {
+                    developerValidationDetails(graph)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -184,6 +241,58 @@ private struct BodyCapabilityDetails: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
+    @ViewBuilder private func developerValidationDetails(_ graph: Pocket3CapabilityGraph) -> some View {
+        let readiness = validationReadiness(graph)
+        capabilityRow(loc("Readiness"), readiness.value,
+                      availability: readiness.availability,
+                      evidence: readiness.evidence)
+        if let result = model.developerBodyValidationResult {
+            Text(loc("Last validation result")).font(Yun.Text.label)
+            validationStages(result)
+            Text(CapabilityPresentation.bodyValidationReason(result,
+                currentSession: resultBelongsToCurrentSession(result)))
+                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            capabilityRow(loc("Last validation result"), loc("No developer validation result"),
+                          availability: .unavailable(reason: readiness.availability.reason),
+                          evidence: readiness.evidence)
+        }
+        Text(loc("The UI is read-only; candidate writers stay hidden from normal users."))
+            .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func validationStages(_ result: NativeBodyValidationResult) -> some View {
+        YunWrap(spacing: 4, lineSpacing: 4) {
+            YunBadge(stageLabel("Requested", result: CapabilityPresentation.bodyValidationRequested(result)))
+            YunBadge(stageLabel("Submitted", result: result.submitted))
+            YunBadge(stageLabel("Acknowledged", result: result.acknowledged))
+            YunBadge(stageLabel("Observed", result: result.observed))
+            YunBadge(stageLabel("Completed", result: result.completed))
+        }
+    }
+
+    private func stageLabel(_ key: String, result: Bool) -> String {
+        "\(loc(key)) \(result ? "✓" : "—")"
+    }
+
+    private func validationReadiness(_ graph: Pocket3CapabilityGraph)
+        -> (value: String, availability: CapabilityAvailability, evidence: CapabilityEvidenceLevel) {
+        CapabilityPresentation.bodyValidationReadiness(
+            graph: graph,
+            bodyStatusAvailable: currentBodyStatus != nil,
+            bodyFormatAvailable: currentBodyFormat != nil,
+            busy: model.wireless.nativeBodyValidationBusy)
+    }
+
+    private func resultBelongsToCurrentSession(_ result: NativeBodyValidationResult) -> Bool {
+        guard let sessionID = result.request.sessionID,
+              let currentSessionID = model.wireless.nativeSessionStatus.sessionID else { return false }
+        return sessionID == currentSessionID &&
+            result.request.generation == model.wireless.nativeSessionStatus.generation
+    }
+
     private var currentBodyStatus: Pocket3CameraStatusObservation? {
         let discovery = model.wireless.discovery
         guard let observation = discovery.cameraStatus,
@@ -197,5 +306,10 @@ private struct BodyCapabilityDetails: View {
         model.status?.capabilities?.bodyRecordingFormats.first(where: {
             $0.availability.read && $0.format.frameRate != nil && $0.format.compression != nil
         })
+    }
+
+    private var currentActiveTrack: Pocket3ActiveTrackObservation? {
+        model.wireless.discovery.activeTrackObservation(
+            nowUptime: ProcessInfo.processInfo.systemUptime)
     }
 }

@@ -41,6 +41,43 @@ import Pocket3Core
         #expect(graph.bodyRecordingFormats.contains { $0.format.resolution == .square3K })
     }
 
+    @Test func activeTrackAndBodyValidationPresentationKeepReadOnlyBoundaries() async throws {
+        let sessionID = UUID()
+        let peripheralID = UUID()
+        let binding = Pocket3ActiveTrackObservation.bluetoothBinding(sessionID: sessionID)
+        let frame = DUMLFrame(source: 0x01, destination: 0x02, sequence: 1,
+                              flags: 0, commandSet: 0x02, commandID: 0xA5,
+                              payload: Data([0, 0, 0, 0]))
+        let observation = try #require(Pocket3ActiveTrackObservation(
+            frame: frame, sessionID: sessionID, peripheralID: peripheralID,
+            binding: binding, receivedAt: Date(timeIntervalSince1970: 20),
+            receivedUptime: 10))
+        #expect(CapabilityPresentation.activeTrackState(observation) == "Idle")
+        #expect(CapabilityPresentation.activeTrackAvailability(observation).read)
+        #expect(CapabilityPresentation.activeTrackEvidence(observation) == .localReadOnly)
+        #expect(CapabilityPresentation.activeTrackAvailability(nil).write == false)
+
+        var native = NativeCameraSession()
+        let generation = native.begin(sessionID: sessionID, peerID: peripheralID)
+        _ = native.markPaired(generation: generation)
+        _ = native.markCredentialsAvailable(generation: generation)
+        _ = native.observeDatalink(.connecting, generation: generation)
+        _ = native.observeDatalink(.ready, generation: generation)
+        let result = try await NativeBodyValidationService().run(
+            .init(operation: .start),
+            snapshot: .init(session: native.status,
+                            recordingBaseline: .init(sessionID: sessionID,
+                                                     generation: generation,
+                                                     receivedUptime: 10,
+                                                     statusByte: 0x01),
+                            nowUptime: 10))
+        #expect(CapabilityPresentation.bodyValidationRequested(result))
+        #expect(!result.submitted && !result.acknowledged && !result.observed && !result.completed)
+        #expect(CapabilityPresentation.bodyValidationSummary(result) == "Requested")
+        #expect(CapabilityPresentation.bodyValidationReason(result).contains("Dry run"))
+        #expect(CapabilityPresentation.bodyValidationReason(result, currentSession: false).contains("another native session"))
+    }
+
     @MainActor @Test func bodyCapabilitySectionFitsTheSettingsColumnWithoutOpeningHardware() async throws {
         let model = AppModel()
         model.status = await model.service.status()
@@ -67,5 +104,36 @@ import Pocket3Core
         let summaryImage = try #require(summary.nsImage)
         #expect(summaryImage.size.height < fullImage.size.height)
         #expect(summaryImage.size.height < 360)
+    }
+
+    @MainActor @Test func developerBodyCapabilityRenderShowsStagesWithoutHardware() async throws {
+        let model = AppModel()
+        model.status = await model.service.status()
+        var native = NativeCameraSession()
+        let generation = native.begin(sessionID: UUID(), peerID: UUID())
+        _ = native.markPaired(generation: generation)
+        _ = native.markCredentialsAvailable(generation: generation)
+        _ = native.observeDatalink(.connecting, generation: generation)
+        _ = native.observeDatalink(.ready, generation: generation)
+        model.developerBodyValidationResult = try await NativeBodyValidationService().run(
+            .init(operation: .start),
+            snapshot: .init(session: native.status,
+                            recordingBaseline: .init(sessionID: native.status.sessionID!,
+                                                     generation: generation,
+                                                     receivedUptime: 10,
+                                                     statusByte: 0x01),
+                            nowUptime: 10))
+        let renderer = ImageRenderer(content: BodyCapabilitySection(
+            model: model, developerMode: true,
+            developerValidationExpanded: true).frame(width: 560))
+        renderer.proposedSize = ProposedViewSize(width: 560, height: nil)
+        let image = try #require(renderer.nsImage)
+        #expect(image.size.width <= 560)
+        #expect(image.size.height > 500 && image.size.height < 1_600)
+        #expect(!model.wireless.bluetooth.isBluetoothInitialized)
+        if ProcessInfo.processInfo.environment["POCKET3_RENDER_ARTIFACT"] == "1",
+           let data = image.tiffRepresentation {
+            try data.write(to: URL(fileURLWithPath: "/tmp/Pocket3BodyCapabilitySectionDeveloper.tiff"), options: .atomic)
+        }
     }
 }

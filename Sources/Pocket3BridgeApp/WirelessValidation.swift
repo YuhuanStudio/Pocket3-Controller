@@ -171,6 +171,7 @@ extension AppModel {
         }
         let validationRequest = NativeBodyValidationRequest(operation: operation,
             execute: execute, format: format, timeout: timeout)
+        developerBodyValidationResult = nil
         do {
             // Keep the default path read-only. An explicit --execute binds
             // only to WirelessGimbalModel's current datalink owner; if that
@@ -182,6 +183,7 @@ extension AppModel {
                 snapshot: NativeBodyValidationSnapshot(session: readiness,
                     recordingBaseline: bodyStatus, formatBaseline: formatBaseline,
                     formatCapabilities: capabilities, nowUptime: now))
+            developerBodyValidationResult = result
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as NativeBodyValidationServiceError {
             throw bodyValidationFailure(error)

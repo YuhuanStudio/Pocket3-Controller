@@ -22,6 +22,18 @@ enum CapabilityPresentation {
         switch value {
         case "No current body readback":
             return loc("No current body readback")
+        case "No current ActiveTrack readback":
+            return loc("No current ActiveTrack readback")
+        case "ActiveTrack state is read-only; the A6 command path is not exposed.":
+            return loc("ActiveTrack state is read-only; the A6 command path is not exposed.")
+        case "Body validation is already in progress":
+            return loc("Body validation is already in progress")
+        case "Current body status readback is required":
+            return loc("Current body status readback is required")
+        case "Current body format readback is required for format validation":
+            return loc("Current body format readback is required for format validation")
+        case "Readback gates are ready; execution remains developer-only":
+            return loc("Readback gates are ready; execution remains developer-only")
         case "Known camera resolution; current legal FPS/codec pair is not read back":
             return loc("Known camera resolution; current legal FPS/codec pair is not read back")
         case "Unknown body-format flags":
@@ -46,6 +58,113 @@ enum CapabilityPresentation {
             return loc("Native telemetry is stale")
         default:
             return value
+        }
+    }
+
+    static func activeTrackState(_ observation: Pocket3ActiveTrackObservation?) -> String {
+        guard let observation else { return loc("No current ActiveTrack readback") }
+        switch observation.state {
+        case .idle:
+            return loc("Idle")
+        case .locked(let box):
+            return box == nil ? loc("Locked; no box readback") : loc("Locked; box readback")
+        case .subjectBox:
+            return loc("Subject box observed")
+        case .unknown:
+            return loc("Unknown")
+        }
+    }
+
+    static func activeTrackAvailability(_ observation: Pocket3ActiveTrackObservation?) -> CapabilityAvailability {
+        observation == nil
+            ? .unavailable(reason: "No current ActiveTrack readback")
+            : .readOnly
+    }
+
+    static func activeTrackEvidence(_ observation: Pocket3ActiveTrackObservation?) -> CapabilityEvidenceLevel {
+        observation == nil ? .publicReverseEngineering : .localReadOnly
+    }
+
+    static func bodyValidationReadiness(
+        graph: Pocket3CapabilityGraph,
+        bodyStatusAvailable: Bool,
+        bodyFormatAvailable: Bool,
+        busy: Bool
+    ) -> (value: String, availability: CapabilityAvailability, evidence: CapabilityEvidenceLevel) {
+        if busy {
+            return (loc("In progress"),
+                    .init(read: true, reason: "Body validation is already in progress"),
+                    .localReadOnly)
+        }
+        guard graph.nativeSession.commandReady else {
+            return (nativeSession(graph), graph.nativeSession.availability, graph.nativeSession.evidence)
+        }
+        guard bodyStatusAvailable else {
+            return (loc("Not ready"),
+                    .unavailable(reason: "Current body status readback is required"),
+                    .localReadOnly)
+        }
+        guard bodyFormatAvailable else {
+            return (loc("Partial"),
+                    .init(read: true, reason: "Current body format readback is required for format validation"),
+                    .localReadOnly)
+        }
+        return (loc("Ready"),
+                .init(read: true, reason: "Readback gates are ready; execution remains developer-only"),
+                .localReadOnly)
+    }
+
+    static func bodyValidationRequested(_ result: NativeBodyValidationResult) -> Bool {
+        result.recording?.requested == true || result.format?.requested == true
+    }
+
+    static func bodyValidationSummary(_ result: NativeBodyValidationResult) -> String {
+        if result.completed { return loc("Completed") }
+        if result.observed { return loc("Observed") }
+        if result.acknowledged { return loc("Acknowledged") }
+        if result.submitted { return loc("Submitted") }
+        if bodyValidationRequested(result) { return loc("Requested") }
+        return loc("Not requested")
+    }
+
+    static func bodyValidationReason(_ result: NativeBodyValidationResult,
+                                    currentSession: Bool = true) -> String {
+        guard currentSession else { return loc("Validation result belongs to another native session") }
+        if let failureCode = result.failureCode {
+            return bodyValidationFailureReason(failureCode)
+        }
+        if result.dryRun { return loc("Dry run requested; no command was submitted") }
+        if !result.submitted { return loc("Command was not submitted") }
+        if !result.acknowledged { return loc("Command acknowledgement was not observed") }
+        if !result.observed { return loc("Terminal body readback was not observed") }
+        if !result.completed { return loc("Requested body state was not completed") }
+        return loc("Completed with same-session body readback")
+    }
+
+    private static func bodyValidationFailureReason(_ code: String) -> String {
+        switch code {
+        case "native_body_executor_unavailable", "native_datalink_unavailable":
+            return loc("Native body validation executor is unavailable")
+        case "native_body_recording_baseline_missing", "native_body_recording_baseline_invalid":
+            return loc("Current body status readback is required")
+        case "native_body_format_baseline_missing", "native_body_format_baseline_invalid":
+            return loc("Current body format readback is required for format validation")
+        case "native_body_format_capability_missing", "native_body_format_unsupported":
+            return loc("Requested body format is not in the current legal capability table")
+        case "native_body_command_not_ready", "native_command_not_ready":
+            return loc("Native command session is not ready")
+        case "native_body_session_missing", "native_command_generation_changed", "native_body_connection_changed":
+            return loc("The selected body validation session is unavailable")
+        case "native_body_validation_busy", "native_busy":
+            return loc("Body validation is already in progress")
+        case "native_body_readback_stale", "native_body_readback_invalid":
+            return loc("Terminal body readback was not observed")
+        case "native_body_validation_timeout", "native_command_invalid_timeout":
+            return loc("Body validation timed out before completion")
+        case "cancelled":
+            return loc("Validation was cancelled before completion")
+        default:
+            return String(format: loc("Validation returned gate: %@"), code)
         }
     }
 
