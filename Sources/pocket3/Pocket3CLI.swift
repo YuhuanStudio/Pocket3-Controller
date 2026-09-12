@@ -34,6 +34,21 @@ import MCP
                 print(reply.result?.pretty ?? "{}")
                 return
             }
+            if command == NativeCaptureFormatValidationRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "Capture format validation requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request = try NativeCaptureFormatValidationRequest(
+                    cliArguments: requestArguments)
+                let reply = try await IPCClient.call(
+                    command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == "devices" { print(try JSONValue.encode(CaptureEngine.devices()).pretty); return }
             if command == "formats" {
                 let id = args.count > 1 ? args[1] : CaptureEngine.devices().first?.id ?? ""
@@ -489,6 +504,8 @@ import MCP
           Developer only: fixed 1.2-second USB retarget and hold experiment.
         pocket3 validation-usb-manual-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--hold-seconds SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute collects bounded pan/tilt holds, zoom progress, fresh-frame evidence, verified Stop/restore and reconnect session fencing through the existing USB owner; it never stores images.
+        pocket3 validation-capture-format-matrix --session CAPTURE-SESSION-ID --device DEVICE-ID [--case CASE-ID] [--max-samples N] --hardware-validation
+          Developer only: dry-run scalar plan for four representative NV12/BGRA, NV12/H.264 and UYVY/4K60 cases; a separate fake/metrics harness evaluates callbacks and cleanup. It never starts capture or stores images.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation

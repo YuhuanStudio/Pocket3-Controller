@@ -206,6 +206,8 @@ final class AppModel {
                 case "image-workspace": return try await AppModel.shared.handleImageWorkspace(request)
                 case USBManualAcceptanceRequest.operation:
                     return try await AppModel.shared.handleUSBManualAcceptance(request)
+                case NativeCaptureFormatValidationRequest.operation:
+                    return try await AppModel.shared.handleNativeCaptureFormatValidation(request)
                 case "validation-manual-control": return try await AppModel.shared.handleManualControlValidation(request)
                 case "focus-status":
                     // Read the exact active AVFoundation input capability. This
