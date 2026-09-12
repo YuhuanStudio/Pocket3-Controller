@@ -35,7 +35,7 @@ struct PowerChargingPresentationTests {
             historyReset: false, evaluatedUptime: 10)
     }
 
-    @Test func statusMapsDiagnosisIntoTheExistingPowerPill() {
+    @MainActor @Test func statusMapsDiagnosisIntoTheExistingPowerPill() {
         let model = AppModel()
         model.powerChargingDiagnosis = diagnosis(
             state: .insufficientPowerCandidate,
