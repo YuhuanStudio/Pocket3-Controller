@@ -45,6 +45,7 @@
 - [x] Developer live-view session coordinator：可選02/68 hint、09/A8 IDR request、ingest-before-enable、single enable與cooldown、等待codec+首張IDR/IRAP、stall watchdog與disconnect flush已完成；預設不啟用、不auto join、不每秒重送。
 - [x] Metadata-only Camera Media Library：one-page index、session/generation/route freshness、name/type/duration/size/starred與range progress/partial/cancel已接可收合Diagnostics；不顯示thumbnail/影像、不保存credentials、無delete/favorite writer。
 - [x] Camera body capability新增compact Exposure Disclosure：Auto/Manual、EV、selected/effective ISO、shutter、ISO limit與unknown raw；developer才顯validation evidence，一般UI無writer。第十四批Release gate共865項通過（Core716、Intelligence44、Evaluation1、App98、XCTest6）。
+- [x] 第十五批完成developer-only live-view驗證路由與typed media session：live-view預設dry-run、沿用單一datalink並具session/generation/stall/cooldown/cancel/disconnect fence；媒體解析02/80 playback bit與active-store容量，舊分頁要求fresh playback，播放進出需ACK加匹配狀態回讀。Release gate共873項通過（Core724、Intelligence44、Evaluation1、App98、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
@@ -236,7 +237,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 - [ ] 完成真實相機下模型與外部MCP的取消、重連、錯誤恢復及移動後新影格完整流程。MLX與MLX控制／Apple回答的單次真機任務已有上節證據；外部MCP縮放與拒絕已補足，但不代表所有語句／全視角已驗收。
 - [ ] Mac Studio遠端桌面／無實體螢幕驗收：區分顯示器關閉、GUI鎖定、使用者登出及整機睡眠；涵蓋預覽、MCP、手動拖曳／放開及遠端斷線。核心控制無螢幕亮起門檻；AppKit合成事件／popover動畫的不可用不能等同相機服務失效。本次MCP操作前displayAsleep=false；最新版背景 bridge 也以正常 CLI 在無主視窗狀態取得70 frames／33.09fps、pause後0 frames、manual/no-motion，但仍**尚非關螢幕或實際遠端驗收**。[環境](artifacts/mcp-zoom-hardware/build17-context.json)
 - [x] build18來源加入隨取像生命週期管理的ProcessInfo活動：防止閒置系統睡眠及App Nap，允許螢幕休眠，Stop／失敗／實際session停止或斷線時釋放，舊generation通知不得釋放新活動。460項Release測試執行通過、3項opt-in跳過；另8個MCP離線流程含磁碟失敗清理通過。實際App已確認取像時一份防閒置系統睡眠保護、暫停後零份、重連後一份，沒有display-sleep保護；最終4K30新影格及manual恢復。[測試](artifacts/capture-activity-build18/release-tests.log)、[實機生命週期](artifacts/capture-activity-build18/live-activity-lifecycle.json)
-- [ ] USB 供電／未知充電提示的最新 UI 與實機回歸；不把配置電力當實際充電功率或電池回報。
+- [x] USB 供電／充電提示的最新 UI、CLI 與實機回歸：同一最新App session讀到USB present、500 mA allocation、480 Mb/s及BLE 100%／raw0，合併診斷為`full_not_charging`而非故障；較早95%／raw1正向證據仍保留。配置電力不當作實際充電功率或電池回報。[紀錄](docs/HARDWARE_ACCEPTANCE.md)
 
 ## 其他本輪功能與外部發布條件
 
