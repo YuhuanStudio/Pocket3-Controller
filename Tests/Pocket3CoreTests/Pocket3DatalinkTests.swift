@@ -159,10 +159,13 @@ private final class FakePocket3Wire: Pocket3DatalinkIO, @unchecked Sendable {
         #expect(wire.sentCommands.count == count)
         let second = ContinuousGimbalLease(id: UUID(), binding: binding)
         try await link.send(command, lease: second, permit: OperationPermit())
+        let beforeStaleDisarm = wire.sentCommands.count
         wire.stopTelemetry(); wire.advance(1)
         do { try await link.send(command, lease: second, permit: OperationPermit()); Issue.record("Stale telemetry drove motion") } catch {}
         #expect(await link.status().phase == .disarmed)
-        #expect(wire.sentCommands.last?.payload == DUMLJoystickCommand.neutral.payload)
+        #expect(wire.sentCommands.dropFirst(beforeStaleDisarm).contains {
+            $0.commandSet == 4 && $0.commandID == 1 && $0.payload == DUMLJoystickCommand.neutral.payload
+        })
         _ = await link.disconnect()
     }
 

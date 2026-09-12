@@ -24,6 +24,9 @@
 - [x] macOS唯讀route observation：`getifaddrs`、SystemConfiguration primary baseline/current、UDP connect＋getsockname route interface已接developer CLI；不送payload、不join或改route，失敗保持unknown。
 - [x] Native zoom／gimbal params coordinator：`02/B8` absolute/relative/stop依機身格式限制2×/3×/4×並要求新鮮lens readback；`04/50` Follow／Tilt Locked／speed要求新鮮baseline與matching readback。兩者皆exact session/generation、single request、no-op、ACK不等於完成。
 - [x] Native四步tap AF developer validation：重用22/30/68/32、有序單次transaction、partial evidence/cancel、同session lens＋auto exposure baseline；landscape/portrait/rotation/mirror calibration未驗證時execute拒絕。第七批Release gate共757項通過（Core622、Intelligence44、Evaluation1、App84、XCTest6）。
+- [x] Safe route plan 已接到唯一 native connect：developer可指定interface name/index/host，connect前只讀observe＋plan；不allowed時不建立datalink，legacy路徑相容，Diagnostics保留route status。
+- [x] Tap AF executor 已接唯一 `Pocket3Datalink.transact`：四步各自sequence/ACK、失敗即停、partial evidence、disconnect/cancel fence與零重試；App/CLI calibration仍unverified，因此execute保持零send。
+- [x] Native motion developer validation：zoom absolute/relative/stop與gimbal mode/speed預設dry-run，只有execute才進同一datalink executor；matching readback、取消、unknown raw、session/generation與baseline均驗證。第八批Release gate共765項通過（Core628、Intelligence44、Evaluation1、App86、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
