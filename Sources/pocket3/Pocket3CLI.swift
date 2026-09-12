@@ -108,8 +108,19 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
+                if command == NativeActiveTrackValidationRequest.operation {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled",
+                            "ActiveTrack validation requires --hardware-validation")
+                    }
+                    let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
+                    let request = try NativeActiveTrackValidationRequest(cliArguments: requestArguments)
+                    let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                    print(reply.result?.pretty ?? "{}")
+                    return
+                }
                 if command == "validation-wireless-body" {
                     guard args.contains("--hardware-validation") else {
                         throw BridgeFailure("validation_disabled", "Body validation requires --hardware-validation")
@@ -315,6 +326,8 @@ import MCP
           Developer only: sequentially reads allowlisted paired-camera properties; never writes a setting or joins Wi-Fi.
         pocket3 validation-wireless-body --action start|stop|format [--resolution NAME --fps FPS] [--execute] [--hardware-validation]
           Developer only: dry-run by default; validates exact command-ready session, fresh 02/80/readback and legal capability evidence. An executor must be injected before any command can be submitted.
+        pocket3 validation-wireless-tracking --action set|clear --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N [--id ID --x X --y Y --width W --height H] [--execute] --hardware-validation
+          Developer only: dry-run by default. A6 set/clear requires fresh A5 and A89 readbacks; execute stays disabled until native rotation/mirror coordinates are calibrated.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON

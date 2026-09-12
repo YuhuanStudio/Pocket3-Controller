@@ -341,8 +341,22 @@ public struct Pocket3TrackingBox: Codable, Sendable, Equatable, Hashable {
         // The wire stores these fields as float32. Canonicalizing at this
         // boundary gives stable equality between a fixture and its decode.
         let values = [Float(centerX), Float(centerY), Float(width), Float(height)]
+        guard values.allSatisfy(\.isFinite),
+              Self.isValid(centerX: Double(values[0]), centerY: Double(values[1]),
+                           width: Double(values[2]), height: Double(values[3])) else {
+            throw Pocket3NativeProtocolError.invalidTrackingBox
+        }
         self.centerX = Double(values[0]); self.centerY = Double(values[1])
         self.width = Double(values[2]); self.height = Double(values[3])
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let centerX = try values.decode(Double.self, forKey: .centerX)
+        let centerY = try values.decode(Double.self, forKey: .centerY)
+        let width = try values.decode(Double.self, forKey: .width)
+        let height = try values.decode(Double.self, forKey: .height)
+        try self.init(centerX: centerX, centerY: centerY, width: width, height: height)
     }
 
     fileprivate init(uncheckedCenterX x: Double, centerY y: Double, width: Double, height: Double) {
@@ -356,10 +370,17 @@ public struct Pocket3TrackingBox: Codable, Sendable, Equatable, Hashable {
 
     public static func isValid(centerX: Double, centerY: Double, width: Double, height: Double,
                                minimumSide: Double = 0.02) -> Bool {
-        centerX.isFinite && centerY.isFinite && width.isFinite && height.isFinite
+        minimumSide.isFinite && minimumSide > 0 && minimumSide <= 1
+            && centerX.isFinite && centerY.isFinite && width.isFinite && height.isFinite
             && (0...1).contains(centerX) && (0...1).contains(centerY)
             && width >= minimumSide && width <= 1
             && height >= minimumSide && height <= 1
+            && centerX - width / 2 >= 0 && centerX + width / 2 <= 1
+            && centerY - height / 2 >= 0 && centerY + height / 2 <= 1
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case centerX, centerY, width, height
     }
 }
 
