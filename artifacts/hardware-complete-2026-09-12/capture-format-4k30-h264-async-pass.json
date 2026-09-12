@@ -1,0 +1,84 @@
+{
+  "automaticFallback" : false,
+  "cameraImagesStored" : false,
+  "completed" : true,
+  "expectedDeviceID" : "0x11000002ca30023",
+  "expectedFailureCount" : 0,
+  "expectedSessionID" : "90CFE07A-4182-42AA-8C2F-E88B96A8CA17",
+  "operation" : "validation-capture-format-matrix",
+  "passed" : true,
+  "phase" : "completed",
+  "plan" : {
+    "automaticFallback" : false,
+    "cameraImagesStored" : false,
+    "cases" : [
+      {
+        "expectation" : "frames_required",
+        "expectedInputFourCC" : "420v",
+        "expectedOutputFourCC" : "avc1",
+        "fpsTolerance" : 0.05,
+        "id" : "nv12-h264-4k30",
+        "inputPixelFormat" : "nv12",
+        "mode" : {
+          "frameRate" : 30,
+          "height" : 2160,
+          "width" : 3840
+        },
+        "outputPolicy" : "h264"
+      }
+    ],
+    "executeRequested" : true,
+    "expectedDeviceID" : "0x11000002ca30023",
+    "expectedSessionID" : "90CFE07A-4182-42AA-8C2F-E88B96A8CA17",
+    "hardwareExecutionEnabled" : true,
+    "maximumSamplesPerCase" : 8,
+    "operation" : "validation-capture-format-matrix",
+    "sampleInterval" : 0.5,
+    "warmupSeconds" : 20
+  },
+  "restoration" : {
+    "attempted" : true,
+    "sessionID" : "E2688F43-C260-49EE-AA0B-EB581B426899",
+    "succeeded" : true
+  },
+  "trials" : [
+    {
+      "caseID" : "nv12-h264-4k30",
+      "cleanupPassed" : true,
+      "codecStatus" : "verified",
+      "decodeStatus" : "verified",
+      "decodedH264FrameCount" : 713,
+      "expectation" : "frames_required",
+      "frameOutputFourCC" : "BGRA",
+      "id" : "nv12-h264-4k30",
+      "maximumFPS" : 30.18912957822148,
+      "medianFPS" : 30.102036053472396,
+      "minimumFPS" : 29.75378097263611,
+      "outcome" : "verified",
+      "performance" : {
+        "backpressureEventCount" : 0,
+        "callbackTimeoutCount" : 0,
+        "callbackWaitTimedOut" : false,
+        "decodedH264FrameCount" : 713,
+        "decodedHEVCFrameCount" : 0,
+        "droppedVideoFrameCount" : 0,
+        "encodedVideoSampleCount" : 713,
+        "h264DecodeDroppedFrameCount" : 0,
+        "h264DecodeFailureCount" : 0,
+        "h264DecodeMaximumMilliseconds" : 133.31545834080316,
+        "h264DecodeQueueLatencyMaximumMilliseconds" : 134.24429166479968,
+        "h264DecodeQueueLatencyTotalMilliseconds" : 3272.031416359823,
+        "h264DecodeSubmittedCount" : 713,
+        "h264DecodeTotalMilliseconds" : 7441.80375043652
+      },
+      "realtimeRateStatus" : "verified",
+      "sampleCount" : 8,
+      "steadyWindowBackpressureEventCount" : 0,
+      "steadyWindowDecodeDroppedFrameCount" : 0,
+      "steadyWindowDroppedVideoFrameCount" : 0,
+      "videoSampleCount" : 713,
+      "videoSampleFourCC" : "avc1"
+    }
+  ],
+  "verifiedCaseCount" : 1
+}

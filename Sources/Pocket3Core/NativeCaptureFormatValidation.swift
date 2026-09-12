@@ -844,12 +844,27 @@ private func nativeCaptureFormatRealtimeRateStatus(
     guard abs(median - definition.mode.frameRate) <= tolerance else {
         return .failed
     }
-    let performance = metrics.performance
-    return performance.droppedVideoFrameCount == 0 &&
-        performance.h264DecodeDroppedFrameCount == 0 &&
-        performance.backpressureEventCount == 0 &&
-        performance.callbackTimeoutCount == 0 &&
-        !performance.callbackWaitTimedOut ? .verified : .failed
+    let window = nativeCaptureFormatWindowCounters(metrics)
+    return window.dropped == 0 && window.decodeDropped == 0 &&
+        window.backpressure == 0 && window.callbackTimeouts == 0 &&
+        !metrics.performance.callbackWaitTimedOut ? .verified : .failed
+}
+
+private func nativeCaptureFormatWindowCounters(
+    _ metrics: NativeCaptureFormatValidationMetrics
+) -> (dropped: Int, decodeDropped: Int, backpressure: Int,
+      callbackTimeouts: Int) {
+    guard let first = metrics.samples.first?.performance,
+          let last = metrics.samples.last?.performance else {
+        let value = metrics.performance
+        return (value.droppedVideoFrameCount,
+                value.h264DecodeDroppedFrameCount,
+                value.backpressureEventCount, value.callbackTimeoutCount)
+    }
+    return (max(0, last.droppedVideoFrameCount - first.droppedVideoFrameCount),
+            max(0, last.h264DecodeDroppedFrameCount - first.h264DecodeDroppedFrameCount),
+            max(0, last.backpressureEventCount - first.backpressureEventCount),
+            max(0, last.callbackTimeoutCount - first.callbackTimeoutCount))
 }
 
 public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
@@ -867,6 +882,9 @@ public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
     public let codecStatus: NativeCaptureFormatEvidenceStatus
     public let decodeStatus: NativeCaptureFormatEvidenceStatus
     public let realtimeRateStatus: NativeCaptureFormatEvidenceStatus
+    public let steadyWindowDroppedVideoFrameCount: Int
+    public let steadyWindowDecodeDroppedFrameCount: Int
+    public let steadyWindowBackpressureEventCount: Int
     public let videoSampleFourCC: String?
     public let frameOutputFourCC: String?
     public let cleanupPassed: Bool
@@ -895,6 +913,10 @@ public struct NativeCaptureFormatValidationTrial: Codable, Sendable,
             definition: definition, metrics: metrics)
         realtimeRateStatus = nativeCaptureFormatRealtimeRateStatus(
             definition: definition, metrics: metrics)
+        let window = nativeCaptureFormatWindowCounters(metrics)
+        steadyWindowDroppedVideoFrameCount = window.dropped
+        steadyWindowDecodeDroppedFrameCount = window.decodeDropped
+        steadyWindowBackpressureEventCount = window.backpressure
         videoSampleFourCC = metrics.samples.last?.videoSampleFourCC
         frameOutputFourCC = metrics.samples.last?.outputFourCC
         cleanupPassed = metrics.cleanup.isClean
@@ -1158,10 +1180,11 @@ public enum NativeCaptureFormatValidationService {
         guard abs(median - definition.mode.frameRate) <= tolerance else {
             return "capture_format_realtime_rate_failed"
         }
-        guard metrics.performance.droppedVideoFrameCount == 0,
-              metrics.performance.h264DecodeDroppedFrameCount == 0,
-              metrics.performance.backpressureEventCount == 0,
-              metrics.performance.callbackTimeoutCount == 0,
+        let window = nativeCaptureFormatWindowCounters(metrics)
+        guard window.dropped == 0,
+              window.decodeDropped == 0,
+              window.backpressure == 0,
+              window.callbackTimeouts == 0,
               !metrics.performance.callbackWaitTimedOut else {
             return "capture_format_realtime_drop_or_backpressure"
         }

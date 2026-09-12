@@ -114,6 +114,9 @@ import Testing
         #expect(settings[kCVPixelBufferPixelFormatTypeKey as String] == nil)
         #expect(settings[kCVPixelBufferWidthKey as String] == nil && settings[kCVPixelBufferHeightKey as String] == nil)
         #expect(CaptureOutputPolicy.hevc.settings() == nil)
+        #expect(!CaptureOutputPolicy.h264.discardsLateVideoFrames)
+        #expect(CaptureOutputPolicy.bgra.discardsLateVideoFrames)
+        #expect(CaptureOutputPolicy.hevc.discardsLateVideoFrames)
         try CaptureOutputPolicy.hevc.validateAvailableCodecs(["hvc1"])
         #expect(throws: BridgeFailure.self) { try CaptureOutputPolicy.hevc.validateAvailableCodecs(["avc1"]) }
         let hevc = try #require(CaptureOutputPolicy.hevc.settings(width: 1920, height: 1080))

@@ -104,7 +104,9 @@ struct NativeCaptureFormatPerformanceTests {
             droppedVideoFrameCount: 2, backpressureEventCount: 1,
             callbackTimeoutCount: 0)
         let value = metrics(
-            samples: [sample(frames: 100, performance: performance),
+            samples: [sample(frames: 100, performance: .init(
+                encodedVideoSampleCount: 100, decodedH264FrameCount: 100,
+                h264DecodeSubmittedCount: 100)),
                       sample(frames: 130, performance: performance)], performance: performance)
         let report = NativeCaptureFormatValidationService.evaluate(
             try request(), metrics: [value])
@@ -116,6 +118,9 @@ struct NativeCaptureFormatPerformanceTests {
         #expect(trial.realtimeRateStatus == NativeCaptureFormatEvidenceStatus.failed)
         #expect(trial.performance.droppedVideoFrameCount == 2)
         #expect(trial.performance.backpressureEventCount == 1)
+        #expect(trial.steadyWindowDroppedVideoFrameCount == 2)
+        #expect(trial.steadyWindowDecodeDroppedFrameCount == 4)
+        #expect(trial.steadyWindowBackpressureEventCount == 1)
     }
 
     @Test func frameStoreCarriesDropAndDecodeTimingAsScalarEvidence() throws {

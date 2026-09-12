@@ -108,6 +108,11 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
 public enum CaptureOutputPolicy: String, Codable, CaseIterable, Sendable, Identifiable {
     case bgra, native, systemDefault = "system_default", h264, hevc
     public var id: String { rawValue }
+    /// Encoded H.264 callbacks only enqueue into our bounded decoder pipeline,
+    /// so retain delivery here and let that queue report explicit drops.
+    /// Pixel-buffer paths still discard late frames to bound AVFoundation
+    /// memory when downstream work stalls.
+    public var discardsLateVideoFrames: Bool { self != .h264 }
     public var isUserSelectable: Bool { self == .bgra || self == .h264 || self == .hevc }
     static func selected(environment: [String: String], arguments: [String]) -> Self {
         guard arguments.contains("--hardware-validation") else { return .bgra }
@@ -622,7 +627,8 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                     let input = try AVCaptureDeviceInput(device: device)
                     let output = AVCaptureVideoDataOutput()
                     output.videoSettings = outputPolicy.settings()
-                    output.alwaysDiscardsLateVideoFrames = true
+                    output.alwaysDiscardsLateVideoFrames =
+                        outputPolicy.discardsLateVideoFrames
                     session.beginConfiguration()
                     guard session.canAddInput(input), session.canAddOutput(output) else { session.commitConfiguration(); throw BridgeFailure("capture_unavailable", "無法建立相機擷取，請關閉其他可能占用相機的程式後重試") }
                     session.addInput(input); session.addOutput(output)
