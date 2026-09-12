@@ -200,7 +200,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 ## 其他本輪功能與外部發布條件
 
 - [x] DUML CRC／fragment／ACK／session 邊界、BLE 配對及原生 UDP codec 已實作；Wi-Fi join／datalink 保留研究，不是主流程或可用控制的前提。
-- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；首批協議整理不代表全部設定可寫。[路線圖](docs/DEVICE_CAPABILITY_ROADMAP.md)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
+- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；首批協議整理不代表全部設定可寫。 最新唯讀 CLI `validation-wireless-read-settings` 在 protocol-confirmed pair 後依序送 allowlisted subscription；第一個 property 約1.9秒無 matching push，回`completed=false`／0 observations，已斷線且沒有Wi-Fi、setter或媒體。reader route可重現，property transport仍待釐清。[路線圖](docs/DEVICE_CAPABILITY_ROADMAP.md)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
 - [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
 - [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。
