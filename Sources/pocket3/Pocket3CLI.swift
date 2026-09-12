@@ -34,6 +34,21 @@ import MCP
                 print(reply.result?.pretty ?? "{}")
                 return
             }
+            if command == USBRollAcceptanceRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "Roll acceptance requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request = try USBRollAcceptanceRequest(
+                    cliArguments: requestArguments)
+                let reply = try await IPCClient.call(
+                    command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == NativeCaptureFormatValidationRequest.operation {
                 guard args.contains("--hardware-validation") else {
                     throw BridgeFailure("validation_disabled",
@@ -510,7 +525,7 @@ import MCP
             }
             if command == "validation-setup" { arguments["access"] = .string(option("--access") ?? "observe") }
             if let dimension = option("--max-dimension"), let size = Int(dimension) { arguments["maxDimension"] = .number(Double(size)) }
-            guard ["status", "doctor", "connect", "pause", "focus-status", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel", BluetoothCameraEventRecordingRequest.operation].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
+            guard ["status", "doctor", "connect", "pause", "focus-status", "zoom-status", "zoom", "validation-zoom", "roll-status", "roll", "validation-roll", USBRollAcceptanceRequest.operation, "snapshot", "move", "stop", "ai-status", "model-download", "model-unload", "ai-cancel", "evaluate-image", "evaluate-workflow", "evaluate-perception", "evaluate-grounding", "ask", "detect", "ui-capture", "ui-check", "validate-start", "validate-status", "validation-move", "validation-position-probe", "validation-trajectory-probe", "validation-setup", "validation-connect", "validation-pause", "validation-suspend", "validation-stream-start", "validation-stream-status", "validation-stream-cancel", BluetoothCameraEventRecordingRequest.operation].contains(command) else { throw BridgeFailure("usage", "未知命令：\(command)") }
             let reply = try await IPCClient.call(command, arguments: .object(arguments), address: bridgeAddress)
             if let data = reply.imageJPEG {
                 let output = option("--output") ?? "pocket3-\(Int(Date().timeIntervalSince1970)).jpg"
@@ -549,6 +564,8 @@ import MCP
           Developer only: fixed 1.2-second USB retarget and hold experiment.
         pocket3 validation-usb-manual-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--hold-seconds SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute collects bounded pan/tilt holds, zoom progress, fresh-frame evidence, verified Stop/restore and reconnect session fencing through the existing USB owner; it never stores images.
+        pocket3 validation-roll-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--raw SIGNED-RAW] [--move-seconds SECONDS] [--poll-interval SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute runs one signed Roll move, captures bounded in-flight raw readback, performs the existing stable Stop hold, restores the original raw value, and fences the old session after reconnect. It never stores images or unlocks general Roll control.
         pocket3 validation-capture-format-matrix --session CAPTURE-SESSION-ID --device DEVICE-ID [--case CASE-ID] [--max-samples N] [--warmup-seconds N] [--sample-interval N] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute runs six bounded NV12/BGRA, portrait H.264, 4K30 H.264 and UYVY/4K60 scalar trials sequentially, pauses between cases, never falls back or stores images, and restores the initial mode when safe.
         pocket3 validation-host-hevc --device DEVICE-ID --session CAPTURE-SESSION-ID [--generation N] [--max-frames N] [--max-age-seconds N] [--execute] --hardware-validation
