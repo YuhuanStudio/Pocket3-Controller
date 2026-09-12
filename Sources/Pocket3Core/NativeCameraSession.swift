@@ -66,7 +66,12 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     case mediaFavorite
     case mediaDelete
 
-    // Live view is a separate phase and is not implied by command readiness.
+    // Live view is a separate phase.  The developer-only start/IDR/hint
+    // requests are command-ready operations; a live-preview consumer itself
+    // becomes live-ready only after fresh media evidence arrives.
+    case livePreviewHint
+    case livePreviewEnable
+    case livePreviewIDR
     case livePreview
 
     public var minimumReadiness: NativeCameraSessionState {
@@ -81,6 +86,8 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
             .commandReady
         case .bodyFormat, .mediaPresence, .mediaPlayback, .mediaList,
              .mediaFavorite, .mediaDelete:
+            .commandReady
+        case .livePreviewHint, .livePreviewEnable, .livePreviewIDR:
             .commandReady
         case .livePreview:
             .liveReady
@@ -100,6 +107,9 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     public static let startStopRecording = Self.record
     public static let activeTrack = Self.tracking
     public static let advancedSettings = Self.advancedSetting
+    public static let liveViewHint = Self.livePreviewHint
+    public static let liveViewEnable = Self.livePreviewEnable
+    public static let liveViewIDR = Self.livePreviewIDR
     public static let liveView = Self.livePreview
 
     public static func minimumReadiness(for command: Self) -> NativeCameraSessionState {

@@ -717,6 +717,7 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
     private var assembler: Pocket3LiveViewMediaAssembler
     private let decoderService: Pocket3LiveViewDecodeService?
     private var activeGeneration: UInt64?
+    private var latestObservationValue: Pocket3LiveViewMediaObservation?
     private var staleDatagramCount: UInt64 = 0
     private var assemblerErrorCount: UInt64 = 0
     private var lastErrorCode: String?
@@ -774,6 +775,14 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
         decoderService?.statistics()
     }
 
+    /// The newest bounded media readiness observation.  The complete media
+    /// bytes remain owned by the assembler/decoder queues; this value only
+    /// exposes generation, codec and random-access evidence to a session
+    /// coordinator.
+    public func latestMediaObservation() -> Pocket3LiveViewMediaObservation? {
+        lock.withLock { latestObservationValue }
+    }
+
     public func dequeueMessage() -> Pocket3LiveViewMediaMessage? {
         lock.withLock { assembler.dequeue() }
     }
@@ -790,6 +799,7 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
             lastErrorCode = nil
             staleDatagramCount = 0
             assemblerErrorCount = 0
+            latestObservationValue = nil
         }
         if let decoderService {
             _ = try? decoderService.reset(to: generation)
@@ -798,6 +808,7 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
 
     public func receive(_ datagram: DJIUDPDatagram, generation: UInt64) {
         var completed: [Pocket3LiveViewMediaMessage] = []
+        let receivedUptime = ProcessInfo.processInfo.systemUptime
         lock.lock()
         guard activeGeneration == generation else {
             staleDatagramCount &+= 1
@@ -805,10 +816,13 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
             return
         }
         do {
-            _ = try assembler.consume(
+            if let message = try assembler.consume(
                 datagram,
-                receivedUptime: ProcessInfo.processInfo.systemUptime,
-                expectedGeneration: generation)
+                receivedUptime: receivedUptime,
+                expectedGeneration: generation) {
+                latestObservationValue = Pocket3LiveViewMediaObservation(
+                    message: message, receivedUptime: receivedUptime)
+            }
             if decoderService != nil {
                 while let message = assembler.dequeue() {
                     completed.append(message)
@@ -831,6 +845,7 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
             guard activeGeneration == generation else { return false }
             activeGeneration = nil
             assembler.reset()
+            latestObservationValue = nil
             return true
         }
         guard shouldFlush else { return }
