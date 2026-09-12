@@ -18,8 +18,9 @@ extension AppModel {
             coordinateCalibration: .unverifiedLandscape,
             nowUptime: ProcessInfo.processInfo.systemUptime)
         do {
-            let result = try await NativeTapFocusValidationService().run(input,
-                                                                          snapshot: snapshot)
+            let adapter = input.execute ? wireless.nativeTapFocusValidationAdapter() : nil
+            let service = NativeTapFocusValidationService(adapter: adapter)
+            let result = try await service.run(input, snapshot: snapshot)
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as NativeTapFocusValidationError {
             throw nativeTapFocusValidationFailure(error)

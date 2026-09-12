@@ -523,6 +523,25 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Returns the same single-owner transaction boundary for the native
+    /// four-step tap-AF coordinator. The coordinator remains responsible for
+    /// order and step ACKs; this model only supplies the existing datalink
+    /// transaction fence.
+    func nativeTapFocusValidationAdapter() -> NativeTapFocusValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeTapFocusValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection, expectedLink: expectedLink)
+        }
+    }
+
     /// Executes exactly one already-prepared transaction through the current
     /// Pocket3Datalink owner.  The surrounding service owns command-specific
     /// readback rules; this method owns model-level identity and busy fences.

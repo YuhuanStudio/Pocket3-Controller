@@ -90,6 +90,7 @@ import Testing
                                         controls: ContinuousGimbalGestureController(monitorsEnabled: false),
                                         prepareManual: {})
         #expect(model.nativeBodyValidationAdapter() == nil)
+        #expect(model.nativeTapFocusValidationAdapter() == nil)
         #expect(model.nativeBodyValidationBusy == false)
     }
 }
