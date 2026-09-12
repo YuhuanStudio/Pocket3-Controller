@@ -277,6 +277,32 @@ public struct NativeTapFocusStepResult: Codable, Sendable, Equatable {
     public let acknowledged: Bool
     public let observed: Bool
     public let failureCode: String?
+    /// Serialized evidence is optional for backward-compatible decoding of
+    /// older validation reports; new coordinator results populate it.
+    public var evidence: Pocket3NativeActionEvidenceReport?
+
+    /// Evidence for this exact 22/30/68/32 transaction. A successful ACK
+    /// remains separate from optical focus confirmation.
+    public var actionEvidence: Pocket3NativeActionEvidenceReport {
+        if let evidence { return evidence }
+        let transaction = self.transaction
+        return Pocket3NativeActionEvidenceReport(
+            commandSet: request.frame.commandSet,
+            commandID: request.frame.commandID,
+            requestPayload: request.frame.payload,
+            submitted: submitted,
+            responseReceived: transaction?.responseReceived == true,
+            responseStatusRaw: transaction?.responseStatus,
+            acknowledged: acknowledged,
+            readbackObserved: observed,
+            physicalEvidence: false,
+            cancelled: transaction?.end == .cancelled,
+            connectionChanged: transaction?.end == .generationChanged)
+    }
+
+    public var transportEvidence: Pocket3NativeActionEvidenceReport {
+        actionEvidence
+    }
 }
 
 public struct NativeTapFocusValidationResult: Codable, Sendable,
@@ -291,6 +317,9 @@ public struct NativeTapFocusValidationResult: Codable, Sendable,
     public let acknowledgedCount: Int
     public let completed: Bool
     public let failureCode: String?
+    /// Per-step serialized evidence. It remains optional when decoding a
+    /// report produced before this classification layer existed.
+    public let evidence: [Pocket3NativeActionEvidenceReport]?
 
     public var partialSequence: Bool {
         submittedCount > 0 && !completed
@@ -299,6 +328,16 @@ public struct NativeTapFocusValidationResult: Codable, Sendable,
     /// optical focus or an AVFoundation-to-DJI coordinate mapping.
     public var verification: String {
         "four_step_ack_only_no_optical_focus_readback"
+    }
+
+    /// Per-step evidence makes a missing transport reply distinguishable from
+    /// a correlated command rejection or an ACK without focus readback.
+    public var transportEvidence: [Pocket3NativeActionEvidenceReport] {
+        evidence ?? steps.map(\.actionEvidence)
+    }
+
+    public var aggregateTransportEvidence: Pocket3NativeActionEvidenceLevel {
+        Pocket3NativeActionEvidenceReport.summarize(transportEvidence)
     }
 }
 
@@ -503,12 +542,14 @@ public struct NativeTapFocusValidationCoordinator: Sendable {
                 ? stepTransactions[index] : nil
             let requestEvidence = NativeTapFocusStepRequestEvidence(
                 step: step, request: stepRequests[index])
-            return NativeTapFocusStepResult(
+            var stepResult = NativeTapFocusStepResult(
                 step: step, commandID: step.commandID, request: requestEvidence,
                 transaction: transaction, submitted: transaction?.submitted == true,
                 acknowledged: transaction?.acknowledged == true,
                 observed: transaction?.observed == true,
                 failureCode: transaction?.failureCode)
+            stepResult.evidence = stepResult.actionEvidence
+            return stepResult
         }
         return NativeTapFocusValidationResult(
             request: request, baseline: baseline,
@@ -516,7 +557,8 @@ public struct NativeTapFocusValidationCoordinator: Sendable {
             steps: steps, requested: true,
             submittedCount: steps.filter(\.submitted).count,
             acknowledgedCount: steps.filter(\.acknowledged).count,
-            completed: phase == .completed, failureCode: failureCode)
+            completed: phase == .completed, failureCode: failureCode,
+            evidence: steps.map(\.actionEvidence))
     }
 }
 

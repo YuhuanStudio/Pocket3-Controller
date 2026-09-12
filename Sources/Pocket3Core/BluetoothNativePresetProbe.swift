@@ -21,6 +21,9 @@ public struct BluetoothNativeRecenterResult: Codable, Sendable {
     public var movementObserved = false
     public var localSubmitted = false
     public var responseReceived = false
+    /// Raw first response byte from the exact FE08 ACK, retained even when
+    /// the camera returns an unknown future status.
+    public var responseStatusRaw: UInt8?
     public var replyHeader: BluetoothDUMLHeader?
     /// At most 16 bytes, only from the exact source/sequence/opcode ACK.
     public var payloadHex: String?
@@ -36,6 +39,29 @@ public struct BluetoothNativeRecenterResult: Codable, Sendable {
     public var connectionChanged = false
     public var failure: String?
     public var interpretation = "single_ble_FE08_submission_reply_and_telemetry_only"
+    /// Serialized evidence is populated when the probe is finished. Older
+    /// reports may omit this optional field and still decode.
+    public var evidence: Pocket3NativeActionEvidenceReport?
+
+    /// Compact evidence classification; this never claims physical support.
+    public var actionEvidence: Pocket3NativeActionEvidenceReport {
+        if let evidence { return evidence }
+        return derivedActionEvidence
+    }
+
+    fileprivate var derivedActionEvidence: Pocket3NativeActionEvidenceReport {
+        Pocket3NativeActionEvidenceReport(
+            commandSet: Pocket3GimbalShortcut.commandSet,
+            commandID: Pocket3GimbalShortcut.commandID,
+            requestPayload: Pocket3GimbalShortcut.recenter.payload,
+            submitted: localSubmitted,
+            responseReceived: responseReceived,
+            responseStatusRaw: responseStatusRaw,
+            acknowledged: responseReceived && responseStatusRaw == 0,
+            physicalEvidence: movementObserved,
+            cancelled: cancelled,
+            connectionChanged: connectionChanged)
+    }
 
     init(sequence: UInt16, startedUptime: TimeInterval) {
         querySequence = sequence; self.startedUptime = startedUptime
@@ -98,6 +124,7 @@ struct BluetoothNativePresetProbe {
                frame.commandSet == 4, frame.commandID == 0x4c,
                frame.sequence == result.querySequence, frame.flags == 0x80 || frame.flags == 0xc0 {
                 result.responseReceived = true; result.responseUptime = uptime
+                result.responseStatusRaw = frame.payload.first
                 result.replyHeader = BluetoothDUMLHeader(direction: "received", characteristic: characteristic,
                     source: frame.source, destination: frame.destination, sequence: frame.sequence,
                     flags: frame.flags, commandSet: frame.commandSet, commandID: frame.commandID)
@@ -140,6 +167,7 @@ struct BluetoothNativePresetProbe {
             && result.submittedUptime.map { now - $0 >= Self.observationDuration } == true
         result.timedOut = result.observationWindowCompleted && !result.responseReceived
         result.movementObserved = max(result.maximumPitchDelta, result.maximumRollDelta, result.maximumYawDelta) >= 0.5
+        result.evidence = result.derivedActionEvidence
         return result
     }
 }
