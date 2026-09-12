@@ -1,6 +1,6 @@
 # Pocket 3 Controller 支援矩陣（唯一 current source of truth）
 
-更新：2026-09-11。這份文件是目前 Pocket 3 支援度的唯一狀態表；它把機身能力、App UI、App/Core 讀寫、transport、實機證據和 release 邊界分開記錄。**有畫面、存在 API、送出命令或取得 ACK，都不單獨等於功能完成，更不等於機身已實際動作。** 未知保持 `unknown`，不以其他 DJI 型號、開源候選或舊版結果補齊。
+更新：2026-09-12。這份文件是目前 Pocket 3 支援度的唯一狀態表；它把機身能力、App UI、App/Core 讀寫、transport、實機證據和 release 邊界分開記錄。**有畫面、存在 API、送出命令或取得 ACK，都不單獨等於功能完成，更不等於機身已實際動作。** 未知保持 `unknown`，不以其他 DJI 型號、開源候選或舊版結果補齊。
 
 ## 版本與證據邊界
 
@@ -11,6 +11,7 @@
 | build 23 媒體／真機邊界 | 媒體 gate 使用合成 image/video；ROI MLX count 1 有 `uncertain=true` 警告、Vision OCR `FRAME B`、Apple answer `FRAME B`、JSON/Markdown export、rapid seek cancel 後實際時間 1.5 s、三語 redacted UI。離線期間 camera frames、session、access 維持不變。真機只通過有界 observe／assistFraming：MLX 讀取工具、zoom raw 110→獨立讀回 109（容許 1）、restore 100；Apple observe 遇系統 safety guardrail 並完成 cleanup。 |
 | 使用者確認的韌體 | 整機 `01.06.10.04`；Camera `10.00.50.51`；Gimbal `01.00.15.81`。USB `bcdDevice=0x0504` 不是 firmware version。 |
 | build 25 | `main` 已加入 `02/80` camera status、`02/DC` storage、九類唯讀 camera properties、被動 tracking candidate 紀錄、source switch 的 `remoteTask` fence、UVC control-read 降級處理和 identity UI wording，以及H.264 host-output、background bridge、MCP capture與App Intents。Release tests 648 次執行零失敗；USB 1080p30 與 BLE 唯讀 live 對照已完成，完整 release gate 尚待完成。 |
+| current main | `971032a` 已完成第16批：充電合併狀態、typed playback／active-store、metadata-only媒體庫、developer-only live-view session與cooldown、唯讀裝置盤點。最新Release gate共886項（Core730、Intelligence44、Evaluation1、App105、XCTest6）通過；這些是軟體與列明的有界硬體證據，不提升尚未完成的雲台、AF、4K60、機身setter或ActiveTrack。 |
 | 讀表方法 | `App UI` 表示使用者可見入口；`App/Core 讀／API` 與 `App/Core 寫／API` 先回答 source/API 是否存在（有、無、WIP 或 gated）；`實機證據` 再回答 read/write 是否真的測過，以及是否有 physical result。`release 狀態` 不會因 API 存在自動變成可用。 |
 
 證據標籤的意思如下：`實機通過（有界）` 只涵蓋列出的模式、值、session 和 cleanup；`實機 read-only` 只證明讀到資料，不證明 setter；`實機未通過／未確認` 表示有實際嘗試但沒有完成條件；`離線 gate` 是 fixture、合成媒體或複製 App；`source/UI only` 只有程式或 UI 存在；`unknown` 表示尚無足夠證據。
@@ -51,13 +52,13 @@
 | MCP / CLI | 公開 App 提供本機 MCP／CLI；native wireless 不在工具承諾內。`camera_body_status`僅回傳既有 Bluetooth discovery snapshot，不掃描或配對；`camera_roll_status`唯讀，沒有繞過 Roll physical-stop gate。 | App server/diagnostics UI；CLI 可獨立呼叫。 | `camera_status`、`capture_frame`、`camera_zoom_status` 讀取；使用 session/access/fresh frame。`Sources/Pocket3Core/MCPCameraToolContract.swift:3-91`、`Pocket3CLI.swift:287-310`。 | `camera_set_zoom`、`move_gimbal`、`stop_gimbal` 有 bounded USB write；native action unavailable。 | local Unix IPC，最多 client/work-slot 規則；USB service。`Sources/Pocket3Core/IPC.swift:60-145`。 | release/offline tool gates PASS；real hardware only bounded zoom；沒有 general physical pan/tilt/native proof。 | build24 shipped；build25已修正`camera_status`語義並加入remote-task source-switch fence，完整Release tests通過，MCP source-switch live concurrency仍待驗。 | 每個工具回傳 accepted/completed/verified、session、transport、physical boundary；取消和 source switch 不得跨 session。 | 做一個MCP remote observation執行中切source／取消／session不變的live probe。 |
 | Sparkle update、ZIP/DMG、signature | 這是 App 發布能力，不是 Pocket3 device control。 | 有 update permission/status UI。 | 有 exact source、hash、Ed25519 feed/signature verification。`Sources/Pocket3BridgeApp/AppUpdateController.swift:58-209`。 | 可下載／安裝已簽名 release；不改 camera firmware。 | HTTPS/Sparkle/GitHub。 | build24 beta1→candidate update、公開 hash、feed、ZIP/DMG/signatures PASS；Developer ID/notarization 未完成。 | release verified；與 firmware update 分開。 | 發布 artifact、feed、hash、signature、update install 和 rollback/permission 都保持可追溯。 | 保持目前 release checks；不要把 Sparkle 當 camera firmware updater。 |
 
-## build25 明確 pending 項目
+## build25 歷史 pending 項目的目前結果
 
-以下是目前工作樹已開始但尚未 compile/live 的三組工作；它們不改變上表任何 release 狀態：
+以下三組曾是 build25 工作樹中的 pending；目前均已通過後續 compile／Release gate，但只有列明的部分取得實機證據：
 
-1. `Sources/Pocket3Core/Pocket3CameraStatusReadback.swift` 與 `Sources/Pocket3BridgeApp/BluetoothCameraStatusView.swift`：`02/80` recording/camera status、`02/DC` storage 的 **read-only** schema/UI；要等編譯、真機通知、session/freshness 和機身畫面對照。
-2. `Sources/Pocket3BridgeApp/ImageObservationSource.swift`：source switch 加入 remote observation/task fence；要等 UI、MCP、assistFraming 競態 live probe 和舊 task cleanup。
-3. `Sources/Pocket3BridgeApp/WirelessGimbalConnectionView.swift`、`WirelessGimbalModel.swift` 與 identity 狀態：把「Camera paired」等字樣改成反映 unverified identity；要等 compile/live BLE identity evidence。
+1. `02/80` camera status、playback bit與active-store容量已完成typed readback並在實機同session讀到未錄影、SD total/free；metadata-only UI已通過Release render。未執行播放切換、檔案下載或破壞性操作。
+2. source switch 的remote observation/task fence已通過離線競態測試；真實外部MCP工作執行中切換source仍待live probe。
+3. BLE identity wording與candidate邊界已通過編譯及同UUID重連；peer仍只可稱已配對候選，尚無firmware/model identity property可把它提升成協議驗證的Pocket 3身份。
 
 ## P0 / P1 目前阻塞與最小下一步
 

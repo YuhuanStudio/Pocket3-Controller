@@ -157,7 +157,7 @@ struct DirectUVCSessionTests {
                 width: 1920, height: 1080,
                 supportedIntervals100ns: [333_333],
                 frameInterval100ns: 333_333)
-            try DirectUVCStreamPlanner.plan(
+            _ = try DirectUVCStreamPlanner.plan(
                 inventory: inventory(), configuration: configuration)
         }
     }

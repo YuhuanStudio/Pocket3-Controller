@@ -47,6 +47,7 @@
 - [x] Camera body capability新增compact Exposure Disclosure：Auto/Manual、EV、selected/effective ISO、shutter、ISO limit與unknown raw；developer才顯validation evidence，一般UI無writer。第十四批Release gate共865項通過（Core716、Intelligence44、Evaluation1、App98、XCTest6）。
 - [x] 第十五批完成developer-only live-view驗證路由與typed media session：live-view預設dry-run、沿用單一datalink並具session/generation/stall/cooldown/cancel/disconnect fence；媒體解析02/80 playback bit與active-store容量，舊分頁要求fresh playback，播放進出需ACK加匹配狀態回讀。Release gate共873項通過（Core724、Intelligence44、Evaluation1、App98、XCTest6）。
 - [x] 第十六批補強live-view route-level cooldown與credential-free dry-run診斷；metadata-only媒體庫顯示fresh playback／active-store狀態；新增韌體、系統偏好、SD與配件的唯讀typed inventory及compact三語Disclosure，unknown raw不推測、一般UI無writer。Release gate共886項通過（Core730、Intelligence44、Evaluation1、App105、XCTest6）。
+- [x] 第十七批回到硬體P0：新增metrics-only USB手動驗收器（near/far hold、release/Stop、Zoom途中停止／restore、reconnect fence）；tap-AF與FE08/FE09共用typed evidence分類；Direct UVC新增descriptor-backed session planner、固定四步26-byte PROBE/COMMIT與AVF stop/drain ownership coordinator，仍明確`bulkReadReady=false`。Release gate共901項通過（Core745、Intelligence44、Evaluation1、App105、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。

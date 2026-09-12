@@ -58,3 +58,5 @@ macOS SDK查核後已撤回「App首選IOUSBHostInterface」的假設：該類�
 任何階段都不能以descriptor、PROBE ACK、NAL bytes或單張decoded frame替代完整串流、ownership、取消、恢復與封裝驗收。
 
 目前descriptor selection已落地為純UVC configuration decoder：可辨識interface class 14/subclass 1 VC、subclass 2 VS、alternate setting、endpoint address／direction／transfer type／max packet，以及MJPEG/H.264 class-specific format subtype。這層只處理bytes，不讀IORegistry、更不開interface或pipe。
+
+第17批新增公開API邊界內的Direct UVC session foundation：由descriptor inventory選出VC／VS與bulk-IN endpoint，固定建立四步26-byteH.264 PROBE／COMMIT交易，並以generation-safe coordinator要求AVFoundation stop＋queue drain後才能單次acquire；取消、失敗與release均歸還ownership。transport與handle仍為injectable，`bulkReadReady=false`，所以這只證明planner／negotiation／ownership生命週期，尚未取得真實VS interface、pipe bytes或decoded frame。下一硬體gate仍是normal open、不seize的單次VS handoff。

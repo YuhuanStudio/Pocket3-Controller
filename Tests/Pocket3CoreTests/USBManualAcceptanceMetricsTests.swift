@@ -28,18 +28,19 @@ struct USBManualAcceptanceMetricsTests {
         inputMagnitude: Double
     ) -> USBManualGimbalHoldMetric {
         let origin = GimbalPosition(pan: 0, tilt: 0)
+        let rawDirection = Int32(direction)
         let final: GimbalPosition
         if axis == .pan {
-            final = .init(pan: direction * nearTravel, tilt: 0)
+            final = .init(pan: rawDirection * nearTravel, tilt: 0)
         } else {
-            final = .init(pan: 0, tilt: direction * nearTravel)
+            final = .init(pan: 0, tilt: rawDirection * nearTravel)
         }
         let first = axis == .pan
-            ? GimbalPosition(pan: direction * 360, tilt: 0)
-            : GimbalPosition(pan: 0, tilt: direction * 360)
+            ? GimbalPosition(pan: rawDirection * 360, tilt: 0)
+            : GimbalPosition(pan: 0, tilt: rawDirection * 360)
         let middle = axis == .pan
-            ? GimbalPosition(pan: direction * 540, tilt: 0)
-            : GimbalPosition(pan: 0, tilt: direction * 540)
+            ? GimbalPosition(pan: rawDirection * 540, tilt: 0)
+            : GimbalPosition(pan: 0, tilt: rawDirection * 540)
         let samples = [first, middle, final].enumerated().map { index, position in
             USBManualPositionSample(
                 elapsed: 0.15 + Double(index) * 0.2,
