@@ -184,6 +184,10 @@ public actor CameraService {
     private var validationReport: HardwareValidationReport?
     private var validationError: String?
     private var nativeControl: NativeControlReservation?
+    /// Context supplied by the App's already-running wireless observer. It is
+    /// a scalar projection only; updating it never starts Bluetooth or Wi-Fi.
+    private var nativeSessionCapability = NativeSessionCapability.disconnected
+    private var bodyRecordingCapabilities: [BodyRecordingFormatCapability] = []
     private var nativeControlPending = false
     private var usbEndpoint: USBContinuousControlEndpoint?
     private var usbAuthorization: (id: UUID, epoch: Int, interaction: Int)?
@@ -225,6 +229,15 @@ public actor CameraService {
         controlReadIssueCode = nil; lastControlReadFailureAt = nil; controlReadNeedsValidation = false
         capture.store.reset(deviceID: frame.info.deviceID)
         capture.store.receive(frame.pixelBuffer, pts: frame.info.presentationTime)
+    }
+    /// Publishes read-only context from another transport into the shared
+    /// status graph. The graph remains useful when no USB capture is active,
+    /// while the optional body list can be cleared when its observations age
+    /// out. This method performs no device I/O.
+    public func updateCapabilityContext(nativeSession: NativeSessionCapability? = nil,
+                                        bodyRecordingFormats: [BodyRecordingFormatCapability]? = nil) {
+        if let nativeSession { self.nativeSessionCapability = nativeSession }
+        if let bodyRecordingFormats { self.bodyRecordingCapabilities = bodyRecordingFormats }
     }
     private func log(_ op: String, _ message: String, error: Bool = false, presentationKey: String? = nil) {
         activities.insert(Activity(op, message, isError: error, presentationKey: presentationKey), at: 0)
@@ -533,7 +546,9 @@ public actor CameraService {
         result.capabilities = Pocket3CapabilityGraph.from(
             phase: reportedPhase, capture: captureStats,
             requestedMode: requestedMode, requestedPixelFormat: requestedPixelFormat,
-            requestedOutputPolicy: requestedOutputPolicy, nativeControl: nativeSnapshot)
+            requestedOutputPolicy: requestedOutputPolicy, nativeControl: nativeSnapshot,
+            nativeSession: nativeSnapshot == nil ? nativeSessionCapability : nil,
+            bodyRecordingFormats: bodyRecordingCapabilities)
         if nativeControl != nil {
             result.controlTransport = "native_joystick"
             result.stopStrategy = "native_joystick_neutral_and_telemetry"

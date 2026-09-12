@@ -1146,6 +1146,18 @@
 
 "macOS reported a USB power allocation failure." = "macOS reported a USB power allocation failure.";
 
+"Verified" = "Verified";
+"Writable" = "Writable";
+"Read-only" = "Read-only";
+"Known families" = "known families";
+"Readback pending" = "readback pending";
+"No current body readback" = "no current body readback";
+"Credentials available" = "Credentials available";
+"Native" = "Native";
+"Native command" = "Native command";
+"Interrupted" = "Interrupted";
+"Evidence" = "Evidence";
+
 "USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app." = "USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app.";
 
 "USB power is detected separately from battery charging. See Diagnostics for details." = "USB power is detected separately from battery charging. See Diagnostics for details.";

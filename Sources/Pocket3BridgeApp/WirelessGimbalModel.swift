@@ -37,6 +37,22 @@ final class WirelessGimbalModel {
     /// BLE discovery/telemetry alone never owns the shared manual controls.
     var ownsContinuousControls: Bool { datalink != nil || binding != nil || scheduler != nil || disconnectTask != nil }
     var pairingStatus: BluetoothPairingStatus? { discovery.pairing }
+    /// Fresh sparse body-format entries from `camcap_video_format`. The
+    /// graph's official resolution families remain visible even when this
+    /// readback is unavailable; these entries add only session evidence.
+    var bodyRecordingCapabilitySnapshot: [BodyRecordingFormatCapability] {
+        guard let observation = discovery.cameraSettingsObservations.first(where: {
+            $0.property == .videoFormatCapabilities &&
+            $0.isFresh(now: ProcessInfo.processInfo.systemUptime)
+        }), let capabilities = observation.bodyRecordingCapabilities else { return [] }
+        return capabilities.entries.map { BodyRecordingFormatCapability(capability: $0) }
+    }
+    var capabilityGraph: Pocket3CapabilityGraph {
+        Pocket3CapabilityGraph(
+            bodyRecordingFormats: Pocket3BodyRecordingCatalog.merging(bodyRecordingCapabilitySnapshot),
+            nativeSession: NativeSessionCapability.from(nativeSessionStatus),
+            liveSession: .unavailable)
+    }
     var nativeConnectionDetail: String? {
         if joiningNetwork { return loc("Joining camera Wi-Fi…") }
         if connecting { return loc("Connecting…") }
@@ -280,10 +296,11 @@ final class WirelessGimbalModel {
             nativeSessionBluetoothID = status.sessionID
         }
         let currentGeneration = nativeSession.generation
-        if status.pairing?.peerReportedPaired == true {
+        if status.pairing?.peerReportedPaired == true, nativeSession.state == .disconnected {
             _ = nativeSession.markPaired(generation: currentGeneration)
         }
-        if status.pairing?.credentialsAvailable == true || credentials != nil {
+        if (status.pairing?.credentialsAvailable == true || credentials != nil),
+           nativeSession.state == .paired {
             _ = nativeSession.markCredentialsAvailable(generation: currentGeneration)
         }
         publishNativeSessionStatus()
@@ -479,6 +496,7 @@ final class WirelessGimbalModel {
         .object(["bluetooth": try .encode(discovery),
                  "native": try nativeStatus.map(JSONValue.encode) ?? .null,
                  "nativeReadiness": try .encode(nativeSessionStatus),
+                 "capabilities": try .encode(capabilityGraph),
                  "credentialsAvailable": .bool(credentials != nil)])
     }
 }

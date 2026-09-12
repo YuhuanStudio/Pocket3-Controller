@@ -73,4 +73,15 @@ import Testing
         let reply = try await IPCClient.call("bridge-ping", arguments: .object(["nonce": .string(nonce)]), address: address)
         try LocalBridgeProbe.validate(reply, nonce: nonce)
     }
+
+    @MainActor @Test func wirelessStatusCarriesTheSharedCapabilityGraph() throws {
+        let model = WirelessGimbalModel(service: CameraService(),
+                                        controls: ContinuousGimbalGestureController(monitorsEnabled: false),
+                                        prepareManual: {})
+        let status = try model.validationStatus()
+        #expect(status["capabilities"]["nativeSession"]["readiness"] == .string("disconnected"))
+        #expect(status["capabilities"]["liveSession"]["readiness"] == .string("unavailable"))
+        #expect(status["capabilities"]["bodyRecordingFormats"] != .null)
+        #expect(status["credentialsAvailable"] == .bool(false))
+    }
 }

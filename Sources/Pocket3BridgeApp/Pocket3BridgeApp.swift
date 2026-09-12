@@ -217,9 +217,11 @@ final class AppModel {
                     let bodyStatus = try await MainActor.run { () throws -> JSONValue in
                         if let wirelessStorage = self.wirelessStorage {
                             return .object(["initialized": .bool(true),
-                                "discovery": try .encode(wirelessStorage.discovery)])
+                                "discovery": try .encode(wirelessStorage.discovery),
+                                "capabilities": try .encode(wirelessStorage.capabilityGraph)])
                         }
-                        return .object(["initialized": .bool(false), "discovery": .null])
+                        return .object(["initialized": .bool(false), "discovery": .null,
+                            "capabilities": try .encode(Pocket3CapabilityGraph())])
                     }
                     return ServiceReply(id: request.id, result: bodyStatus)
                 case "validation-focus-status", "validation-focus-point":
@@ -330,8 +332,14 @@ final class AppModel {
         // Keep synchronous format enumeration/model UI polling off MainActor
         // while its 50 ms submission slots are active; Stop stays independent.
         guard bluetoothProbePermit == nil else { return }
-        status = await service.status()
         await wireless.refresh()
+        // Feed the same credential-free wireless readiness/body readback into
+        // CameraService before taking the published status snapshot. This is
+        // a scalar context update; it never initializes a transport.
+        await service.updateCapabilityContext(
+            nativeSession: NativeSessionCapability.from(wireless.nativeSessionStatus),
+            bodyRecordingFormats: wireless.bodyRecordingCapabilitySnapshot)
+        status = await service.status()
         await configureUSBContinuousControls()
         await focus.refresh(capture: status?.capture, phase: status?.phase)
         if !capturingUI {
@@ -1151,6 +1159,16 @@ struct RootView: View {
                             detail(loc("Permissions"), model.status?.permission ?? loc("Unknown"))
                             detail(loc("Frames received"), "\(model.status?.capture.frames ?? 0)")
                             detail("FPS", String(format: "%.1f", model.status?.capture.recentFPS ?? 0))
+                            if let graph = model.status?.capabilities {
+                                detail(loc("USB input format"), CapabilityPresentation.usbCapture(graph))
+                                detail(loc("Webcam output format"), CapabilityPresentation.hostOutput(graph))
+                                detail(loc("Camera recording format"), CapabilityPresentation.bodyRecording(graph))
+                                detail(loc("Native command"), CapabilityPresentation.nativeSession(graph))
+                                detail(loc("Live view"), CapabilityPresentation.liveSession(graph))
+                                Text(CapabilityPresentation.graphDetail(graph))
+                                    .font(Yun.Text.mono).foregroundStyle(Yun.Palette.textTertiary)
+                                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                            }
                             detail(loc("Stopping behaviour"), loc("Hold the current position and verify readback"))
                             Text(model.status?.stopValidated == true ? loc("AI movement passed the local stopping test.") : loc("AI movement is unavailable until stopping is validated.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                             Button(loc("Validate camera control")) { Task { await model.validateControl() } }

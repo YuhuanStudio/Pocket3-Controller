@@ -14,6 +14,12 @@ public enum MCPCameraToolContract {
     public static let focusStatusName = "camera_focus_status"
     public static let formatInventoryName = "camera_format_inventory"
     public static let bodyStatusName = "camera_body_status"
+    /// `camera_status` returns ServiceStatus, whose `capabilities` graph is
+    /// shared with the App and CLI. Keep this contract text beside the input
+    /// validation so MCP clients learn the evidence boundary before acting.
+    public static let statusDescription = "Read the selected Pocket 3 status. The response includes capabilities.uvcCaptureFormats (USB capture), capabilities.hostOutputCodecs (Mac host output), capabilities.bodyRecordingFormats (camera recording), and capabilities.nativeSession/liveSession readiness. Every capability separates read, write and verified availability and carries evidence level A-E. This read never starts capture, Bluetooth or Wi-Fi."
+    public static let formatInventoryDescription = "List AVFoundation video modes and NV12/UYVY USB input paths currently advertised by the selected Pocket 3. Advertised combinations are not stream verification and are separate from camera body recording formats. This read does not start capture."
+    public static let bodyStatusDescription = "Read cached paired-camera Bluetooth telemetry and the credential-free capability graph for body recording and native/live readiness. It never initializes Bluetooth, scans, pairs, joins Wi-Fi, sends a setting or starts capture. initialized=false means no App Bluetooth session has been explicitly initialized."
     public static let directions = ["left", "right", "up", "down", "home", "front", "back"]
     public static let minimumAngle = Double(Int32.min) / 3600
     public static let maximumAngle = Double(Int32.max) / 3600

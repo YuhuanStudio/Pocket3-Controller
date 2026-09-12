@@ -9,6 +9,7 @@ import Testing
         "devices": .array([.object(["id":.string(marker),"name":.string(marker)])]),
         "selected": .object(["id":.string(marker),"name":.string(marker)]),
         "capture": .object(["sessionID":.string(marker),"frames":.number(8),"recentFPS":.number(30),"audio":.object(["buffers":.number(0),"sampleFrames":.number(0),"sampleRate":.number(0),"channels":.number(0),"rms":.number(0),"peak":.number(0)])]),
+        "capabilities": try .encode(Pocket3CapabilityGraph()),
         "motionActive":.bool(false),"stopValidated":.bool(false),"stopStrategy":.string("hold"),
         "lastError":.string(marker),"activities":.array([try .encode(Activity("capture",marker))]),"appVersion":.string("0.1.0")
     ])
@@ -16,5 +17,7 @@ import Testing
     #expect(!result.pretty.contains(marker))
     #expect(result["hasError"] == .bool(true))
     #expect(result["capture"]["frames"] == .number(8))
+    #expect(result["capabilities"]["bodyRecordingFormats"] != .null)
+    #expect(result["capabilities"]["liveSession"]["readiness"] == .string("unavailable"))
     #expect(result["redacted"] == .bool(true))
 }

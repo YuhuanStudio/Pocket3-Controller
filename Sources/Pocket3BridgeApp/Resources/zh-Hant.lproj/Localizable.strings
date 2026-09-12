@@ -1146,6 +1146,18 @@
 
 "macOS reported a USB power allocation failure." = "macOS 回報 USB 供電配置失敗。";
 
+"Verified" = "已驗證";
+"Writable" = "可寫入";
+"Read-only" = "唯讀";
+"Known families" = "已知系列";
+"Readback pending" = "等待回讀";
+"No current body readback" = "目前沒有機身回讀";
+"Credentials available" = "已有連線憑證";
+"Native" = "原生";
+"Native command" = "原生指令";
+"Interrupted" = "已中斷";
+"Evidence" = "證據";
+
 "USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app." = "USB 配置值不是實測充電電流。請查看相機的電池圖示；目前 Webcam USB 連接不會向 App 回報電池是否正在充電。";
 
 "USB power is detected separately from battery charging. See Diagnostics for details." = "USB 供電和電池充電是不同狀態，詳情請見診斷頁。";

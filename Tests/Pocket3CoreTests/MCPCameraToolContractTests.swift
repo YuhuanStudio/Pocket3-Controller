@@ -100,6 +100,17 @@ import Testing
         }
     }
 
+    @Test func statusDescriptionsNameEachCapabilityBoundary() {
+        let description = MCPCameraToolContract.statusDescription
+        for term in ["capabilities.uvcCaptureFormats", "capabilities.hostOutputCodecs",
+                     "capabilities.bodyRecordingFormats", "capabilities.nativeSession",
+                     "liveSession", "read", "write", "verified", "evidence level A-E"] {
+            #expect(description.contains(term))
+        }
+        #expect(MCPCameraToolContract.formatInventoryDescription.contains("body recording"))
+        #expect(MCPCameraToolContract.bodyStatusDescription.contains("capability graph"))
+    }
+
     @Test func directIPCSnapshotRejectsMalformedSizeBeforeCameraReadiness() async {
         let service = CameraService()
         for value in [JSONValue.string("1280"), .bool(true), .null, .number(320.5)] {

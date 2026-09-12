@@ -116,4 +116,23 @@ import Testing
         #expect(status.capabilities?.uvcCaptureFormats.isEmpty == true)
         #expect(status.capabilities?.bodyRecordingFormats.contains { $0.format.resolution == .square3K } == true)
     }
+
+    @Test func serviceContextPublishesWirelessReadinessAndSparseBodyFormats() async {
+        let entry = CameraVideoFormatCapability(resolutionRaw: CameraVideoResolution.portrait3K.rawValue,
+                                                frameRateRaw: CameraFrameRate.fps30.rawValue)
+        let body = BodyRecordingFormatCapability(capability: entry)
+        let service = CameraService()
+        await service.updateCapabilityContext(
+            nativeSession: NativeSessionCapability(readiness: .credentialsAvailable,
+                                                   availability: .init(read: true, reason: "Handshake pending"),
+                                                   evidence: .localReadOnly),
+            bodyRecordingFormats: [body])
+
+        let status = await service.status()
+        let graph = status.capabilities
+        #expect(graph?.nativeSession.readiness == .credentialsAvailable)
+        #expect(graph?.nativeSession.availability.read == true)
+        #expect(graph?.bodyRecordingFormats.contains { $0.format.resolution == .portrait3K && $0.format.frameRate == .fps30 } == true)
+        #expect(graph?.bodyRecordingFormats.contains { $0.format.resolution == .square3K } == true)
+    }
 }

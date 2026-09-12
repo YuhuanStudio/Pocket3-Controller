@@ -74,6 +74,12 @@ public struct CapabilityAvailability: Codable, Sendable, Equatable, Hashable {
     public var writeVerified: Bool { verified }
     public var isAvailable: Bool { read || write }
 
+    /// Stable, language-neutral detail for tooltips and diagnostics. The
+    /// evidence level is carried by the enclosing capability value.
+    public var accessSummary: String {
+        "read=\(read),write=\(write),verified=\(verified)"
+    }
+
     public static func unavailable(reason: String? = nil) -> Self {
         .init(reason: reason)
     }
@@ -270,6 +276,23 @@ public struct BodyRecordingFormatCapability: Codable, Sendable, Equatable, Hasha
                                       reason: writeVerified ? nil : commandReady ? "Write requires matching body readback" : nil),
                   evidence: writeVerified ? .localVerifiedWrite : .localReadOnly)
     }
+
+    /// Converts one sparse `camcap_video_format` entry into the graph's body
+    /// format type while preserving its complete three-byte entry. Compression
+    /// is intentionally nil because that capability table does not carry it.
+    public init(capability: CameraVideoFormatCapability,
+                commandReady: Bool = false,
+                writeVerified: Bool = false) {
+        self.init(
+            format: BodyRecordingFormat(
+                resolution: capability.resolution, resolutionRaw: capability.resolutionRaw,
+                frameRate: capability.frameRate, frameRateRaw: capability.frameRateRaw,
+                raw: capability.raw),
+            availability: .init(read: true, write: commandReady,
+                                verified: writeVerified,
+                                reason: capability.flagsRaw == 0 ? nil : "Unknown body-format flags"),
+            evidence: writeVerified ? .localVerifiedWrite : .localReadOnly)
+    }
 }
 
 /// The official Pocket 3 resolution families are useful inventory entries,
@@ -283,6 +306,16 @@ public enum Pocket3BodyRecordingCatalog {
                 availability: .unavailable(reason: "Known camera resolution; current legal FPS/codec pair is not read back"),
                 evidence: .officialSpecification)
         }
+    }
+
+    /// Keep the official resolution families visible even after a sparse
+    /// session readback supplies the legal resolution/FPS pairs.
+    public static func merging(_ observed: [BodyRecordingFormatCapability]) -> [BodyRecordingFormatCapability] {
+        var result = knownResolutionFamilies
+        for value in observed where !result.contains(where: { $0.id == value.id }) {
+            result.append(value)
+        }
+        return result
     }
 }
 
@@ -340,6 +373,42 @@ public struct NativeSessionCapability: Codable, Sendable, Equatable, Hashable {
         case .connectionChanged, .disconnected:
             return .init(readiness: .disconnected, availability: .unavailable(reason: "Native session is not bound to the current camera"), evidence: .localReadOnly)
         }
+    }
+
+    /// Projects the generation-safe native session state used by the App into
+    /// the credential-free graph status. Session identifiers never enter this
+    /// projection; readiness and access remain explicit.
+    public static func from(_ status: NativeCameraSessionStatus) -> Self {
+        let readiness: NativeSessionReadiness
+        let availability: CapabilityAvailability
+        let evidence: CapabilityEvidenceLevel
+        switch status.state {
+        case .disconnected:
+            readiness = .disconnected
+            availability = .unavailable(reason: "No native camera session")
+            evidence = .softwareFixture
+        case .paired:
+            readiness = .blePaired
+            availability = .init(read: true, reason: "BLE pairing is available; command session is not ready")
+            evidence = .localReadOnly
+        case .credentialsAvailable:
+            readiness = .credentialsAvailable
+            availability = .init(read: true, reason: "Native datalink has not completed its handshake")
+            evidence = .localReadOnly
+        case .datalinkHandshaking:
+            readiness = .datalinkHandshaking
+            availability = .init(read: true, reason: "Datalink handshake is in progress")
+            evidence = .localReadOnly
+        case .commandReady:
+            readiness = .commandReady
+            availability = .init(read: true, write: true, reason: "No camera setting write has been verified")
+            evidence = .localReadOnly
+        case .liveReady:
+            readiness = .liveReady
+            availability = .init(read: true, write: true, reason: "No camera setting write has been verified")
+            evidence = .localReadOnly
+        }
+        return .init(readiness: readiness, availability: availability, evidence: evidence)
     }
 }
 
@@ -472,6 +541,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                             requestedPixelFormat: CapturePixelFormat? = nil,
                             requestedOutputPolicy: CaptureOutputPolicy? = nil,
                             nativeControl: NativeControlStatus? = nil,
+                            nativeSession: NativeSessionCapability? = nil,
                             bodyRecordingFormats: [BodyRecordingFormatCapability]? = nil,
                             liveSession: LiveSessionCapability = .unavailable) -> Self {
         var uvc: [UVCCaptureFormat] = []
@@ -500,8 +570,9 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
         let output = Self.outputCapabilities(capture: capture, phase: phase,
                                              requestedPolicy: requestedOutputPolicy)
         return Self(uvcCaptureFormats: uvc, hostOutputCodecs: output,
-                    bodyRecordingFormats: bodyRecordingFormats ?? Pocket3BodyRecordingCatalog.knownResolutionFamilies,
-                    nativeSession: .from(nativeControl), liveSession: liveSession)
+                    bodyRecordingFormats: bodyRecordingFormats.map(Pocket3BodyRecordingCatalog.merging)
+                        ?? Pocket3BodyRecordingCatalog.knownResolutionFamilies,
+                    nativeSession: nativeSession ?? .from(nativeControl), liveSession: liveSession)
     }
 
     private static func outputCapabilities(capture: CaptureStats, phase: String,
