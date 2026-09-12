@@ -299,16 +299,21 @@ char *p3_uvc_stream_open_diagnostic(uint32_t location) {
         UInt8 number = 0, endpointCount = 0;
         (void)(*interface)->GetInterfaceNumber(interface, &number);
         (void)(*interface)->GetNumEndpoints(interface, &endpointCount);
+        IOReturn opened = (*interface)->USBInterfaceOpen(interface);
+        BOOL ownsOpen = opened == kIOReturnSuccess;
         NSMutableArray *endpoints = [NSMutableArray array];
-        for (UInt8 pipe = 1; pipe <= endpointCount; pipe++) {
+        // Some IOUSBLib implementations expose the count before ownership
+        // but return empty properties until USBInterfaceOpen succeeds.
+        if (ownsOpen) for (UInt8 pipe = 1; pipe <= endpointCount; pipe++) {
             UInt8 direction = 0, pipeNumber = 0, transfer = 0, interval = 0; UInt16 maxPacket = 0;
             if ((*interface)->GetPipeProperties(interface, pipe, &direction, &pipeNumber, &transfer, &maxPacket, &interval) == kIOReturnSuccess) {
-                [endpoints addObject:@{ @"pipe": @(pipe), @"direction": @(direction), @"transferType": @(transfer),
+                UInt8 address = (UInt8)((pipeNumber & 0x0f) |
+                                        (direction == kUSBIn ? 0x80 : 0));
+                [endpoints addObject:@{ @"pipe": @(pipe), @"address": @(address),
+                    @"direction": @(direction), @"transferType": @(transfer),
                     @"maxPacket": @(maxPacket), @"interval": @(interval) }];
             }
         }
-        IOReturn opened = (*interface)->USBInterfaceOpen(interface);
-        BOOL ownsOpen = opened == kIOReturnSuccess;
         IOReturn closed = ownsOpen ? (*interface)->USBInterfaceClose(interface) : kIOReturnNotOpen;
         (*interface)->Release(interface);
         NSString *result = ownsOpen ? (closed == kIOReturnSuccess ? @"opened_and_closed" : @"close_failed") :
@@ -377,15 +382,12 @@ static BOOL streamSessionIsCurrent(P3UVCStreamSession *session) {
 }
 
 static NSArray *streamEndpointInventory(IOUSBInterfaceInterface220 **interface,
-                                        UInt8 *endpointCount,
+                                        UInt8 endpointCount,
                                         UInt8 expectedAddress,
                                         BOOL *matchingEndpoint) {
-    UInt8 count = 0;
-    IOReturn countResult = (*interface)->GetNumEndpoints(interface, &count);
-    if (countResult != kIOReturnSuccess) return nil;
-    NSMutableArray *endpoints = [NSMutableArray arrayWithCapacity:count];
+    NSMutableArray *endpoints = [NSMutableArray arrayWithCapacity:endpointCount];
     BOOL matching = NO;
-    for (UInt8 pipe = 1; pipe <= count; pipe++) {
+    for (UInt8 pipe = 1; pipe <= endpointCount; pipe++) {
         UInt8 direction = 0, number = 0, transfer = 0, interval = 0;
         UInt16 maxPacket = 0;
         IOReturn properties = (*interface)->GetPipeProperties(
@@ -404,7 +406,6 @@ static NSArray *streamEndpointInventory(IOUSBInterfaceInterface220 **interface,
         if (address == expectedAddress && direction == kUSBIn &&
             transfer == kUSBBulk && maxPacket > 0) matching = YES;
     }
-    if (endpointCount) *endpointCount = count;
     if (matchingEndpoint) *matchingEndpoint = matching;
     return [endpoints copy];
 }
@@ -526,32 +527,23 @@ char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
                            @"result": @"interface_unavailable" });
         }
 
+        // IOUSBLib exposes the endpoint count before an open, but some
+        // devices do not expose pipe properties until the interface is owned.
+        // Do not use a pre-open GetPipeProperties result to decide capability.
         UInt8 endpointCount = 0;
-        BOOL matchingEndpoint = NO;
-        NSArray *endpoints = streamEndpointInventory(
-            interface, &endpointCount, endpointAddress, &matchingEndpoint);
-        if (!endpoints) {
+        IOReturn endpointCountResult = (*interface)->GetNumEndpoints(
+            interface, &endpointCount);
+        if (endpointCountResult != kIOReturnSuccess) {
             (*interface)->Release(interface);
             [registryID release];
             [bootSessionID release];
             return json(@{ @"error": @"uvc_stream_endpoint_unavailable",
-                           @"result": @"endpoint_unavailable" });
-        }
-        if (!matchingEndpoint) {
-            (*interface)->Release(interface);
-            [registryID release];
-            [bootSessionID release];
-            char *value = json(@{ @"error": @"uvc_stream_endpoint_unavailable",
                            @"result": @"endpoint_unavailable",
-                           @"interfaceNumber": @(interfaceNumber),
-                           @"alternateSetting": @(alternateSetting),
-                           @"endpointAddress": @(endpointAddress),
-                           @"endpointCount": @(endpointCount),
-                           @"endpoints": endpoints });
-            [endpoints release];
-            return value;
+                           @"endpointCountIOReturn": @((uint32_t)endpointCountResult) });
         }
 
+        // This is the only open attempt. A foreign owner is never borrowed;
+        // no close is sent when USBInterfaceOpen reports ExclusiveAccess.
         IOReturn opened = (*interface)->USBInterfaceOpen(interface);
         if (opened != kIOReturnSuccess) {
             NSString *result = streamOpenResult(opened);
@@ -571,10 +563,11 @@ char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
                            @"alternateSetting": @(alternateSetting),
                            @"endpointAddress": @(endpointAddress),
                            @"endpointCount": @(endpointCount),
-                           @"endpoints": endpoints,
+                           // Pipe properties are intentionally not queried
+                           // before a successful normal open.
+                           @"endpoints": @[],
                            @"openIOReturn": @((uint32_t)opened),
                            @"access": @"normal_open_no_seize_no_pipe" });
-            [endpoints release];
             return value;
         }
 
@@ -585,7 +578,6 @@ char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
         if (!stillCurrent) {
             IOReturn closed = (*interface)->USBInterfaceClose(interface);
             (*interface)->Release(interface);
-            [endpoints release];
             [registryID release];
             [bootSessionID release];
             return json(@{ @"error": @"uvc_attachment_changed",
@@ -594,6 +586,50 @@ char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
                                          closed == kIOReturnNoDevice),
                            @"openIOReturn": @((uint32_t)opened),
                            @"closeIOReturn": @((uint32_t)closed) });
+        }
+
+        BOOL matchingEndpoint = NO;
+        NSArray *endpoints = streamEndpointInventory(
+            interface, endpointCount, endpointAddress, &matchingEndpoint);
+        if (!endpoints) {
+            IOReturn closed = (*interface)->USBInterfaceClose(interface);
+            (*interface)->Release(interface);
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_stream_endpoint_unavailable",
+                           @"result": @"endpoint_unavailable",
+                           @"opened": @YES, @"closed": @(closed == kIOReturnSuccess ||
+                                                         closed == kIOReturnNoDevice),
+                           @"interfaceNumber": @(interfaceNumber),
+                           @"alternateSetting": @(alternateSetting),
+                           @"endpointAddress": @(endpointAddress),
+                           @"endpointCount": @(endpointCount), @"endpoints": @[],
+                           @"openIOReturn": @((uint32_t)opened),
+                           @"closeIOReturn": @((uint32_t)closed),
+                           @"access": @"normal_open_no_seize_no_pipe" });
+        }
+        if (!matchingEndpoint) {
+            // Endpoint properties are authoritative only after ownership;
+            // close the owned interface immediately when 0x82 is absent.
+            IOReturn closed = (*interface)->USBInterfaceClose(interface);
+            char *value = json(@{ @"error": @"uvc_stream_endpoint_unavailable",
+                           @"result": @"endpoint_unavailable",
+                           @"opened": @YES,
+                           @"closed": @(closed == kIOReturnSuccess ||
+                                         closed == kIOReturnNoDevice),
+                           @"interfaceNumber": @(interfaceNumber),
+                           @"alternateSetting": @(alternateSetting),
+                           @"endpointAddress": @(endpointAddress),
+                           @"endpointCount": @(endpointCount),
+                           @"endpoints": endpoints,
+                           @"openIOReturn": @((uint32_t)opened),
+                           @"closeIOReturn": @((uint32_t)closed),
+                           @"access": @"normal_open_no_seize_no_pipe" });
+            (*interface)->Release(interface);
+            [endpoints release];
+            [registryID release];
+            [bootSessionID release];
+            return value;
         }
 
         P3UVCStreamSession *session = calloc(1, sizeof(*session));

@@ -469,6 +469,25 @@ public enum DirectUVCNegotiator {
     }
 
     private static func errorCode(_ error: Error) -> String {
+        if let error = error as? DirectUVCTransportError {
+            switch error {
+            case .busy: return "direct_uvc_transport_busy"
+            case .systemOwnerBusy: return "direct_uvc_system_owner_busy"
+            case .detached: return "direct_uvc_detached"
+            case .timeout: return "direct_uvc_open_timeout"
+            case .deviceUnavailable: return "direct_uvc_device_unavailable"
+            case .interfaceUnavailable: return "direct_uvc_interface_unavailable"
+            case .endpointUnavailable: return "direct_uvc_endpoint_unavailable"
+            case .registryUnavailable: return "direct_uvc_registry_unavailable"
+            case .observationMismatch: return "direct_uvc_observation_mismatch"
+            case .openFailed(let code, _): return "direct_uvc_open_failed_" + code
+            case .closeFailed(let code, _): return "direct_uvc_close_failed_" + code
+            case .controlUnavailable: return "direct_uvc_control_unavailable"
+            case .alreadyReleased: return "direct_uvc_already_released"
+            case .cancelled: return "direct_uvc_cancelled"
+            case .bridgeFailure(let reason): return reason
+            }
+        }
         if let error = error as? CaptureOwnershipError {
             switch error {
             case .busy: return "direct_uvc_ownership_busy"
@@ -770,6 +789,25 @@ public actor DirectUVCSessionCoordinator {
     }
 
     private static func errorCode(_ error: Error) -> String {
+        if let error = error as? DirectUVCTransportError {
+            switch error {
+            case .busy: return "direct_uvc_transport_busy"
+            case .systemOwnerBusy: return "direct_uvc_system_owner_busy"
+            case .detached: return "direct_uvc_detached"
+            case .timeout: return "direct_uvc_open_timeout"
+            case .deviceUnavailable: return "direct_uvc_device_unavailable"
+            case .interfaceUnavailable: return "direct_uvc_interface_unavailable"
+            case .endpointUnavailable: return "direct_uvc_endpoint_unavailable"
+            case .registryUnavailable: return "direct_uvc_registry_unavailable"
+            case .observationMismatch: return "direct_uvc_observation_mismatch"
+            case .openFailed(let code, _): return "direct_uvc_open_failed_" + code
+            case .closeFailed(let code, _): return "direct_uvc_close_failed_" + code
+            case .controlUnavailable: return "direct_uvc_control_unavailable"
+            case .alreadyReleased: return "direct_uvc_already_released"
+            case .cancelled: return "direct_uvc_cancelled"
+            case .bridgeFailure(let reason): return reason
+            }
+        }
         if let error = error as? CaptureOwnershipError {
             switch error {
             case .busy: return "direct_uvc_ownership_busy"

@@ -120,9 +120,37 @@ public struct DirectUVCTransportSnapshot: Codable, Sendable, Equatable {
     }
 }
 
+/// Evidence produced when a normal open is rejected by an existing system
+/// camera owner. The public AVFoundation/CMIO APIs can stop and drain a graph
+/// owned by this process and can report running/ownership properties, but they
+/// provide no product-safe API to release another application's VDCAssistant
+/// client. `ownerIdentity` therefore remains unknown and this evidence never
+/// authorizes a seize or a process termination.
+public struct DirectUVCSystemOwnerBusyEvidence: Codable, Sendable,
+    Equatable {
+    public let interfaceNumber: UInt8?
+    public let openIOReturn: UInt32?
+    public let ownerIdentity: String
+    public let publicReleasePathAvailable: Bool
+    public let nextSafeAction: String
+
+    public init(interfaceNumber: UInt8? = nil,
+                openIOReturn: UInt32? = nil,
+                ownerIdentity: String = "unknown",
+                publicReleasePathAvailable: Bool = false,
+                nextSafeAction: String = "stop_and_drain_own_avfoundation_graph") {
+        self.interfaceNumber = interfaceNumber
+        self.openIOReturn = openIOReturn
+        self.ownerIdentity = String(ownerIdentity.prefix(64))
+        self.publicReleasePathAvailable = publicReleasePathAvailable
+        self.nextSafeAction = String(nextSafeAction.prefix(128))
+    }
+}
+
 public enum DirectUVCTransportError: Error, LocalizedError, Sendable,
     Equatable {
     case busy
+    case systemOwnerBusy(DirectUVCSystemOwnerBusyEvidence)
     case detached
     case timeout
     case deviceUnavailable
@@ -140,6 +168,7 @@ public enum DirectUVCTransportError: Error, LocalizedError, Sendable,
     public var errorDescription: String? {
         switch self {
         case .busy: "direct UVC VS interface is already owned"
+        case .systemOwnerBusy: "direct UVC VS interface is owned by another system camera client"
         case .detached: "direct UVC device detached during interface lifecycle"
         case .timeout: "direct UVC VS interface open timed out"
         case .deviceUnavailable: "direct UVC device is unavailable"
@@ -242,7 +271,10 @@ public actor DirectUVCNormalOpenTransport: DirectUVCStreamTransport {
     private static func error(for observation: DirectUVCOpenObservation)
         -> DirectUVCTransportError {
         switch observation.status {
-        case .busy: return .busy
+        case .busy:
+            return .systemOwnerBusy(.init(
+                interfaceNumber: observation.interfaceNumber,
+                openIOReturn: observation.openIOReturn))
         case .detached: return .detached
         case .timeout: return .timeout
         case .deviceUnavailable: return .deviceUnavailable
@@ -427,7 +459,10 @@ public struct LegacyIOUSBLibDirectUVCBridge: DirectUVCNormalOpenBridge {
         -> DirectUVCTransportError {
         let ioReturn = Self.uint32(value["openIOReturn"])
         switch code {
-        case "uvc_stream_busy": return .busy
+        case "uvc_stream_busy":
+            return .systemOwnerBusy(.init(
+                interfaceNumber: Self.uint8(value["interfaceNumber"]),
+                openIOReturn: ioReturn))
         case "uvc_attachment_changed": return .detached
         case "uvc_stream_open_timeout": return .timeout
         case "uvc_device_missing": return .deviceUnavailable

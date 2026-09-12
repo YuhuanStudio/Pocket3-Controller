@@ -106,6 +106,18 @@ struct DirectUVCTransportTests {
         #expect(endpoint.address == 0x82)
     }
 
+    @Test func systemOwnerBusyEvidenceNeverClaimsAReleasePath() {
+        let observation = openedObservation(
+            result: "busy", opened: false, ownedOpen: false)
+        let evidence = DirectUVCSystemOwnerBusyEvidence(
+            interfaceNumber: observation.interfaceNumber,
+            openIOReturn: 0xE000_02C7)
+        #expect(evidence.ownerIdentity == "unknown")
+        #expect(!evidence.publicReleasePathAvailable)
+        #expect(evidence.nextSafeAction ==
+                "stop_and_drain_own_avfoundation_graph")
+    }
+
     @Test func normalOpenIsSingleOwnedLifecycleAndControlStaysUnavailable()
         async throws {
         let bridgeHandle = FakeNormalOpenHandle(
@@ -146,7 +158,8 @@ struct DirectUVCTransportTests {
         let bridge = FakeNormalOpenBridge(handle: bridgeHandle)
         let transport = DirectUVCNormalOpenTransport(bridge: bridge)
 
-        await #expect(throws: DirectUVCTransportError.busy) {
+        await #expect(throws: DirectUVCTransportError.systemOwnerBusy(
+            .init(interfaceNumber: 1, openIOReturn: 0))) {
             try await transport.acquire(plan: try plan())
         }
         #expect(bridge.openCount == 1)
@@ -202,6 +215,25 @@ struct DirectUVCTransportTests {
             avfoundationStopped: true, frameQueueDrained: false))
         #expect(result.phase == .failed)
         #expect(bridge.openCount == 0)
+    }
+
+    @Test func coordinatorProjectsSystemOwnerBusyWithoutClaimingReadiness()
+        async throws {
+        let bridgeHandle = FakeNormalOpenHandle(
+            openObservation: openedObservation(
+                result: "busy", opened: false, ownedOpen: false))
+        let bridge = FakeNormalOpenBridge(handle: bridgeHandle)
+        let transport = DirectUVCNormalOpenTransport(bridge: bridge)
+        let coordinator = DirectUVCSessionCoordinator(
+            plan: try plan(), transport: transport,
+            ownership: CaptureOwnershipCoordinator(
+                initialState: .avfoundationRunning))
+
+        let result = await coordinator.start(after: .complete)
+        #expect(result.phase == .failed)
+        #expect(result.failureCode == "direct_uvc_system_owner_busy")
+        #expect(!result.negotiated && !result.ready)
+        #expect(bridgeHandle.releaseCount == 1)
     }
 }
 
