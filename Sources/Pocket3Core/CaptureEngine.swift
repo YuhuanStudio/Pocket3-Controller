@@ -53,6 +53,12 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
     public var h264DecodeFailureCount: Int? = 0
     public var h264DecodeTotalMilliseconds: Double? = 0
     public var h264DecodeMaximumMilliseconds: Double? = 0
+    /// Counts samples admitted to the bounded H.264 worker. Samples rejected
+    /// by backpressure or a lifecycle fence are reported separately below.
+    public var h264DecodeSubmittedCount: Int? = 0
+    public var h264DecodeDroppedFrameCount: Int? = 0
+    public var h264DecodeQueueLatencyTotalMilliseconds: Double? = 0
+    public var h264DecodeQueueLatencyMaximumMilliseconds: Double? = 0
     public var decodedHEVCFrameCount: Int? = 0
     public var hevcDecodeFailureCount: Int? = 0
     public var hevcDecodeTotalMilliseconds: Double? = 0
@@ -270,6 +276,30 @@ public final class FrameStore: @unchecked Sendable {
             diagnostics.h264DecodeMaximumMilliseconds = max(diagnostics.h264DecodeMaximumMilliseconds ?? 0, milliseconds)
         }
     }
+    public func recordH264DecodeSubmission(accepted: Bool) {
+        lock.withLock {
+            if accepted {
+                diagnostics.h264DecodeSubmittedCount = (diagnostics.h264DecodeSubmittedCount ?? 0) + 1
+            } else {
+                diagnostics.h264DecodeDroppedFrameCount = (diagnostics.h264DecodeDroppedFrameCount ?? 0) + 1
+            }
+        }
+    }
+    public func recordH264DecodeDrop() {
+        lock.withLock {
+            diagnostics.h264DecodeDroppedFrameCount = (diagnostics.h264DecodeDroppedFrameCount ?? 0) + 1
+        }
+    }
+    public func recordH264DecodeQueueLatency(seconds: Double) {
+        guard seconds.isFinite && seconds >= 0 else { return }
+        let milliseconds = seconds * 1_000
+        lock.withLock {
+            diagnostics.h264DecodeQueueLatencyTotalMilliseconds =
+                (diagnostics.h264DecodeQueueLatencyTotalMilliseconds ?? 0) + milliseconds
+            diagnostics.h264DecodeQueueLatencyMaximumMilliseconds = max(
+                diagnostics.h264DecodeQueueLatencyMaximumMilliseconds ?? 0, milliseconds)
+        }
+    }
     public func recordHEVCDecode(success: Bool, durationSeconds: Double) {
         guard durationSeconds.isFinite && durationSeconds >= 0 else { return }
         lock.withLock {
@@ -374,7 +404,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     private let frameQueue = DispatchQueue(label: "studio.yuhuan.pocket3.frames", qos: .userInitiated)
     private var audioInput: AVCaptureDeviceInput?
     private var audioOutput: AVCaptureAudioDataOutput?
-    private var avc1Decoder: AVC1SampleDecoder?
+    private let h264DecodePipeline: H264DecodePipeline
     private var hevc1Decoder: HEVC1SampleDecoder?
     private var sessionObservers: [NSObjectProtocol] = []
     private let captureActivity = CaptureActivityLease()
@@ -387,7 +417,9 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     public override init() {
         let lock = NSLock()
         lifecycleLock = lock; callbackFence = CaptureCallbackFence(lock: lock)
+        h264DecodePipeline = H264DecodePipeline()
         super.init()
+        h264DecodePipeline.setHandler { [weak self] result in self?.handleH264Decode(result) }
         let store = self.store
         let center = NotificationCenter.default
         sessionObservers = [
@@ -549,6 +581,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                 do {
                     guard isCurrent(generation) else { throw CancellationError() }
                     stopOnQueue()
+                    h264DecodePipeline.begin(generation: generation)
                     guard callbackFence.whileCurrent(generation, perform: { store.reset(deviceID: deviceID) }) else { throw CancellationError() }
                     guard let device = AVCaptureDevice.DiscoverySession(deviceTypes: [.external], mediaType: .video, position: .unspecified).devices.first(where: { $0.uniqueID == deviceID && $0.modelID.contains("VendorID_11427 ProductID_35") }) else { throw BridgeFailure("device_missing", "選定的 Pocket 3 已離線") }
                     let width = Int32(mode.width), height = Int32(mode.height)
@@ -660,11 +693,11 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
     }
     private func stopOnQueue() {
         captureActivity.stop()
-        avc1Decoder?.invalidate(); avc1Decoder = nil
         hevc1Decoder?.invalidate(); hevc1Decoder = nil
         // Invalidate first: even a callback already computing outside the lock
         // cannot commit after this point. Detach delegates before stop/removal.
         callbackFence.invalidateAll()
+        h264DecodePipeline.cancelAndWait()
         for output in session.outputs {
             if let video = output as? AVCaptureVideoDataOutput { video.setSampleBufferDelegate(nil, queue: nil) }
             if let audio = output as? AVCaptureAudioDataOutput { audio.setSampleBufferDelegate(nil, queue: nil) }
@@ -728,6 +761,29 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
             throw BridgeFailure("audio_start_timeout", "未能取得新的相機影音資料，請重新連接")
         }
     }
+    private func handleH264Decode(_ result: H264DecodePipelineResult) {
+        store.recordH264DecodeQueueLatency(seconds: result.queueLatencySeconds)
+        if result.attemptedDecode {
+            store.recordH264Decode(success: result.decodeSucceeded,
+                durationSeconds: result.decodeDurationSeconds)
+        }
+        let pixel = result.pixelBuffer
+        let metadata = pixel.map { CaptureVideoMetadata(buffer: $0,
+            pts: result.work.presentationTimeStamp,
+            inputMediaSubType: result.work.inputMediaSubType,
+            receivedAt: result.work.receivedAt,
+            receivedUptime: result.work.receivedUptime) }
+        let committed = callbackFence.commit(result.work.binding) {
+            guard !result.dropped else { return }
+            if let pixel, let metadata { store.receive(pixel, metadata: metadata) }
+            if let pixel, let edgeMetrics = FrameEdgeAnalyzer.measure(pixel) {
+                store.recordEdgeMetrics(edgeMetrics)
+            }
+        }
+        // A decode that completed after stop/start is useful diagnostic
+        // evidence but must never publish a frame into the new session.
+        if result.dropped || !committed { store.recordH264DecodeDrop() }
+    }
     public func captureOutput(_ output: AVCaptureOutput, didOutput sample: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let binding = callbackFence.begin(output: ObjectIdentifier(output)) else { return }
         let receivedAt = Date(), receivedUptime = ProcessInfo.processInfo.systemUptime
@@ -738,18 +794,21 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
             let inputSubType = inputDescription.map(CMFormatDescriptionGetMediaSubType)
             let mediaSubType = description.map(CMFormatDescriptionGetMediaSubType)
             let hasBlockBuffer = CMSampleBufferGetDataBuffer(sample) != nil
-            let decodedPixel: CVPixelBuffer?
             if pixel == nil, mediaSubType == kCMVideoCodecType_H264, hasBlockBuffer {
-                let started = ProcessInfo.processInfo.systemUptime
-                do {
-                    if avc1Decoder == nil { avc1Decoder = AVC1SampleDecoder() }
-                    decodedPixel = try avc1Decoder?.decode(sample).pixelBuffer
-                    store.recordH264Decode(success: decodedPixel != nil, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
-                } catch {
-                    store.recordH264Decode(success: false, durationSeconds: ProcessInfo.processInfo.systemUptime - started)
-                    decodedPixel = nil
+                let accepted = h264DecodePipeline.submit(sample: sample, binding: binding,
+                    inputMediaSubType: inputSubType, mediaSubType: mediaSubType,
+                    receivedAt: receivedAt, receivedUptime: receivedUptime,
+                    presentationTimeStamp: CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample)),
+                    submittedUptime: ProcessInfo.processInfo.systemUptime)
+                callbackFence.commit(binding) {
+                    store.recordVideoSample(hasImageBuffer: false, hasBlockBuffer: true,
+                        mediaSubType: mediaSubType, inputMediaSubType: inputSubType)
+                    store.recordH264DecodeSubmission(accepted: accepted)
                 }
-            } else if pixel == nil, mediaSubType == kCMVideoCodecType_HEVC, hasBlockBuffer {
+                return
+            }
+            let decodedPixel: CVPixelBuffer?
+            if pixel == nil, mediaSubType == kCMVideoCodecType_HEVC, hasBlockBuffer {
                 let started = ProcessInfo.processInfo.systemUptime
                 do {
                     if hevc1Decoder == nil { hevc1Decoder = HEVC1SampleDecoder() }
