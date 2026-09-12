@@ -99,12 +99,17 @@ public struct USBManualStopEvidence: Codable, Sendable,
     public let motionStopped: Bool
     public let held: GimbalPosition?
     public let final: GimbalPosition?
+    /// Zoom stop evidence uses these raw fields; position fields stay nil for
+    /// a scalar UVC zoom operation.
+    public let heldRaw: Int?
+    public let finalRaw: Int?
     public let stableSampleCount: Int
     public let stableDurationSeconds: TimeInterval
     public let failureCode: String?
 
     public init(submitted: Bool, verified: Bool, motionStopped: Bool,
                 held: GimbalPosition? = nil, final: GimbalPosition? = nil,
+                heldRaw: Int? = nil, finalRaw: Int? = nil,
                 stableSampleCount: Int = 0,
                 stableDurationSeconds: TimeInterval = 0,
                 failureCode: String? = nil) {
@@ -113,6 +118,8 @@ public struct USBManualStopEvidence: Codable, Sendable,
         self.motionStopped = motionStopped
         self.held = held
         self.final = final
+        self.heldRaw = heldRaw
+        self.finalRaw = finalRaw
         self.stableSampleCount = stableSampleCount
         self.stableDurationSeconds = stableDurationSeconds
         self.failureCode = failureCode
@@ -627,9 +634,9 @@ public enum USBManualAcceptanceExecutor {
             previousElapsed = sample.elapsed
         }
         guard distinct, intermediate,
-              let held = value.stop.held,
-              let finalStop = value.stop.final,
-              abs(Int64(held.pan) - Int64(finalStop.pan)) <= restorationToleranceRaw,
+              let heldRaw = value.stop.heldRaw,
+              let finalRaw = value.stop.finalRaw,
+              abs(heldRaw - finalRaw) <= Int(restorationToleranceRaw),
               value.restore.observedRaw == value.origin else { return false }
         return true
     }

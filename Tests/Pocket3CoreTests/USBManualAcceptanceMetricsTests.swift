@@ -81,7 +81,8 @@ struct USBManualAcceptanceMetricsTests {
             stop: USBManualStopEvidence(
                 submitted: true, verified: true, motionStopped: true,
                 held: .init(pan: 130, tilt: 0),
-                final: .init(pan: 130, tilt: 0), stableSampleCount: 3,
+                final: .init(pan: 130, tilt: 0), heldRaw: 130, finalRaw: 130,
+                stableSampleCount: 3,
                 stableDurationSeconds: 0.8),
             restore: USBManualZoomRestoreEvidence(
                 requestedRaw: 100, observedRaw: 100, submitted: true,
