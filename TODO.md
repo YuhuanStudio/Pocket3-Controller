@@ -1,6 +1,6 @@
 # Pocket 3 Controller — 當前待辦
 
-更新：2026-09-11。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）已發布**；main 的 build25 已完成 USB 1080p30 與 BLE 唯讀狀態／九類設定基線。原生快速預設、點按對焦、ActiveTrack host control、設定寫入、完整格式與全範圍物理驗收仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。
+更新：2026-09-12。完整目標仍是 `BUILD_PROPOSAL.md` 的 1.0 App＋MCP＋CLI，尚未完成。**Pocket 3 Controller 0.0.1 beta 2（build 24）已發布**；main 的 build25 已完成 USB 1080p30 與 BLE 唯讀狀態／九類設定基線。原生快速預設、點按對焦、ActiveTrack host control、設定寫入、完整格式與全範圍物理驗收仍未完成。各版本的證據分開記錄，不把舊版通過套用到新版。完整機身能力、產品形態、headless、自動化與 AI 工作流的下一階段決策見 [2026-09-12 主路線研究](research/2026-09-12/POCKET3_PRODUCT_AND_CAPABILITY_ROADMAP.md)。
 
 ## 相機關閉期間：軟體與 AI
 

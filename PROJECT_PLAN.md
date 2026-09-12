@@ -1,7 +1,7 @@
 # Pocket 3 Controller — 專案計劃與研究基線
 
 建立日期：2026-09-07  
-目前狀態（2026-09-09）：App、相機核心、MCP／CLI 已實作；0.0.1 beta 1 已發布，beta 2 持續開發。最新完成項目與限制以 [TODO](TODO.md) 及 [硬體驗收](docs/HARDWARE_ACCEPTANCE.md) 為準；下方初期技術里程碑保留為研究基線。
+目前狀態（2026-09-12）：App、相機核心、MCP／CLI 已實作，0.0.1 beta 2 已發布；USB Webcam 與本機 AI 已有可驗證基礎，完整機身控制、原生 session、追蹤、媒體、headless 與內容工作流仍在開發。接下來的產品決策、完整能力盤點與分階段路線以 [2026-09-12 主路線研究](research/2026-09-12/POCKET3_PRODUCT_AND_CAPABILITY_ROADMAP.md) 為準；最新逐項進度與限制見 [TODO](TODO.md) 及 [硬體驗收](docs/HARDWARE_ACCEPTANCE.md)。下方初期技術里程碑保留為研究基線。
 
 研究報告：[DEEP_RESEARCH.md](DEEP_RESEARCH.md)  
 實機紀錄：[HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md)
