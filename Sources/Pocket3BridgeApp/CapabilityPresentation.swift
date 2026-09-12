@@ -48,6 +48,26 @@ enum CapabilityPresentation {
             return loc("No current ISO limit readback")
         case "ISO limit raw selector is unknown":
             return loc("ISO limit raw selector is unknown")
+        case "No firmware component readback is exposed by current BLE/USB observations":
+            return loc("No firmware component readback is exposed by current BLE/USB observations")
+        case "No current screen orientation readback":
+            return loc("No current screen orientation readback")
+        case "No Auto Power Off readback schema":
+            return loc("No Auto Power Off readback schema")
+        case "No Wearable readback schema":
+            return loc("No Wearable readback schema")
+        case "No Rotate & Capture readback schema":
+            return loc("No Rotate & Capture readback schema")
+        case "No current Selfie Flip readback":
+            return loc("No current Selfie Flip readback")
+        case "Screen orientation raw selector is unknown":
+            return loc("Screen orientation raw selector is unknown")
+        case "SD storage capacity fields are inconsistent":
+            return loc("SD storage capacity fields are inconsistent")
+        case "No current SD storage readback":
+            return loc("No current SD storage readback")
+        case "No independent accessory identity readback is exposed by current BLE/USB observations":
+            return loc("No independent accessory identity readback is exposed by current BLE/USB observations")
         case "ActiveTrack state is read-only; the A6 command path is not exposed.":
             return loc("ActiveTrack state is read-only; the A6 command path is not exposed.")
         case "Body validation is already in progress":

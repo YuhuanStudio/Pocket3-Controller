@@ -35,9 +35,21 @@ extension AppModel {
                 "The requested native session or peer is no longer current")
         }
 
+        let nowUptime = ProcessInfo.processInfo.systemUptime
+        // Discovery already publishes only a fresh status for the selected
+        // paired peer. Convert that read-only 02/80 evidence into the native
+        // numeric generation used by validation; no extra BLE query is
+        // started here.
+        let mediaSession = discovery.cameraStatus.flatMap { status
+            -> Pocket3MediaSessionObservation? in
+            guard status.sessionID == readiness.sessionID,
+                  status.peripheralID == readiness.peerID else { return nil }
+            return Pocket3MediaSessionObservation(
+                status: status, generation: readiness.generation)
+        }
         let snapshot = NativeMediaValidationSnapshot(
             session: readiness, routeStatus: wireless.nativeRouteStatus,
-            nowUptime: ProcessInfo.processInfo.systemUptime)
+            nowUptime: nowUptime, mediaSession: mediaSession)
         do {
             // Explicit command execution is the only path that obtains an
             // adapter. Range execution additionally requires the route proof
@@ -57,10 +69,19 @@ extension AppModel {
                 adapter: adapter, rangeFetcher: rangeFetcher).run(
                     input, snapshot: snapshot)
             if let identity = try? Pocket3MediaSessionIdentity(status: readiness) {
+                let currentMediaSession = result.mediaSessionObservation ??
+                    snapshot.mediaSession
+                if let currentMediaSession {
+                    _ = mediaLibrary.applyMediaSession(currentMediaSession,
+                        expectedIdentity: identity,
+                        routeStatus: snapshot.routeStatus,
+                        nowUptime: ProcessInfo.processInfo.systemUptime)
+                }
                 _ = mediaLibrary.apply(result, expectedIdentity: identity,
                     routeStatus: snapshot.routeStatus,
                     receivedUptime: snapshot.nowUptime,
-                    nowUptime: ProcessInfo.processInfo.systemUptime)
+                    nowUptime: ProcessInfo.processInfo.systemUptime,
+                    mediaSession: currentMediaSession)
             }
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as NativeMediaValidationError {

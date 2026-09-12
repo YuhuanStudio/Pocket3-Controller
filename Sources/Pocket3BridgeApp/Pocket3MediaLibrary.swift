@@ -11,15 +11,21 @@ struct Pocket3MediaLibraryContext: Codable, Sendable, Equatable {
     let routeStatus: Pocket3DatalinkRouteStatus
     let observedUptime: TimeInterval
     let maximumAge: TimeInterval
+    /// Latest typed 02/80 state admitted for this exact media session. The
+    /// model keeps it alongside route freshness so a changed session cannot
+    /// reuse an old playback or active-store value.
+    let mediaSession: Pocket3MediaSessionObservation?
 
     init(identity: Pocket3MediaSessionIdentity,
          routeStatus: Pocket3DatalinkRouteStatus,
          observedUptime: TimeInterval,
-         maximumAge: TimeInterval = 5) {
+         maximumAge: TimeInterval = 5,
+         mediaSession: Pocket3MediaSessionObservation? = nil) {
         self.identity = identity
         self.routeStatus = routeStatus
         self.observedUptime = observedUptime
         self.maximumAge = maximumAge
+        self.mediaSession = mediaSession
     }
 
     var routeAllowed: Bool {
@@ -44,6 +50,18 @@ struct Pocket3MediaLibraryContext: Codable, Sendable, Equatable {
             nowUptime.isFinite && maximumAge.isFinite && maximumAge >= 0 &&
             nowUptime >= observedUptime &&
             nowUptime - observedUptime <= maximumAge
+    }
+
+    func isMediaSessionFresh(nowUptime: TimeInterval) -> Bool {
+        guard let mediaSession,
+              mediaSession.sessionID == identity.sessionID,
+              mediaSession.generation == identity.generation,
+              (identity.peripheralID == nil ||
+               identity.peripheralID == mediaSession.peripheralID) else {
+            return false
+        }
+        return mediaSession.isFresh(nowUptime: nowUptime,
+                                    maximumAge: maximumAge)
     }
 }
 
@@ -181,6 +199,22 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         return context.isFresh(nowUptime: ProcessInfo.processInfo.systemUptime)
     }
 
+    /// The latest camera-reported media state, when one was admitted for the
+    /// current library identity. It is read-only presentation evidence.
+    var mediaSession: Pocket3MediaSessionObservation? { context?.mediaSession }
+    var mediaState: Pocket3MediaSessionState? { context?.mediaSession?.state }
+    var mediaStateIsFresh: Bool {
+        guard let context else { return false }
+        return context.isMediaSessionFresh(
+            nowUptime: ProcessInfo.processInfo.systemUptime)
+    }
+    var activeStoreTotalMiB: UInt32? {
+        context?.mediaSession?.activeStoreTotalMiB
+    }
+    var activeStoreFreeMiB: UInt32? {
+        context?.mediaSession?.activeStoreFreeMiB
+    }
+
     var summary: String {
         switch phase {
         case .empty: return "No media page loaded"
@@ -207,7 +241,8 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
                        routeStatus: Pocket3DatalinkRouteStatus,
                        observedUptime: TimeInterval,
                        nowUptime: TimeInterval,
-                       maximumAge: TimeInterval = 5) -> Bool {
+                       maximumAge: TimeInterval = 5,
+                       mediaSession: Pocket3MediaSessionObservation? = nil) -> Bool {
         guard identity.generation > 0, observedUptime.isFinite,
               observedUptime >= 0, nowUptime.isFinite,
               maximumAge.isFinite, maximumAge >= 0 else {
@@ -215,9 +250,22 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
             lastFailureCode = "media_library_invalid_clock"
             return false
         }
+        guard mediaSession.map({ observation in
+            observation.sessionID == identity.sessionID &&
+                observation.generation == identity.generation &&
+                (identity.peripheralID == nil ||
+                 identity.peripheralID == observation.peripheralID)
+        }) ?? true else {
+            phase = .failed
+            lastFailureCode = "media_library_media_session_mismatch"
+            return false
+        }
+        let sameIdentity = context?.identity == identity
+        let retainedMediaSession = mediaSession ??
+            (sameIdentity ? context?.mediaSession : nil)
         let next = Pocket3MediaLibraryContext(identity: identity,
             routeStatus: routeStatus, observedUptime: observedUptime,
-            maximumAge: maximumAge)
+            maximumAge: maximumAge, mediaSession: retainedMediaSession)
         if context?.identity != identity {
             rows.removeAll(keepingCapacity: false)
             listProgress = nil
@@ -247,7 +295,8 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         routeStatus: Pocket3DatalinkRouteStatus,
         receivedUptime: TimeInterval,
         nowUptime: TimeInterval,
-        maximumAge: TimeInterval = 5
+        maximumAge: TimeInterval = 5,
+        mediaSession: Pocket3MediaSessionObservation? = nil
     ) -> Bool {
         guard result.action == .list else {
             lastFailureCode = "media_library_action_mismatch"
@@ -256,7 +305,9 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         }
         guard bind(identity: expectedIdentity, routeStatus: routeStatus,
                    observedUptime: receivedUptime, nowUptime: nowUptime,
-                   maximumAge: maximumAge) else { return false }
+                   maximumAge: maximumAge, mediaSession: mediaSession) else {
+            return false
+        }
         if let evidence = result.list {
             listProgress = Pocket3MediaListProgress(phase: evidence.phase,
                 assembledByteCount: evidence.assembledByteCount,
@@ -291,7 +342,8 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         routeStatus: Pocket3DatalinkRouteStatus,
         receivedUptime: TimeInterval,
         nowUptime: TimeInterval,
-        maximumAge: TimeInterval = 5
+        maximumAge: TimeInterval = 5,
+        mediaSession: Pocket3MediaSessionObservation? = nil
     ) -> Bool {
         guard index.identity == expectedIdentity else {
             phase = .stale
@@ -300,7 +352,9 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         }
         guard bind(identity: expectedIdentity, routeStatus: routeStatus,
                    observedUptime: receivedUptime, nowUptime: nowUptime,
-                   maximumAge: maximumAge) else { return false }
+                   maximumAge: maximumAge, mediaSession: mediaSession) else {
+            return false
+        }
         guard index.entries.count <= Self.maximumRows else {
             phase = .failed
             lastFailureCode = "media_library_rows_too_large"
@@ -313,6 +367,24 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         listProgress = nil
         lastFailureCode = nil
         return true
+    }
+
+    /// Admits a camera-reported 02/80 media state without requiring a list
+    /// page. Playback enter/exit validation uses this path so Diagnostics can
+    /// show the terminal state and active-store capacity while rows remain
+    /// metadata-only.
+    @discardableResult
+    mutating func applyMediaSession(
+        _ mediaSession: Pocket3MediaSessionObservation,
+        expectedIdentity: Pocket3MediaSessionIdentity,
+        routeStatus: Pocket3DatalinkRouteStatus,
+        nowUptime: TimeInterval,
+        maximumAge: TimeInterval = 5
+    ) -> Bool {
+        bind(identity: expectedIdentity, routeStatus: routeStatus,
+             observedUptime: mediaSession.receivedUptime,
+             nowUptime: nowUptime, maximumAge: maximumAge,
+             mediaSession: mediaSession)
     }
 
     /// Starts a metadata-only range progress ledger after exact identity and
@@ -401,18 +473,21 @@ struct Pocket3MediaLibraryModel: Codable, Sendable, Equatable {
         routeStatus: Pocket3DatalinkRouteStatus,
         receivedUptime: TimeInterval,
         nowUptime: TimeInterval,
-        maximumAge: TimeInterval = 5
+        maximumAge: TimeInterval = 5,
+        mediaSession: Pocket3MediaSessionObservation? = nil
     ) -> Bool {
         switch result.action {
         case .list:
             return applyListResult(result,
                 expectedIdentity: expectedIdentity, routeStatus: routeStatus,
                 receivedUptime: receivedUptime, nowUptime: nowUptime,
-                maximumAge: maximumAge)
+                maximumAge: maximumAge, mediaSession: mediaSession)
         case .range:
             guard bind(identity: expectedIdentity, routeStatus: routeStatus,
                        observedUptime: receivedUptime, nowUptime: nowUptime,
-                       maximumAge: maximumAge) else { return false }
+                       maximumAge: maximumAge, mediaSession: mediaSession) else {
+                return false
+            }
             return applyRangeResult(result, nowUptime: nowUptime)
         case .playbackEnter, .playbackExit, .presence:
             return false
@@ -462,6 +537,26 @@ struct Pocket3MediaLibraryDiagnostics: View {
                     detail(loc("Media route"), context.routeStatus.state.rawValue)
                     detail(loc("Media freshness"), model.isFresh
                         ? loc("Fresh") : loc("Stale"))
+                    if let mediaSession = context.mediaSession {
+                        detail(loc("Media state"),
+                               mediaStateLabel(mediaSession.state))
+                        detail(loc("Playback bit"),
+                               playbackBitLabel(mediaSession.playback))
+                        if mediaSession.activeStoreTotalMiB != nil ||
+                            mediaSession.activeStoreFreeMiB != nil {
+                            let total = mediaSession.activeStoreTotalMiB.map(String.init)
+                                ?? loc("Unknown")
+                            let free = mediaSession.activeStoreFreeMiB.map(String.init)
+                                ?? loc("Unknown")
+                            detail(loc("Active store"),
+                                   "\(free) / \(total) MiB")
+                        }
+                        detail(loc("Media state freshness"),
+                               mediaSession.isFresh(
+                                   nowUptime: ProcessInfo.processInfo.systemUptime,
+                                   maximumAge: context.maximumAge)
+                               ? loc("Fresh") : loc("Stale"))
+                    }
                 }
                 if let progress = model.listProgress {
                     detail(loc("List progress"),
@@ -528,5 +623,22 @@ struct Pocket3MediaLibraryDiagnostics: View {
             Text(value).foregroundStyle(Yun.Palette.textSecondary)
                 .textSelection(.enabled).multilineTextAlignment(.trailing)
         }.font(Yun.Text.caption)
+    }
+
+    private func mediaStateLabel(_ state: Pocket3MediaSessionState) -> String {
+        switch state {
+        case .normal: return loc("Normal")
+        case .playback: return loc("Playback")
+        case .transition: return loc("Transition")
+        case .unknown(let raw):
+            let unknown = loc("Unknown")
+            let rawLabel = String(format: "%02X", raw)
+            return "\(unknown) (0x\(rawLabel))"
+        }
+    }
+
+    private func playbackBitLabel(_ value: Bool?) -> String {
+        guard let value else { return loc("Unknown") }
+        return loc(value ? "Set" : "Clear")
     }
 }

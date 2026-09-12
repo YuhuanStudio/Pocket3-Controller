@@ -502,6 +502,9 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
     public let bodyRecordingFormats: [BodyRecordingFormatCapability]
     public let nativeSession: NativeSessionCapability
     public let liveSession: LiveSessionCapability
+    /// Read-only firmware/accessory/system preference inventory. Optional so
+    /// older status JSON remains decodable when no BLE observation exists.
+    public let deviceInventory: Pocket3DeviceSystemInventory?
     public let nodes: [Pocket3CapabilityGraphNode]
 
     public init(version: Int = 1,
@@ -509,13 +512,15 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                 hostOutputCodecs: [HostOutputCodecCapability] = [],
                 bodyRecordingFormats: [BodyRecordingFormatCapability] = Pocket3BodyRecordingCatalog.knownResolutionFamilies,
                 nativeSession: NativeSessionCapability = .disconnected,
-                liveSession: LiveSessionCapability = .unavailable) {
+                liveSession: LiveSessionCapability = .unavailable,
+                deviceInventory: Pocket3DeviceSystemInventory? = nil) {
         self.version = version
         self.uvcCaptureFormats = uvcCaptureFormats
         self.hostOutputCodecs = hostOutputCodecs
         self.bodyRecordingFormats = bodyRecordingFormats
         self.nativeSession = nativeSession
         self.liveSession = liveSession
+        self.deviceInventory = deviceInventory
 
         let uvc = Self.aggregate(uvcCaptureFormats.map(\.availability))
         let host = Self.aggregate(hostOutputCodecs.map(\.availability))
@@ -543,7 +548,8 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                             nativeControl: NativeControlStatus? = nil,
                             nativeSession: NativeSessionCapability? = nil,
                             bodyRecordingFormats: [BodyRecordingFormatCapability]? = nil,
-                            liveSession: LiveSessionCapability = .unavailable) -> Self {
+                            liveSession: LiveSessionCapability = .unavailable,
+                            deviceInventory: Pocket3DeviceSystemInventory? = nil) -> Self {
         var uvc: [UVCCaptureFormat] = []
         if let frame = capture.frame,
            frame.width > 0, frame.height > 0,
@@ -572,7 +578,18 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
         return Self(uvcCaptureFormats: uvc, hostOutputCodecs: output,
                     bodyRecordingFormats: bodyRecordingFormats.map(Pocket3BodyRecordingCatalog.merging)
                         ?? Pocket3BodyRecordingCatalog.knownResolutionFamilies,
-                    nativeSession: nativeSession ?? .from(nativeControl), liveSession: liveSession)
+                    nativeSession: nativeSession ?? .from(nativeControl),
+                    liveSession: liveSession, deviceInventory: deviceInventory)
+    }
+
+    /// Adds a read-only device inventory to a graph assembled by the USB
+    /// service without recomputing or changing any USB/native capability.
+    public func adding(deviceInventory: Pocket3DeviceSystemInventory?) -> Self {
+        Self(version: version, uvcCaptureFormats: uvcCaptureFormats,
+             hostOutputCodecs: hostOutputCodecs,
+             bodyRecordingFormats: bodyRecordingFormats,
+             nativeSession: nativeSession, liveSession: liveSession,
+             deviceInventory: deviceInventory)
     }
 
     private static func outputCapabilities(capture: CaptureStats, phase: String,

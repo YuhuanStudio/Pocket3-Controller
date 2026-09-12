@@ -152,6 +152,14 @@ public struct NativeCameraSessionStatus: Codable, Equatable, Sendable {
     public let sessionID: UUID?
     public let peerID: UUID?
 
+    public init(state: NativeCameraSessionState, generation: UInt64,
+                sessionID: UUID?, peerID: UUID?) {
+        self.state = state
+        self.generation = generation
+        self.sessionID = sessionID
+        self.peerID = peerID
+    }
+
     public var commandReady: Bool { state.satisfies(.commandReady) }
     public var liveReady: Bool { state.satisfies(.liveReady) }
 

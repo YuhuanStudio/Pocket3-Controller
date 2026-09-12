@@ -62,11 +62,17 @@ final class WirelessGimbalModel {
         }
         return result
     }
+    var deviceSystemInventory: Pocket3DeviceSystemInventory {
+        Pocket3DeviceSystemInventory.from(
+            discovery: discovery,
+            nowUptime: ProcessInfo.processInfo.systemUptime)
+    }
     var capabilityGraph: Pocket3CapabilityGraph {
         Pocket3CapabilityGraph(
             bodyRecordingFormats: Pocket3BodyRecordingCatalog.merging(bodyRecordingCapabilitySnapshot),
             nativeSession: NativeSessionCapability.from(nativeSessionStatus),
-            liveSession: .unavailable)
+            liveSession: .unavailable,
+            deviceInventory: deviceSystemInventory)
     }
     var nativeConnectionDetail: String? {
         if joiningNetwork { return loc("Joining camera Wi-Fi…") }

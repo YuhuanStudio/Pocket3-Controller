@@ -11,17 +11,20 @@ struct BodyCapabilitySection: View {
     let developerValidationExpanded: Bool
     let advancedSettingsExpanded: Bool
     let exposureExpanded: Bool
+    let deviceInventoryExpanded: Bool
 
     init(model: AppModel,
          developerMode: Bool = CommandLine.arguments.contains("--hardware-validation"),
          developerValidationExpanded: Bool = false,
          advancedSettingsExpanded: Bool = false,
-         exposureExpanded: Bool = false) {
+         exposureExpanded: Bool = false,
+         deviceInventoryExpanded: Bool = false) {
         self.model = model
         self.developerMode = developerMode
         self.developerValidationExpanded = developerValidationExpanded
         self.advancedSettingsExpanded = advancedSettingsExpanded
         self.exposureExpanded = exposureExpanded
+        self.deviceInventoryExpanded = deviceInventoryExpanded
     }
 
     var body: some View {
@@ -30,7 +33,8 @@ struct BodyCapabilitySection: View {
                                   showsDeveloperValidation: developerMode,
                                   developerValidationExpanded: developerValidationExpanded,
                                   advancedSettingsExpanded: advancedSettingsExpanded,
-                                  exposureExpanded: exposureExpanded)
+                                  exposureExpanded: exposureExpanded,
+                                  deviceInventoryExpanded: deviceInventoryExpanded)
         }
             .accessibilityIdentifier("Pocket3BodyCapabilitySection")
             .measuredForLayout("bodyCapabilitySection")
@@ -59,7 +63,8 @@ struct BodyCapabilitySummary: View {
     }
 
     var body: some View {
-        let graph = model.status?.capabilities ?? Pocket3CapabilityGraph()
+        let graph = (model.status?.capabilities ?? Pocket3CapabilityGraph())
+            .adding(deviceInventory: model.wireless.deviceSystemInventory)
         YunDisclosure(loc("Camera body capabilities"),
                       subtitle: summary(graph),
                       isExpanded: $formatsExpanded) {
@@ -88,23 +93,27 @@ private struct BodyCapabilityDetails: View {
     let showsDeveloperValidation: Bool
     @State private var activeTrackExpanded = false
     @State private var exposureExpanded: Bool
+    @State private var deviceInventoryExpanded: Bool
     @State private var advancedSettingsExpanded: Bool
     @State private var validationExpanded: Bool
 
     init(model: AppModel, showsHeader: Bool, showsDeveloperValidation: Bool,
          developerValidationExpanded: Bool = false,
          advancedSettingsExpanded: Bool = false,
-         exposureExpanded: Bool = false) {
+         exposureExpanded: Bool = false,
+         deviceInventoryExpanded: Bool = false) {
         self.model = model
         self.showsHeader = showsHeader
         self.showsDeveloperValidation = showsDeveloperValidation
         _exposureExpanded = State(initialValue: exposureExpanded)
+        _deviceInventoryExpanded = State(initialValue: deviceInventoryExpanded)
         _advancedSettingsExpanded = State(initialValue: advancedSettingsExpanded)
         _validationExpanded = State(initialValue: developerValidationExpanded)
     }
 
     var body: some View {
-        let graph = model.status?.capabilities ?? Pocket3CapabilityGraph()
+        let graph = (model.status?.capabilities ?? Pocket3CapabilityGraph())
+            .adding(deviceInventory: model.wireless.deviceSystemInventory)
         VStack(alignment: .leading, spacing: Yun.Space.md) {
             if showsHeader {
                 Text(loc("Camera body capabilities")).font(Yun.Text.title)
@@ -136,6 +145,14 @@ private struct BodyCapabilityDetails: View {
                 exposureDetails
             }
             .accessibilityIdentifier("Pocket3ExposureDisclosure")
+
+            YunDisclosure(loc("Device & system inventory"),
+                          subtitle: DeviceSystemInventoryPresentation.summary(
+                              graph.deviceInventory),
+                          isExpanded: $deviceInventoryExpanded) {
+                deviceInventoryDetails(graph.deviceInventory)
+            }
+            .accessibilityIdentifier("Pocket3DeviceSystemInventoryDisclosure")
 
             YunDivider()
             Text(loc("Legal body formats")).font(Yun.Text.label)
@@ -271,6 +288,64 @@ private struct BodyCapabilityDetails: View {
             .font(Yun.Text.caption)
             .foregroundStyle(Yun.Palette.textTertiary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private func deviceInventoryDetails(
+        _ inventory: Pocket3DeviceSystemInventory?
+    ) -> some View {
+        let inventory = inventory ?? Pocket3DeviceSystemInventory()
+        Text(loc("Read-only facts from current BLE observations and reviewed device evidence; unknown protocol fields stay unknown."))
+            .font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        Text(loc("Firmware components")).font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+        ForEach(inventory.firmware) { entry in
+            compactInventoryRow(DeviceSystemInventoryPresentation.firmwareTitle(entry.id),
+                          DeviceSystemInventoryPresentation.firmwareValue(entry),
+                          availability: entry.availability,
+                          evidence: entry.evidenceLevel)
+        }
+
+        Text(loc("System preferences")).font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+        ForEach(inventory.preferences) { entry in
+            compactInventoryRow(DeviceSystemInventoryPresentation.preferenceTitle(entry.id),
+                          DeviceSystemInventoryPresentation.preferenceValue(entry),
+                          availability: entry.availability,
+                          evidence: entry.evidenceLevel)
+        }
+
+        Text(loc("SD storage")).font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+        compactInventoryRow(loc("SD storage"),
+                      DeviceSystemInventoryPresentation.storageValue(inventory.storage),
+                      availability: inventory.storage.availability,
+                      evidence: inventory.storage.evidenceLevel)
+
+        Text(loc("Accessories")).font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+        ForEach(inventory.accessories) { entry in
+            compactInventoryRow(DeviceSystemInventoryPresentation.accessoryTitle(entry.id),
+                          DeviceSystemInventoryPresentation.accessoryValue(entry),
+                          availability: entry.availability,
+                          evidence: entry.evidenceLevel)
+        }
+    }
+
+    private func compactInventoryRow(_ label: String, _ value: String,
+                                     availability: CapabilityAvailability,
+                                     evidence: CapabilityEvidenceLevel) -> some View {
+        HStack(spacing: Yun.Space.sm) {
+            Text(label).foregroundStyle(Yun.Palette.textSecondary)
+            Spacer(minLength: Yun.Space.sm)
+            Text(value).foregroundStyle(Yun.Palette.textPrimary)
+                .lineLimit(1).truncationMode(.middle)
+            YunBadge(CapabilityPresentation.access(availability))
+            YunBadge("\(loc("Evidence")) \(CapabilityPresentation.evidence(evidence))")
+        }
+        .font(Yun.Text.caption)
     }
 
     @ViewBuilder private func advancedSettingGroup(
