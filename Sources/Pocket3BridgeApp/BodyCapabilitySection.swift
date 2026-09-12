@@ -9,20 +9,24 @@ struct BodyCapabilitySection: View {
     @Bindable var model: AppModel
     let developerMode: Bool
     let developerValidationExpanded: Bool
+    let advancedSettingsExpanded: Bool
 
     init(model: AppModel,
          developerMode: Bool = CommandLine.arguments.contains("--hardware-validation"),
-         developerValidationExpanded: Bool = false) {
+         developerValidationExpanded: Bool = false,
+         advancedSettingsExpanded: Bool = false) {
         self.model = model
         self.developerMode = developerMode
         self.developerValidationExpanded = developerValidationExpanded
+        self.advancedSettingsExpanded = advancedSettingsExpanded
     }
 
     var body: some View {
         YunCard {
             BodyCapabilityDetails(model: model, showsHeader: true,
                                   showsDeveloperValidation: developerMode,
-                                  developerValidationExpanded: developerValidationExpanded)
+                                  developerValidationExpanded: developerValidationExpanded,
+                                  advancedSettingsExpanded: advancedSettingsExpanded)
         }
             .accessibilityIdentifier("Pocket3BodyCapabilitySection")
             .measuredForLayout("bodyCapabilitySection")
@@ -35,14 +39,19 @@ struct BodyCapabilitySummary: View {
     @Bindable var model: AppModel
     let developerMode: Bool
     let developerValidationExpanded: Bool
+    let advancedSettingsExpanded: Bool
     @State private var formatsExpanded = false
 
     init(model: AppModel,
          developerMode: Bool = CommandLine.arguments.contains("--hardware-validation"),
-         developerValidationExpanded: Bool = false) {
+         developerValidationExpanded: Bool = false,
+         advancedSettingsExpanded: Bool = false,
+         initiallyExpanded: Bool = false) {
         self.model = model
         self.developerMode = developerMode
         self.developerValidationExpanded = developerValidationExpanded
+        self.advancedSettingsExpanded = advancedSettingsExpanded
+        _formatsExpanded = State(initialValue: initiallyExpanded)
     }
 
     var body: some View {
@@ -52,7 +61,8 @@ struct BodyCapabilitySummary: View {
                       isExpanded: $formatsExpanded) {
             BodyCapabilityDetails(model: model, showsHeader: false,
                                   showsDeveloperValidation: developerMode,
-                                  developerValidationExpanded: developerValidationExpanded)
+                                  developerValidationExpanded: developerValidationExpanded,
+                                  advancedSettingsExpanded: advancedSettingsExpanded)
         }
         .accessibilityIdentifier("Pocket3BodyCapabilitySummary")
         .measuredForLayout("bodyCapabilitySummary")
@@ -73,13 +83,16 @@ private struct BodyCapabilityDetails: View {
     let showsHeader: Bool
     let showsDeveloperValidation: Bool
     @State private var activeTrackExpanded = false
+    @State private var advancedSettingsExpanded: Bool
     @State private var validationExpanded: Bool
 
     init(model: AppModel, showsHeader: Bool, showsDeveloperValidation: Bool,
-         developerValidationExpanded: Bool = false) {
+         developerValidationExpanded: Bool = false,
+         advancedSettingsExpanded: Bool = false) {
         self.model = model
         self.showsHeader = showsHeader
         self.showsDeveloperValidation = showsDeveloperValidation
+        _advancedSettingsExpanded = State(initialValue: advancedSettingsExpanded)
         _validationExpanded = State(initialValue: developerValidationExpanded)
     }
 
@@ -130,6 +143,13 @@ private struct BodyCapabilityDetails: View {
             Text(loc("Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass."))
                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            YunDisclosure(loc("Advanced body settings"),
+                          subtitle: CapabilityPresentation.advancedSettingsSummary(graph),
+                          isExpanded: $advancedSettingsExpanded) {
+                advancedSettingsDetails(graph)
+            }
+            .accessibilityIdentifier("Pocket3AdvancedSettingsDisclosure")
 
             if showsDeveloperValidation {
                 YunDisclosure(loc("Developer body validation"),
@@ -216,6 +236,73 @@ private struct BodyCapabilityDetails: View {
         return capabilityRow(family.title, value,
                              availability: representative.availability,
                              evidence: representative.evidence)
+    }
+
+    @ViewBuilder private func advancedSettingsDetails(
+        _ graph: Pocket3CapabilityGraph
+    ) -> some View {
+        Text(loc("Read-only inventory from the evidence-led Pocket 3 capability catalog."))
+            .font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+        advancedSettingGroup(loc("Protocol candidates"), ids: [
+            .medTele, .isoLimit, .audioChannel, .vocalBoost, .selfieFlip
+        ], graph: graph)
+        advancedSettingGroup(loc("Official-only body features"), ids: [
+            .breathingCompensation, .sharpness, .noiseReduction
+        ], graph: graph)
+        Text(loc("Candidate writers are not available from the regular UI."))
+            .font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private func advancedSettingGroup(
+        _ title: String,
+        ids: [Pocket3AdvancedSettingID],
+        graph: Pocket3CapabilityGraph
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Yun.Space.xs) {
+            Text(title)
+                .font(Yun.Text.caption)
+                .foregroundStyle(Yun.Palette.textTertiary)
+            ForEach(ids, id: \.self) { id in
+                if let entry = Pocket3AdvancedSettingInventory.entry(for: id) {
+                    advancedSettingRow(entry, graph: graph)
+                }
+            }
+        }
+    }
+
+    private func advancedSettingRow(
+        _ entry: Pocket3AdvancedSettingInventoryEntry,
+        graph: Pocket3CapabilityGraph
+    ) -> some View {
+        let availability = CapabilityPresentation.advancedSettingAvailability(entry,
+                                                                               graph: graph)
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .top, spacing: Yun.Space.sm) {
+                Text(CapabilityPresentation.advancedSettingTitle(entry.id))
+                    .foregroundStyle(Yun.Palette.textSecondary)
+                Spacer(minLength: Yun.Space.sm)
+                YunBadge(CapabilityPresentation.advancedSettingAccess(availability))
+            }
+            YunWrap(spacing: 4, lineSpacing: 2) {
+                YunBadge(loc("Evidence"))
+                ForEach(entry.evidence, id: \.self) { evidence in
+                    YunBadge(CapabilityPresentation.advancedSettingEvidence(evidence))
+                }
+            }
+            if let reason = CapabilityPresentation.reason(availability.reason) {
+                Text(reason)
+                    .font(Yun.Text.caption)
+                    .foregroundStyle(Yun.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(Yun.Text.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
     }
 
     private func capabilityRow(_ label: String, _ value: String,

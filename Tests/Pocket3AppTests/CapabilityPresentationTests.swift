@@ -41,6 +41,32 @@ import Pocket3Core
         #expect(graph.bodyRecordingFormats.contains { $0.format.resolution == .square3K })
     }
 
+    @Test func advancedSettingsPresentationKeepsEvidenceAndAccessSeparate() throws {
+        let disconnected = Pocket3CapabilityGraph()
+        #expect(CapabilityPresentation.advancedSettingsSummary(disconnected)
+            .contains("0 of 8"))
+        let iso = try #require(Pocket3AdvancedSettingInventory.entry(for: .isoLimit))
+        #expect(CapabilityPresentation.advancedSettingTitle(.isoLimit) == "ISO limit")
+        #expect(CapabilityPresentation.advancedSettingEvidence(.officialOnly) == "Official only")
+        #expect(CapabilityPresentation.advancedSettingAccess(
+            CapabilityPresentation.advancedSettingAvailability(iso, graph: disconnected))
+            == "R —  W —  V —")
+        #expect(CapabilityPresentation.reason(iso.availability.reason)?.contains("fresh") == true)
+
+        var native = NativeCameraSession()
+        let generation = native.begin(sessionID: UUID(), peerID: UUID())
+        _ = native.markPaired(generation: generation)
+        _ = native.markCredentialsAvailable(generation: generation)
+        _ = native.observeDatalink(.connecting, generation: generation)
+        _ = native.observeDatalink(.ready, generation: generation)
+        let ready = Pocket3CapabilityGraph(nativeSession: .from(native.status))
+        let readyISO = CapabilityPresentation.advancedSettingAvailability(iso, graph: ready)
+        #expect(readyISO.read && readyISO.write && !readyISO.verified)
+        let selfie = try #require(Pocket3AdvancedSettingInventory.entry(for: .selfieFlip))
+        let selfieAccess = CapabilityPresentation.advancedSettingAvailability(selfie, graph: ready)
+        #expect(selfieAccess.read && !selfieAccess.write && !selfieAccess.verified)
+    }
+
     @Test func activeTrackAndBodyValidationPresentationKeepReadOnlyBoundaries() async throws {
         let sessionID = UUID()
         let peripheralID = UUID()
@@ -91,6 +117,35 @@ import Pocket3Core
            let data = image.tiffRepresentation {
             try data.write(to: URL(fileURLWithPath: "/tmp/Pocket3BodyCapabilitySection.tiff"), options: .atomic)
         }
+    }
+
+    @MainActor @Test func advancedSettingsDisclosureRendersCompactReadOnlyInventory() async throws {
+        let model = AppModel()
+        model.status = await model.service.status()
+        let renderer = ImageRenderer(content: BodyCapabilitySection(
+            model: model, advancedSettingsExpanded: true).frame(width: 560))
+        renderer.proposedSize = ProposedViewSize(width: 560, height: nil)
+        let image = try #require(renderer.nsImage)
+        #expect(image.size.width <= 560)
+        #expect(image.size.height > 650 && image.size.height < 1_800)
+        #expect(!model.wireless.bluetooth.isBluetoothInitialized)
+        if ProcessInfo.processInfo.environment["POCKET3_RENDER_ARTIFACT"] == "1",
+           let data = image.tiffRepresentation {
+            try data.write(to: URL(fileURLWithPath: "/tmp/Pocket3AdvancedSettingsSection.tiff"), options: .atomic)
+        }
+    }
+
+    @MainActor @Test func diagnosticsBodySummaryCanExpandTheSameAdvancedInventory() async throws {
+        let model = AppModel()
+        model.status = await model.service.status()
+        let renderer = ImageRenderer(content: BodyCapabilitySummary(
+            model: model, advancedSettingsExpanded: true,
+            initiallyExpanded: true).frame(width: 560))
+        renderer.proposedSize = ProposedViewSize(width: 560, height: nil)
+        let image = try #require(renderer.nsImage)
+        #expect(image.size.width <= 560)
+        #expect(image.size.height > 650 && image.size.height < 1_900)
+        #expect(!model.wireless.bluetooth.isBluetoothInitialized)
     }
 
     @MainActor @Test func diagnosticsBodySummaryStaysCompactWhenDisclosureIsCollapsed() async throws {

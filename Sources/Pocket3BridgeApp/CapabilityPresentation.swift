@@ -20,6 +20,24 @@ enum CapabilityPresentation {
     static func reason(_ value: String?) -> String? {
         guard let value, !value.isEmpty else { return nil }
         switch value {
+        case "Candidate command has no typed body-state readback or persistence proof":
+            return loc("Candidate command has no typed body-state readback or persistence proof")
+        case "Official body feature only; no Pocket 3 command or readback schema":
+            return loc("Official body feature only; no Pocket 3 command or readback schema")
+        case "Official feature record only; inspected body settings had no typed schema":
+            return loc("Official feature record only; inspected body settings had no typed schema")
+        case "Do not confuse host UVC processing-unit sharpness with body setting":
+            return loc("Do not confuse host UVC processing-unit sharpness with body setting")
+        case "Keyed candidate requires a fresh same-session readback; write is not locally verified":
+            return loc("Keyed candidate requires a fresh same-session readback; write is not locally verified")
+        case "Keyed candidate requires a fresh same-session readback; raw selector 0x03 remains unknown":
+            return loc("Keyed candidate requires a fresh same-session readback; raw selector 0x03 remains unknown")
+        case "Keyed candidate requires a fresh same-session readback; local hardware result is absent":
+            return loc("Keyed candidate requires a fresh same-session readback; local hardware result is absent")
+        case "Body PID 0038 is GET-only in the reviewed catalog; FE09 is a toggle without setting readback":
+            return loc("Body PID 0038 is GET-only in the reviewed catalog; FE09 is a toggle without setting readback")
+        case "Native command session is not ready":
+            return loc("Native command session is not ready")
         case "No current body readback":
             return loc("No current body readback")
         case "No current ActiveTrack readback":
@@ -83,6 +101,58 @@ enum CapabilityPresentation {
 
     static func activeTrackEvidence(_ observation: Pocket3ActiveTrackObservation?) -> CapabilityEvidenceLevel {
         observation == nil ? .publicReverseEngineering : .localReadOnly
+    }
+
+    static func advancedSettingsSummary(_ graph: Pocket3CapabilityGraph) -> String {
+        let entries = Pocket3AdvancedSettingInventory.all
+        let readable = entries.filter {
+            advancedSettingAvailability($0, graph: graph).read
+        }.count
+        return String(format: loc("%d of %d advanced settings readable"),
+                      readable, entries.count)
+    }
+
+    static func advancedSettingAvailability(
+        _ entry: Pocket3AdvancedSettingInventoryEntry,
+        graph: Pocket3CapabilityGraph
+    ) -> CapabilityAvailability {
+        guard entry.availability.isAvailable else { return entry.availability }
+        guard graph.nativeSession.commandReady else {
+            return .unavailable(reason: "Native command session is not ready")
+        }
+        return entry.availability
+    }
+
+    static func advancedSettingTitle(_ id: Pocket3AdvancedSettingID) -> String {
+        switch id {
+        case .medTele: loc("Med-Tele")
+        case .breathingCompensation: loc("Breathing compensation")
+        case .sharpness: loc("Sharpness")
+        case .noiseReduction: loc("Noise reduction")
+        case .isoLimit: loc("ISO limit")
+        case .audioChannel: loc("Audio channel")
+        case .vocalBoost: loc("Vocal Boost")
+        case .selfieFlip: loc("Selfie Flip")
+        }
+    }
+
+    static func advancedSettingEvidence(
+        _ evidence: Pocket3AdvancedSettingEvidence
+    ) -> String {
+        switch evidence {
+        case .officialOnly: loc("Official only")
+        case .publicReverseEngineering: loc("Public reverse engineering")
+        case .localParser: loc("Local parser")
+        }
+    }
+
+    /// Compact, language-neutral flags keep the three availability dimensions
+    /// visible without implying that a writer control is present in this UI.
+    static func advancedSettingAccess(_ availability: CapabilityAvailability) -> String {
+        let read = availability.read ? "✓" : "—"
+        let write = availability.write ? "✓" : "—"
+        let verified = availability.verified ? "✓" : "—"
+        return "R \(read)  W \(write)  V \(verified)"
     }
 
     static func bodyValidationReadiness(
