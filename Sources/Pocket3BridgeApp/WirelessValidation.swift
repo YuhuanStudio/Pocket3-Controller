@@ -22,6 +22,24 @@ extension AppModel {
                 throw BridgeFailure("invalid_pairing_options", "Pairing accepts only an optional pairOnly Boolean; it never joins a network")
             }
             try wireless.pair(pairOnly: fields["pairOnly"]?.bool ?? true)
+        case "validation-wireless-read-settings":
+            guard request.arguments == .object([:]) else {
+                throw BridgeFailure("invalid_camera_settings_read_arguments", "Read settings accepts no arguments")
+            }
+            wireless.readCameraSettings()
+            let deadline = ProcessInfo.processInfo.systemUptime + 30
+            while wireless.readingCameraSettings, ProcessInfo.processInfo.systemUptime < deadline {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            guard !wireless.readingCameraSettings else {
+                throw BridgeFailure("camera_settings_read_timeout", "Timed out waiting for the paired-camera settings reader")
+            }
+            await wireless.refresh()
+            return ServiceReply(id: request.id, result: .object([
+                "completed": .bool(wireless.issue == nil), "issue": wireless.issue.map(JSONValue.string) ?? .null,
+                "observations": try .array(wireless.discovery.cameraSettingsObservations.map(JSONValue.encode)),
+                "bluetooth": try .encode(wireless.discovery)
+            ]))
         case "validation-wireless-probe": return try await performBluetoothGimbalProbe(request)
         case "validation-wireless-recenter": return try await performBluetoothNativeRecenter(request)
         case "validation-wireless-tap-focus": return try await performBluetoothTapFocus(request)

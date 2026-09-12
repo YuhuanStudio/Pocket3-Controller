@@ -177,6 +177,7 @@ public enum IPCClient {
         if ["cancel-request", "bridge-ping"].contains(operation) { return 2 }
         if ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception",
             "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset",
+            "validation-wireless-read-settings",
             "move", BluetoothCameraEventRecordingRequest.operation].contains(operation) { return 120 }
         return 20
     }

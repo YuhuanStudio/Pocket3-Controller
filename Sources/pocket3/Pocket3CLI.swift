@@ -108,7 +108,7 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == "validation-wireless-pair", args.contains("--read-connection-details") {
                     arguments["pairOnly"] = .bool(false)
@@ -282,6 +282,8 @@ import MCP
           Developer only: passively record up to 20 seconds/512 bounded camera/gimbal telemetry changes. No writes or tracking claims.
         pocket3 validation-wireless-pair [--read-connection-details]
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
+        pocket3 validation-wireless-read-settings
+          Developer only: sequentially reads allowlisted paired-camera properties; never writes a setting or joins Wi-Fi.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON
