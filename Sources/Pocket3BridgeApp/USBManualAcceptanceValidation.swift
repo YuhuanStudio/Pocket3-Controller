@@ -83,6 +83,8 @@ extension AppModel {
         var initialGimbalOrigin: GimbalPosition?
         var initialZoomOrigin: Int?
         var activeBinding: USBManualAcceptanceBinding?
+        developerUSBManualAcceptanceStage = stage
+        developerUSBManualAcceptanceFailure = nil
 
         do {
             var status = await service.status()
@@ -108,6 +110,7 @@ extension AppModel {
             initialGimbalOrigin = status.gimbal?.position
 
             stage = "baseline_fresh_frame"
+            developerUSBManualAcceptanceStage = stage
             baselineFrames = try await collectBaseline(
                 binding: binding, deadline: min(deadline, started + 5))
             try checkDeadline(deadline)
@@ -122,14 +125,17 @@ extension AppModel {
             }
             initialZoomOrigin = zoom.current
 
+            let near = USBManualGimbalControlMapping.nearInputMagnitude
+            let far = USBManualGimbalControlMapping.farInputMagnitude
             let matrix: [(USBManualAcceptanceAxis, USBManualAcceptanceProfile, Int, ContinuousGimbalInput)] = [
-                (.pan, .near, 1, .init(x: 0.25, y: 0)),
-                (.pan, .far, 1, .init(x: 0.80, y: 0)),
-                (.tilt, .near, 1, .init(x: 0, y: -0.25)),
-                (.tilt, .far, 1, .init(x: 0, y: -0.80))
+                (.pan, .near, 1, .init(x: near, y: 0)),
+                (.pan, .far, 1, .init(x: far, y: 0)),
+                (.tilt, .near, 1, .init(x: 0, y: -near)),
+                (.tilt, .far, 1, .init(x: 0, y: -far))
             ]
             for (axis, profile, direction, input) in matrix {
                 stage = "\(axis.rawValue)_\(profile.rawValue)_continuous_hold"
+                developerUSBManualAcceptanceStage = stage
                 try checkDeadline(deadline)
                 let current = try await currentAcceptanceStatus(
                     binding: binding, request: request)
@@ -153,6 +159,7 @@ extension AppModel {
             }
 
             stage = "zoom_progress_and_verified_stop"
+            developerUSBManualAcceptanceStage = stage
             zoomMetric = try await collectZoom(
                 binding: binding, origin: initialZoomOrigin!,
                 deadline: deadline, holdSeconds: request.holdSeconds)
@@ -162,6 +169,7 @@ extension AppModel {
             }
 
             stage = "reconnect_old_session_fence"
+            developerUSBManualAcceptanceStage = stage
             reconnectMetric = try await reconnectAndFence(
                 oldBinding: binding, initial: initialStatus!,
                 deadline: deadline)
@@ -169,6 +177,7 @@ extension AppModel {
             activeBinding = finalBinding
 
             stage = "restore_gimbal_and_zoom"
+            developerUSBManualAcceptanceStage = stage
             let finalStatus = await service.status()
             guard let endBinding = acceptanceBinding(from: finalStatus) else {
                 throw USBManualAcceptanceStageError("final_binding_missing", "Reconnect did not publish a complete final binding")
@@ -190,11 +199,16 @@ extension AppModel {
                 finalZoomRaw: finalZoom.current,
                 cameraImagesStored: false, physicalMotionVerified: false)
             let evaluation = USBManualAcceptanceExecutor.evaluate(report)
+            let diagnostics = USBManualAcceptanceDiagnostics(
+                report: report, evaluation: evaluation)
+            developerUSBManualAcceptanceDiagnostics = diagnostics
+            developerUSBManualAcceptanceStage = "completed"
+            developerUSBManualAcceptanceFailure = evaluation.failureCode
             return ServiceReply(id: requestID, result: try acceptanceResultPayload(
                 request: request, stage: "completed", failure: nil,
                 baselineFrames: baselineFrames, gimbalHolds: gimbalHolds,
                 zoom: zoomMetric, reconnect: reconnectMetric,
-                report: report, evaluation: evaluation))
+                report: report, evaluation: evaluation, diagnostics: diagnostics))
         } catch is CancellationError {
             failure = "cancelled"
         } catch let error as USBManualAcceptanceStageError {
@@ -211,11 +225,13 @@ extension AppModel {
         await cleanupUSBManualAcceptance(
             binding: activeBinding, gimbalOrigin: initialGimbalOrigin,
             zoomOrigin: initialZoomOrigin)
+        developerUSBManualAcceptanceStage = stage
+        developerUSBManualAcceptanceFailure = failure
         return ServiceReply(id: requestID, result: try acceptanceResultPayload(
             request: request, stage: stage, failure: failure,
             baselineFrames: baselineFrames, gimbalHolds: gimbalHolds,
             zoom: zoomMetric, reconnect: reconnectMetric,
-            report: nil, evaluation: nil))
+            report: nil, evaluation: nil, diagnostics: nil))
     }
 
     private func validateInitialStatus(
@@ -714,7 +730,8 @@ extension AppModel {
         zoom: USBManualZoomMetric?,
         reconnect: USBManualReconnectFenceMetric?,
         report: USBManualAcceptanceReport?,
-        evaluation: USBManualAcceptanceEvaluation?
+        evaluation: USBManualAcceptanceEvaluation?,
+        diagnostics: USBManualAcceptanceDiagnostics?
     ) throws -> JSONValue {
         var partial: [String: JSONValue] = [
             "baselineFrames": try .encode(baselineFrames),
@@ -740,6 +757,7 @@ extension AppModel {
         ]
         result["report"] = try report.map(JSONValue.encode) ?? .null
         result["evaluation"] = try evaluation.map(JSONValue.encode) ?? .null
+        result["diagnostics"] = try diagnostics.map(JSONValue.encode) ?? .null
         return .object(result)
     }
 }

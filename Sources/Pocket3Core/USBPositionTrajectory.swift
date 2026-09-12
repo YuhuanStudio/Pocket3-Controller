@@ -48,20 +48,26 @@ struct USBPositionTrajectory: Sendable {
         guard elapsed >= 0, elapsed <= configuration.maximumTickGap else { throw Failure.delayedTick }
         lastTick = now
 
-        // Scale before hypot so even finite extreme drag coordinates cannot
-        // overflow. Preserve the direction and apply a radial dead zone.
+        // Normalize screen-space input through the same mapping exposed to
+        // the UI and acceptance runner. The mapping has no physical angle or
+        // speed claim; it only bounds the UVC trajectory rate.
         let scale = max(1, abs(x), abs(y))
         var horizontal = x / scale, vertical = y / scale
         let length = hypot(horizontal, vertical)
         if length > 1 { horizontal /= length; vertical /= length }
-        let magnitude = min(1, hypot(horizontal, vertical))
-        if magnitude <= 0.06 || speed == 0 {
+        guard let magnitude = USBManualGimbalControlMapping.magnitude(
+            x: x, y: y),
+              let rateFraction = USBManualGimbalControlMapping.rateFraction(
+                  inputMagnitude: magnitude, speed: speed) else {
+            throw Failure.invalidFeedback
+        }
+        if rateFraction == 0 {
             panRate = 0; tiltRate = 0
             previousPanDirection = 0; previousTiltDirection = 0
             pan = Double(observed.pan); tilt = Double(observed.tilt)
             return observed // Hold fresh readback; zero never means centre.
         }
-        let rate = (magnitude - 0.06) / 0.94 * speed * configuration.maximumRate
+        let rate = rateFraction * configuration.maximumRate
         let wantedPanRate = horizontal / magnitude * rate
         let wantedTiltRate = -vertical / magnitude * rate // Screen up -> positive UVC tilt.
         // A direction reversal withdraws the old lead immediately. Ramp up

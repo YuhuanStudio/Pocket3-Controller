@@ -86,6 +86,12 @@ final class AppModel {
     /// Last developer-only exposure validation evidence. The body capability
     /// Disclosure shows this only when developer mode is explicitly enabled.
     var developerExposureValidationResult: NativeExposureValidationResult?
+    /// Compact result of the most recent developer-only USB manual acceptance.
+    /// It contains verification counters and session-fence identity only; no
+    /// frame pixels or replayable command payloads are retained.
+    var developerUSBManualAcceptanceDiagnostics: USBManualAcceptanceDiagnostics?
+    var developerUSBManualAcceptanceStage: String?
+    var developerUSBManualAcceptanceFailure: String?
     @ObservationIgnored private var powerChargingReducer = Pocket3PowerChargingDiagnosisReducer()
     var powerChargingDiagnosis: Pocket3PowerChargingDiagnosis?
     var modelStatus: IntelligenceStatus?
@@ -817,6 +823,7 @@ struct RootView: View {
     @State private var showUVC = false
     @State private var showWireless = false
     @State private var showCaptureSettings = false
+    @State private var showUSBManualAcceptance = false
     var body: some View {
         let _ = theme.language
         VStack(spacing: 0) {
@@ -1252,6 +1259,13 @@ struct RootView: View {
                                 .buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady || model.aiWorking)
                             Text(loc("Runs small round trips and stopping checks for about two minutes. Stop operation cancels the test."))
                                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
+                            if CommandLine.arguments.contains("--hardware-validation") {
+                                USBManualAcceptanceDiagnosticsView(
+                                    diagnostics: model.developerUSBManualAcceptanceDiagnostics,
+                                    stage: model.developerUSBManualAcceptanceStage,
+                                    failure: model.developerUSBManualAcceptanceFailure,
+                                    isExpanded: $showUSBManualAcceptance)
+                            }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }.measuredForLayout("cameraDiagnostics")
                     YunCard {
