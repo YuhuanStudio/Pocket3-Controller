@@ -170,9 +170,10 @@ private struct BodyCapabilityDetails: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(value).foregroundStyle(Yun.Palette.textPrimary)
                     .multilineTextAlignment(.trailing)
-                Text(CapabilityPresentation.detail(availability, evidence: evidence))
-                    .font(Yun.Text.mono).foregroundStyle(Yun.Palette.textTertiary)
-                    .multilineTextAlignment(.trailing)
+                HStack(spacing: 4) {
+                    YunBadge(CapabilityPresentation.access(availability))
+                    YunBadge("\(loc("Evidence")) \(CapabilityPresentation.evidence(evidence))")
+                }
                 if let reason = CapabilityPresentation.reason(availability.reason) {
                     Text(reason).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                         .multilineTextAlignment(.trailing)
