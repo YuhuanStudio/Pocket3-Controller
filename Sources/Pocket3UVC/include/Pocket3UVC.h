@@ -6,6 +6,7 @@ extern "C" {
 #endif
 // Returned UTF-8 JSON strings are owned by the caller. Always p3_uvc_free them.
 typedef struct P3UVCSession P3UVCSession;
+typedef struct P3UVCStreamSession P3UVCStreamSession;
 // Sessions own one attachment's controller and cached controls. Calls on the
 // same session must be serialized. Close exactly once after all calls finish.
 // open sets *outSession only on success; the caller owns the returned session.
@@ -40,6 +41,16 @@ char *p3_uvc_stream_interfaces(uint32_t location);
 // seizes, changes alt setting, sends a UVC request, claims a pipe, or reads
 // payload bytes. Exclusive access is reported as busy.
 char *p3_uvc_stream_open_diagnostic(uint32_t location);
+// Retained VideoStreaming interface lifecycle boundary. It performs one
+// normal USBInterfaceOpen for the requested VS interface/alternate/endpoint
+// and never seizes, changes the alternate setting, claims a pipe, sends a
+// control request, or reads payload bytes. The close function consumes the
+// session exactly once, including after detach.
+char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
+                                  uint8_t alternateSetting, uint8_t endpointAddress,
+                                  P3UVCStreamSession **outSession);
+char *p3_uvc_stream_session_status(P3UVCStreamSession *session);
+char *p3_uvc_stream_session_close(P3UVCStreamSession *session);
 char *p3_uvc_status(uint32_t location);
 char *p3_uvc_set_position(uint32_t location, int32_t pan, int32_t tilt, const char *expectedRegistryID);
 void p3_uvc_free(char *value);

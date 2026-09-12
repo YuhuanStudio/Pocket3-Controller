@@ -306,9 +306,10 @@ public struct DirectUVCNegotiationResult: Codable, Sendable, Equatable {
     public var completed: Bool { committed && failureCode == nil }
 }
 
-/// Injectable public-API boundary for a future VS interface implementation.
-/// No implementation in this target opens an interface, seizes an endpoint,
-/// changes an alternate setting, or reads a bulk pipe.
+/// Injectable public-API boundary for a VS interface implementation. The
+/// scalar normal-open transport may own the interface through the reviewed
+/// bridge boundary; no implementation here seizes an endpoint, changes an
+/// alternate setting, or reads a bulk pipe.
 public protocol DirectUVCStreamHandle: AnyObject, Sendable {
     func control(_ request: UVCVideoStreamingRequest,
                  payload: Data?) async throws -> Data?

@@ -319,6 +319,375 @@ char *p3_uvc_stream_open_diagnostic(uint32_t location) {
             @"access": @"normal_open_immediate_close_no_seize_no_pipe" });
     }
 }
+
+struct P3UVCStreamSession {
+    uint32_t location;
+    UInt8 interfaceNumber;
+    UInt8 alternateSetting;
+    UInt8 endpointAddress;
+    IOUSBInterfaceInterface220 **interface;
+    NSArray *endpoints;
+    NSString *registryID;
+    NSString *bootSessionID;
+    BOOL invalidated;
+    BOOL ownsOpen;
+};
+
+static IOUSBInterfaceInterface220 **streamInterfaceForService(io_service_t service) {
+    IOCFPlugInInterface **plugin = NULL;
+    SInt32 score = 0;
+    kern_return_t created = IOCreatePlugInInterfaceForService(
+        service, kIOUSBInterfaceUserClientTypeID, kIOCFPlugInInterfaceID,
+        &plugin, &score);
+    if (created != kIOReturnSuccess || !plugin) {
+        if (plugin) IODestroyPlugInInterface(plugin);
+        return NULL;
+    }
+    IOUSBInterfaceInterface220 **interface = NULL;
+    IOReturn queried = (*plugin)->QueryInterface(
+        plugin, CFUUIDGetUUIDBytes(kIOUSBInterfaceInterfaceID220),
+        (LPVOID)&interface);
+    IODestroyPlugInInterface(plugin);
+    if (queried != kIOReturnSuccess) {
+        if (interface) (*interface)->Release(interface);
+        return NULL;
+    }
+    return interface;
+}
+
+static NSString *streamOpenResult(IOReturn result) {
+    if (result == kIOReturnExclusiveAccess) return @"busy";
+    if (result == kIOReturnNoDevice || result == kIOReturnNotResponding)
+        return @"detached";
+    if (result == kIOReturnTimeout || result == kIOUSBTransactionTimeout)
+        return @"timeout";
+    return @"open_failed";
+}
+
+static BOOL streamSessionIsCurrent(P3UVCStreamSession *session) {
+    if (!session || session->invalidated) return NO;
+    NSString *currentRegistryID = attachmentIdentity(session->location);
+    NSString *currentBootSessionID = bootIdentity();
+    if (![session->registryID isEqualToString:currentRegistryID] ||
+        ![session->bootSessionID isEqualToString:currentBootSessionID]) {
+        session->invalidated = YES;
+        return NO;
+    }
+    return YES;
+}
+
+static NSArray *streamEndpointInventory(IOUSBInterfaceInterface220 **interface,
+                                        UInt8 *endpointCount,
+                                        UInt8 expectedAddress,
+                                        BOOL *matchingEndpoint) {
+    UInt8 count = 0;
+    IOReturn countResult = (*interface)->GetNumEndpoints(interface, &count);
+    if (countResult != kIOReturnSuccess) return nil;
+    NSMutableArray *endpoints = [NSMutableArray arrayWithCapacity:count];
+    BOOL matching = NO;
+    for (UInt8 pipe = 1; pipe <= count; pipe++) {
+        UInt8 direction = 0, number = 0, transfer = 0, interval = 0;
+        UInt16 maxPacket = 0;
+        IOReturn properties = (*interface)->GetPipeProperties(
+            interface, pipe, &direction, &number, &transfer, &maxPacket,
+            &interval);
+        if (properties != kIOReturnSuccess) continue;
+        // IOUSBLib reports direction as kUSBIn (1) or kUSBOut (0), while
+        // descriptor endpoint addresses encode IN in bit 7.
+        UInt8 address = (UInt8)((number & 0x0f) |
+                                (direction == kUSBIn ? 0x80 : 0));
+        [endpoints addObject:@{
+            @"pipe": @(pipe), @"address": @(address),
+            @"direction": @(direction), @"transferType": @(transfer),
+            @"maxPacket": @(maxPacket), @"interval": @(interval)
+        }];
+        if (address == expectedAddress && direction == kUSBIn &&
+            transfer == kUSBBulk && maxPacket > 0) matching = YES;
+    }
+    if (endpointCount) *endpointCount = count;
+    if (matchingEndpoint) *matchingEndpoint = matching;
+    return [endpoints copy];
+}
+
+static IOUSBInterfaceInterface220 **findStreamInterface(
+    io_service_t deviceService, UInt8 requestedNumber, UInt8 requestedAlternate,
+    BOOL *interfaceFound) {
+    if (interfaceFound) *interfaceFound = NO;
+    IOUSBDeviceInterface **deviceInterface = NULL;
+    IOCFPlugInInterface **plugin = NULL;
+    SInt32 score = 0;
+    kern_return_t created = IOCreatePlugInInterfaceForService(
+        deviceService, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID,
+        &plugin, &score);
+    if (created != kIOReturnSuccess || !plugin) {
+        if (plugin) IODestroyPlugInInterface(plugin);
+        return NULL;
+    }
+    IOReturn queried = (*plugin)->QueryInterface(
+        plugin, CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID),
+        (LPVOID)&deviceInterface);
+    IODestroyPlugInInterface(plugin);
+    if (queried != kIOReturnSuccess || !deviceInterface) return NULL;
+
+    IOUSBFindInterfaceRequest request = {
+        .bInterfaceClass = kUSBVideoInterfaceClass,
+        .bInterfaceSubClass = kUSBVideoStreamingSubClass,
+        .bInterfaceProtocol = kIOUSBFindInterfaceDontCare,
+        .bAlternateSetting = requestedAlternate
+    };
+    io_iterator_t iterator = IO_OBJECT_NULL;
+    IOReturn iteratorResult = (*deviceInterface)->CreateInterfaceIterator(
+        deviceInterface, &request, &iterator);
+    IOUSBInterfaceInterface220 **selected = NULL;
+    if (iteratorResult == kIOReturnSuccess && iterator) {
+        io_service_t candidate = IO_OBJECT_NULL;
+        while ((candidate = IOIteratorNext(iterator))) {
+            IOUSBInterfaceInterface220 **interface =
+                streamInterfaceForService(candidate);
+            BOOL matches = NO;
+            if (interface) {
+                UInt8 number = 0, alternate = 0;
+                IOReturn numberResult = (*interface)->GetInterfaceNumber(
+                    interface, &number);
+                IOReturn alternateResult = (*interface)->GetAlternateSetting(
+                    interface, &alternate);
+                matches = numberResult == kIOReturnSuccess &&
+                    alternateResult == kIOReturnSuccess &&
+                    number == requestedNumber && alternate == requestedAlternate;
+                if (matches) {
+                    selected = interface;
+                    if (interfaceFound) *interfaceFound = YES;
+                } else {
+                    (*interface)->Release(interface);
+                }
+            }
+            IOObjectRelease(candidate);
+            if (selected) break;
+        }
+        IOObjectRelease(iterator);
+    }
+    (*deviceInterface)->Release(deviceInterface);
+    return selected;
+}
+
+char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
+                                  uint8_t alternateSetting, uint8_t endpointAddress,
+                                  P3UVCStreamSession **outSession) {
+    if (!outSession) return json(@{ @"error": @"uvc_stream_invalid_argument" });
+    *outSession = NULL;
+    @autoreleasepool {
+        NSString *registryID = [attachmentIdentity(location) copy];
+        NSString *bootSessionID = [bootIdentity() copy];
+        if (!registryID.length || !bootSessionID.length) {
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_attachment_changed",
+                           @"result": @"detached" });
+        }
+
+        io_iterator_t devices = IO_OBJECT_NULL;
+        kern_return_t matchingResult = IOServiceGetMatchingServices(
+            kIOMainPortDefault, IOServiceMatching("IOUSBHostDevice"), &devices);
+        if (matchingResult != KERN_SUCCESS) {
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_registry_unavailable",
+                           @"result": @"registry_unavailable" });
+        }
+
+        io_service_t deviceService = IO_OBJECT_NULL;
+        BOOL deviceFound = NO;
+        IOUSBInterfaceInterface220 **interface = NULL;
+        while ((deviceService = IOIteratorNext(devices))) {
+            if (!isPocket3Service(deviceService, location)) {
+                IOObjectRelease(deviceService);
+                continue;
+            }
+            deviceFound = YES;
+            BOOL interfaceFound = NO;
+            interface = findStreamInterface(deviceService, interfaceNumber,
+                                            alternateSetting, &interfaceFound);
+            IOObjectRelease(deviceService);
+            if (!interfaceFound) interface = NULL;
+            break;
+        }
+        IOObjectRelease(devices);
+
+        if (!deviceFound) {
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_device_missing",
+                           @"result": @"device_unavailable" });
+        }
+        if (!interface) {
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_streaming_interface_unavailable",
+                           @"result": @"interface_unavailable" });
+        }
+
+        UInt8 endpointCount = 0;
+        BOOL matchingEndpoint = NO;
+        NSArray *endpoints = streamEndpointInventory(
+            interface, &endpointCount, endpointAddress, &matchingEndpoint);
+        if (!endpoints) {
+            (*interface)->Release(interface);
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_stream_endpoint_unavailable",
+                           @"result": @"endpoint_unavailable" });
+        }
+        if (!matchingEndpoint) {
+            (*interface)->Release(interface);
+            [registryID release];
+            [bootSessionID release];
+            char *value = json(@{ @"error": @"uvc_stream_endpoint_unavailable",
+                           @"result": @"endpoint_unavailable",
+                           @"interfaceNumber": @(interfaceNumber),
+                           @"alternateSetting": @(alternateSetting),
+                           @"endpointAddress": @(endpointAddress),
+                           @"endpointCount": @(endpointCount),
+                           @"endpoints": endpoints });
+            [endpoints release];
+            return value;
+        }
+
+        IOReturn opened = (*interface)->USBInterfaceOpen(interface);
+        if (opened != kIOReturnSuccess) {
+            NSString *result = streamOpenResult(opened);
+            NSString *error = [result isEqualToString:@"busy"]
+                ? @"uvc_stream_busy"
+                : [result isEqualToString:@"detached"]
+                    ? @"uvc_attachment_changed"
+                    : [result isEqualToString:@"timeout"]
+                        ? @"uvc_stream_open_timeout"
+                        : @"uvc_stream_open_failed";
+            (*interface)->Release(interface);
+            [registryID release];
+            [bootSessionID release];
+            char *value = json(@{ @"error": error, @"result": result,
+                           @"opened": @NO, @"ownedOpen": @NO,
+                           @"interfaceNumber": @(interfaceNumber),
+                           @"alternateSetting": @(alternateSetting),
+                           @"endpointAddress": @(endpointAddress),
+                           @"endpointCount": @(endpointCount),
+                           @"endpoints": endpoints,
+                           @"openIOReturn": @((uint32_t)opened),
+                           @"access": @"normal_open_no_seize_no_pipe" });
+            [endpoints release];
+            return value;
+        }
+
+        NSString *currentRegistryID = attachmentIdentity(location);
+        NSString *currentBootSessionID = bootIdentity();
+        BOOL stillCurrent = [registryID isEqualToString:currentRegistryID] &&
+            [bootSessionID isEqualToString:currentBootSessionID];
+        if (!stillCurrent) {
+            IOReturn closed = (*interface)->USBInterfaceClose(interface);
+            (*interface)->Release(interface);
+            [endpoints release];
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_attachment_changed",
+                           @"result": @"detached", @"opened": @NO,
+                           @"closed": @(closed == kIOReturnSuccess ||
+                                         closed == kIOReturnNoDevice),
+                           @"openIOReturn": @((uint32_t)opened),
+                           @"closeIOReturn": @((uint32_t)closed) });
+        }
+
+        P3UVCStreamSession *session = calloc(1, sizeof(*session));
+        if (!session) {
+            (*interface)->USBInterfaceClose(interface);
+            (*interface)->Release(interface);
+            [endpoints release];
+            [registryID release];
+            [bootSessionID release];
+            return json(@{ @"error": @"uvc_memory",
+                           @"result": @"memory_unavailable" });
+        }
+        session->location = location;
+        session->interfaceNumber = interfaceNumber;
+        session->alternateSetting = alternateSetting;
+        session->endpointAddress = endpointAddress;
+        session->interface = interface;
+        session->endpoints = endpoints;
+        session->registryID = registryID;
+        session->bootSessionID = bootSessionID;
+        session->ownsOpen = YES;
+        *outSession = session;
+        return json(@{
+            @"opened": @YES, @"ownedOpen": @YES,
+            @"location": @(location),
+            @"interfaceNumber": @(interfaceNumber),
+            @"alternateSetting": @(alternateSetting),
+            @"endpointAddress": @(endpointAddress),
+            @"endpointCount": @(endpointCount), @"endpoints": endpoints,
+            @"openIOReturn": @((uint32_t)opened),
+            @"registryID": registryID, @"bootSessionID": bootSessionID,
+            @"result": @"opened", @"access": @"normal_open_no_seize_no_pipe"
+        });
+    }
+}
+
+char *p3_uvc_stream_session_status(P3UVCStreamSession *session) {
+    @autoreleasepool {
+        if (!session) return json(@{ @"error": @"uvc_stream_not_open" });
+        if (!streamSessionIsCurrent(session)) {
+            return json(@{ @"error": @"uvc_attachment_changed",
+                           @"result": @"detached", @"opened": @NO,
+                           @"interfaceNumber": @(session->interfaceNumber),
+                           @"alternateSetting": @(session->alternateSetting),
+                           @"endpointAddress": @(session->endpointAddress) });
+        }
+        return json(@{
+            @"opened": @(session->ownsOpen), @"ownedOpen": @(session->ownsOpen),
+            @"location": @(session->location),
+            @"interfaceNumber": @(session->interfaceNumber),
+            @"alternateSetting": @(session->alternateSetting),
+            @"endpointAddress": @(session->endpointAddress),
+            @"endpointCount": @(session->endpoints.count),
+            @"endpoints": session->endpoints ?: @[],
+            @"registryID": session->registryID ?: @"",
+            @"bootSessionID": session->bootSessionID ?: @"",
+            @"result": @"opened", @"access": @"normal_open_no_seize_no_pipe"
+        });
+    }
+}
+
+char *p3_uvc_stream_session_close(P3UVCStreamSession *session) {
+    if (!session) return json(@{ @"error": @"uvc_stream_not_open" });
+    @autoreleasepool {
+        BOOL current = streamSessionIsCurrent(session);
+        IOReturn closed = kIOReturnNotOpen;
+        if (session->interface && session->ownsOpen)
+            closed = (*session->interface)->USBInterfaceClose(session->interface);
+        BOOL interfaceReleased = closed == kIOReturnSuccess ||
+            closed == kIOReturnNotOpen || closed == kIOReturnNoDevice;
+        BOOL detached = !current || closed == kIOReturnNoDevice;
+        NSString *result = detached ? @"detached" :
+            (interfaceReleased ? @"closed" : @"close_failed");
+        char *value = json(@{
+            @"closed": @(interfaceReleased),
+            @"interfaceReleased": @(interfaceReleased),
+            @"objectsReleased": @YES,
+            // No pipe or reader was claimed by this scalar-only boundary.
+            @"readerStopped": @YES, @"pipeReleased": @YES,
+            @"closeIOReturn": @((uint32_t)closed), @"result": result,
+            @"access": @"normal_open_no_seize_no_pipe"
+        });
+        if (session->interface) {
+            (*session->interface)->Release(session->interface);
+            session->interface = NULL;
+        }
+        [session->endpoints release];
+        [session->registryID release];
+        [session->bootSessionID release];
+        free(session);
+        return value;
+    }
+}
+
 char *p3_uvc_session_status(P3UVCSession *session) {
     @autoreleasepool {
         if (!sessionIsCurrent(session)) return json(@{@"error":@"uvc_attachment_changed"});
