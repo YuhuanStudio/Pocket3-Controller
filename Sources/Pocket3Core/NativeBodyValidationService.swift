@@ -103,6 +103,27 @@ public enum NativeBodyValidationServiceError: Error, Equatable, Sendable {
     case invalidTimeout
 }
 
+/// Injectable command boundary used by developer validation.  Production
+/// code can bind this to the existing Pocket3Datalink owner; tests can supply
+/// a fake without opening a socket or touching hardware.
+public struct NativeBodyValidationExecutorAdapter: Sendable {
+    public typealias Execute = @Sendable (
+        _ request: NativeCommandTransactionRequest,
+        _ readiness: NativeCameraSessionStatus
+    ) async throws -> NativeCommandTransactionResult
+
+    private let body: Execute
+
+    public init(_ body: @escaping Execute) {
+        self.body = body
+    }
+
+    public func execute(_ request: NativeCommandTransactionRequest,
+                        readiness: NativeCameraSessionStatus) async throws -> NativeCommandTransactionResult {
+        try await body(request, readiness)
+    }
+}
+
 /// Coordinates one body validation request without owning a transport.
 ///
 /// The executor receives the exact request made by a coordinator and the
@@ -122,6 +143,16 @@ public struct NativeBodyValidationService: Sendable {
 
     public init(executor: Executor? = nil) {
         self.executor = executor
+    }
+
+    public init(adapter: NativeBodyValidationExecutorAdapter?) {
+        if let adapter {
+            self.executor = { request, readiness in
+                try await adapter.execute(request, readiness: readiness)
+            }
+        } else {
+            self.executor = nil
+        }
     }
 
     public func run(_ request: NativeBodyValidationRequest,
@@ -202,17 +233,33 @@ public struct NativeBodyValidationService: Sendable {
             return NativeBodyValidationResult(operation: request.operation,
                 executeRequested: true, request: .init(nativeRequest), submissionCount: 0,
                 recording: coordinator.result, format: nil, failureCode: "cancelled")
+        } catch let error as NativeCommandTransactionError {
+            var partial = NativeCommandTransactionResult(id: nativeRequest.id,
+                command: nativeRequest.command, generation: nativeRequest.generation,
+                sessionID: nativeRequest.sessionID, end: .failed)
+            partial.end = error == .staleGeneration ? .generationChanged : .failed
+            partial.failureCode = nativeBodyValidationFailureCode(error)
+            _ = coordinator.apply(partial, nowUptime: nil)
+            return NativeBodyValidationResult(operation: request.operation,
+                executeRequested: true, request: .init(nativeRequest), submissionCount: 0,
+                recording: coordinator.result, format: nil, failureCode: partial.failureCode)
         } catch {
             var partial = NativeCommandTransactionResult(id: nativeRequest.id,
                 command: nativeRequest.command, generation: nativeRequest.generation,
                 sessionID: nativeRequest.sessionID, end: .failed)
-            partial.failureCode = String(describing: error)
+            if let error = error as? BridgeFailure, error.code == "cancelled" {
+                partial.end = .cancelled
+                partial.failureCode = "cancelled"
+            } else {
+                partial.failureCode = String(describing: error)
+            }
             _ = coordinator.apply(partial, nowUptime: nil)
             return NativeBodyValidationResult(operation: request.operation,
                 executeRequested: true, request: .init(nativeRequest), submissionCount: 0,
                 recording: coordinator.result, format: nil, failureCode: partial.failureCode)
         }
-        _ = coordinator.apply(transaction, nowUptime: nowUptime)
+        _ = coordinator.apply(transaction,
+            nowUptime: observationClock(snapshot: nowUptime, transaction: transaction))
         return NativeBodyValidationResult(operation: request.operation,
             executeRequested: true, request: .init(nativeRequest),
             submissionCount: transaction.submitted ? 1 : 0,
@@ -251,17 +298,33 @@ public struct NativeBodyValidationService: Sendable {
             return NativeBodyValidationResult(operation: request.operation,
                 executeRequested: true, request: .init(nativeRequest), submissionCount: 0,
                 recording: nil, format: coordinator.result, failureCode: "cancelled")
+        } catch let error as NativeCommandTransactionError {
+            var partial = NativeCommandTransactionResult(id: nativeRequest.id,
+                command: nativeRequest.command, generation: nativeRequest.generation,
+                sessionID: nativeRequest.sessionID, end: .failed)
+            partial.end = error == .staleGeneration ? .generationChanged : .failed
+            partial.failureCode = nativeBodyValidationFailureCode(error)
+            _ = coordinator.apply(partial, nowUptime: nil)
+            return NativeBodyValidationResult(operation: request.operation,
+                executeRequested: true, request: .init(nativeRequest), submissionCount: 0,
+                recording: nil, format: coordinator.result, failureCode: partial.failureCode)
         } catch {
             var partial = NativeCommandTransactionResult(id: nativeRequest.id,
                 command: nativeRequest.command, generation: nativeRequest.generation,
                 sessionID: nativeRequest.sessionID, end: .failed)
-            partial.failureCode = String(describing: error)
+            if let error = error as? BridgeFailure, error.code == "cancelled" {
+                partial.end = .cancelled
+                partial.failureCode = "cancelled"
+            } else {
+                partial.failureCode = String(describing: error)
+            }
             _ = coordinator.apply(partial, nowUptime: nil)
             return NativeBodyValidationResult(operation: request.operation,
                 executeRequested: true, request: .init(nativeRequest), submissionCount: 0,
                 recording: nil, format: coordinator.result, failureCode: partial.failureCode)
         }
-        _ = coordinator.apply(transaction, nowUptime: nowUptime)
+        _ = coordinator.apply(transaction,
+            nowUptime: observationClock(snapshot: nowUptime, transaction: transaction))
         return NativeBodyValidationResult(operation: request.operation,
             executeRequested: true, request: .init(nativeRequest),
             submissionCount: transaction.submitted ? 1 : 0,
@@ -269,4 +332,20 @@ public struct NativeBodyValidationService: Sendable {
             failureCode: coordinator.failureCode)
     }
 
+    private func observationClock(snapshot: TimeInterval,
+                                  transaction: NativeCommandTransactionResult) -> TimeInterval {
+        max(snapshot, transaction.finishedUptime ?? transaction.observedUptime ?? snapshot)
+    }
+
+}
+
+private func nativeBodyValidationFailureCode(_ error: NativeCommandTransactionError) -> String {
+    switch error {
+    case .invalidPayload: "native_command_invalid_payload"
+    case .invalidTimeout: "native_command_invalid_timeout"
+    case .commandNotReady: "native_command_not_ready"
+    case .staleGeneration: "native_command_generation_changed"
+    case .datalinkUnavailable: "native_datalink_unavailable"
+    case .nativeBusy: "native_busy"
+    }
 }

@@ -172,11 +172,12 @@ extension AppModel {
         let validationRequest = NativeBodyValidationRequest(operation: operation,
             execute: execute, format: format, timeout: timeout)
         do {
-            // No production executor is installed here. This keeps the
-            // operation read-only by default and makes --execute report an
-            // explicit unavailable owner instead of touching another
-            // transport or hardware path.
-            let service = NativeBodyValidationService()
+            // Keep the default path read-only. An explicit --execute binds
+            // only to WirelessGimbalModel's current datalink owner; if that
+            // owner is absent or disarmed, the service returns partial
+            // unavailable evidence without creating another transport.
+            let adapter = execute ? wireless.nativeBodyValidationAdapter() : nil
+            let service = NativeBodyValidationService(adapter: adapter)
             let result = try await service.run(validationRequest,
                 snapshot: NativeBodyValidationSnapshot(session: readiness,
                     recordingBaseline: bodyStatus, formatBaseline: formatBaseline,

@@ -86,12 +86,13 @@ import Testing
     @Test func executeCallsInjectedExecutorOnceAndPreservesTerminalEvidence() async throws {
         let session = readySession()
         let counter = CallCounter()
-        let service = NativeBodyValidationService(executor: { request, _ in
+        let adapter = NativeBodyValidationExecutorAdapter { request, _ in
             await counter.increment()
             return transaction(for: request, observedPayload: Data([0x81]))
-        })
+        }
+        let service = NativeBodyValidationService(adapter: adapter)
         let snapshot = NativeBodyValidationSnapshot(session: session,
-            recordingBaseline: lifecycle(session, statusByte: 0x01, at: 10), nowUptime: 11.3)
+            recordingBaseline: lifecycle(session, statusByte: 0x01, at: 10), nowUptime: 10)
 
         let result = try await service.run(.init(operation: .start, execute: true), snapshot: snapshot)
         #expect(!result.dryRun)

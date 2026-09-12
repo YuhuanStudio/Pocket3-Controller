@@ -27,6 +27,7 @@ final class WirelessGimbalModel {
     var connecting = false
     var joiningNetwork = false
     private(set) var presetBusy = false
+    private(set) var nativeBodyValidationBusy = false
     var issue: String?
     private(set) var readingCameraSettings = false
     @ObservationIgnored private var settingsReadTask: Task<Void, Never>?
@@ -91,6 +92,7 @@ final class WirelessGimbalModel {
     @ObservationIgnored private var presetTask: Task<Void, Never>?
     @ObservationIgnored private var presetPermit: OperationPermit?
     @ObservationIgnored private var presetID: UUID?
+    @ObservationIgnored private var nativeBodyValidationPermit: OperationPermit?
     @ObservationIgnored private var selectionOperationID = UUID()
     @ObservationIgnored private let service: CameraService
     @ObservationIgnored private let controls: ContinuousGimbalGestureController
@@ -177,7 +179,8 @@ final class WirelessGimbalModel {
     }
     func connectNative() async {
         applyDiscoveryStatus(bluetooth.status)
-        guard !joiningNetwork, joinTask == nil, !connecting, disconnectTask == nil, let credentials,
+        guard !joiningNetwork, joinTask == nil, !connecting, disconnectTask == nil,
+              !nativeBodyValidationBusy, let credentials,
               nativeSessionStatus.isReady(for: .credentials) else { return }
         let selection = UUID(); selectionOperationID = selection
         if datalink != nil {
@@ -420,6 +423,7 @@ final class WirelessGimbalModel {
     func invalidatePendingOperations() {
         settingsReadTask?.cancel()
         bluetooth.cancelNativeProbe()
+        nativeBodyValidationPermit?.invalidate()
         cancelPreset()
         joinRequest?.cancel(); joinTask?.cancel()
     }
@@ -500,12 +504,82 @@ final class WirelessGimbalModel {
             permit.invalidate(); work.cancel()
         }
     }
+
+    /// Returns an executor bound to this model's existing datalink owner.
+    /// The adapter is intentionally unavailable before the native session is
+    /// command-ready; it never creates a link or joins a network.
+    func nativeBodyValidationAdapter() -> NativeBodyValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeBodyValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection, expectedLink: expectedLink)
+        }
+    }
+
+    /// Executes exactly one already-prepared transaction through the current
+    /// Pocket3Datalink owner.  The surrounding service owns command-specific
+    /// readback rules; this method owns model-level identity and busy fences.
+    private func executeNativeBodyValidation(
+        _ request: NativeCommandTransactionRequest,
+        readiness: NativeCameraSessionStatus,
+        expectedReadiness: NativeCameraSessionStatus,
+        expectedConnection: UUID,
+        expectedLink: Pocket3Datalink?
+    ) async throws -> NativeCommandTransactionResult {
+        guard nativeSessionStatus == expectedReadiness,
+              nativeSessionStatus.generation == request.generation,
+              request.sessionID == nativeSessionStatus.sessionID,
+              generation == expectedConnection,
+              datalink === expectedLink,
+              !connecting, !joiningNetwork else {
+            throw NativeCommandTransactionError.staleGeneration
+        }
+        guard !presetBusy else { throw NativeCommandTransactionError.nativeBusy }
+        guard let link = expectedLink,
+              nativeStatus?.phase == .ready else {
+            throw NativeCommandTransactionError.datalinkUnavailable
+        }
+        guard !nativeBodyValidationBusy else {
+            throw NativeCommandTransactionError.nativeBusy
+        }
+        nativeBodyValidationBusy = true
+        let permit = OperationPermit()
+        nativeBodyValidationPermit = permit
+        defer {
+            if nativeBodyValidationPermit === permit { nativeBodyValidationPermit = nil }
+            permit.invalidate()
+            nativeBodyValidationBusy = false
+        }
+        var result = try await link.transact(request, readiness: readiness, permit: permit)
+        // Pocket3Datalink already fences its owner queue. Re-check the model
+        // fence as well so a reconnect cannot let a late result complete the
+        // old coordinator. Preserve all submitted/ACK/readback fields as
+        // partial evidence while changing only the terminal classification.
+        guard nativeSessionStatus == expectedReadiness,
+              nativeSessionStatus.generation == request.generation,
+              generation == expectedConnection, datalink === link else {
+            result.end = .generationChanged
+            result.failureCode = "native_body_connection_changed"
+            result.finishedUptime = result.finishedUptime ?? ProcessInfo.processInfo.systemUptime
+            return result
+        }
+        return result
+    }
+
     /// Only scalar status leaves this model. Credentials stay in memory and
     /// are never present in RPC, diagnostics exports, logs or clipboard data.
     func validationStatus() throws -> JSONValue {
         .object(["bluetooth": try .encode(discovery),
                  "native": try nativeStatus.map(JSONValue.encode) ?? .null,
                  "nativeReadiness": try .encode(nativeSessionStatus),
+                 "nativeBodyValidationBusy": .bool(nativeBodyValidationBusy),
                  "capabilities": try .encode(capabilityGraph),
                  "credentialsAvailable": .bool(credentials != nil)])
     }

@@ -84,4 +84,12 @@ import Testing
         #expect(status["capabilities"]["bodyRecordingFormats"] != .null)
         #expect(status["credentialsAvailable"] == .bool(false))
     }
+
+    @MainActor @Test func bodyValidationAdapterStaysUnavailableBeforeNativeCommandReady() {
+        let model = WirelessGimbalModel(service: CameraService(),
+                                        controls: ContinuousGimbalGestureController(monitorsEnabled: false),
+                                        prepareManual: {})
+        #expect(model.nativeBodyValidationAdapter() == nil)
+        #expect(model.nativeBodyValidationBusy == false)
+    }
 }
