@@ -13,6 +13,13 @@ extension AppModel {
             guard let selected = request.arguments["peripheralID"].string, UUID(uuidString: selected) != nil else {
                 throw BridgeFailure("bluetooth_selection_required", "Pass the exact peripheral UUID returned by the current scan.")
             }
+            let networkFields: [String: JSONValue]
+            if case .object(let fields) = request.arguments {
+                networkFields = fields.filter { ["interfaceName", "interfaceIndex", "cameraHost"].contains($0.key) }
+            } else {
+                networkFields = [:]
+            }
+            try wireless.configureDeveloperNativeNetwork(try nativeNetworkConfiguration(from: networkFields))
             wireless.selectedPeripheral = selected
             try wireless.connectBluetooth()
         case "validation-wireless-pair":

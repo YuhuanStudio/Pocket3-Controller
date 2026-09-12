@@ -78,6 +78,12 @@ public struct SystemPocket3DatalinkNetworkObservationProvider: Pocket3DatalinkNe
                         baseline: Pocket3DatalinkRouteBaseline? = nil) -> Pocket3DatalinkRouteObservation {
         let records = interfaceRecords()
         let interfaces = records.map(\.observation)
+        guard configuration.isInterfaceBound else {
+            return Pocket3DatalinkRouteObservation(
+                interfaces: interfaces,
+                currentPrimaryInterfaceIndex: primaryInterfaceIndex(),
+                baselinePrimaryInterfaceIndex: baseline?.primaryInterfaceIndex)
+        }
         let selectedIndex = selectedInterfaceIndex(configuration: configuration,
                                                    interfaces: interfaces)
         let route = cameraRoute(configuration: configuration,

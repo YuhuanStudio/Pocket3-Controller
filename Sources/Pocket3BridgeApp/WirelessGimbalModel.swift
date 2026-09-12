@@ -24,6 +24,10 @@ final class WirelessGimbalModel {
     /// UI. `commandReady` is reached only after the existing datalink's
     /// handshake has completed; BLE pairing alone remains `paired`.
     private(set) var nativeSessionStatus: NativeCameraSessionStatus
+    /// Developer-only network selection. The default remains the legacy
+    /// unbound kernel route; general UI never chooses an adapter.
+    private(set) var nativeNetworkConfiguration: Pocket3DatalinkSocketConfiguration = .legacy
+    private(set) var nativeRouteStatus: Pocket3DatalinkRouteStatus = .unknown
     var connecting = false
     var joiningNetwork = false
     private(set) var presetBusy = false
@@ -138,6 +142,17 @@ final class WirelessGimbalModel {
         selectionOperationID = UUID()
         credentials = nil; networkName = nil; hasCredentials = false; issue = nil
     }
+
+    /// Developer validation may choose one BSD interface for the next native
+    /// connection. Changing this setting never joins Wi-Fi or opens a socket.
+    func configureDeveloperNativeNetwork(_ configuration: Pocket3DatalinkSocketConfiguration) throws {
+        guard datalink == nil, !connecting, !nativeBodyValidationBusy else {
+            throw BridgeFailure("wireless_busy", "Native network selection cannot change during a connection or command")
+        }
+        nativeNetworkConfiguration = configuration
+        nativeRouteStatus = .unknown
+    }
+
     func pair(pairOnly: Bool = true) throws {
         guard !joiningNetwork, !connecting else { throw BridgeFailure("wireless_busy", loc("Control connection is not ready.")) }
         issue = nil
@@ -193,6 +208,16 @@ final class WirelessGimbalModel {
         }
         guard datalink == nil, !joiningNetwork, joinTask == nil, disconnectTask == nil,
               selectionOperationID == selection, !Task.isCancelled else { return }
+        let routeCheck = Pocket3DatalinkRouteCheckResult.check(
+            provider: SystemPocket3DatalinkNetworkObservationProvider(),
+            configuration: nativeNetworkConfiguration)
+        nativeRouteStatus = routeCheck.plan.status
+        guard routeCheck.plan.allowed else {
+            let code = routeCheck.plan.failureCode ?? "native_route_invalid"
+            issue = AppErrorPresentation.message(BridgeFailure(code,
+                "The selected camera network route is not safe for native control."))
+            return
+        }
         connecting = true; issue = nil
         let attempt = UUID(); generation = attempt
         let readinessGeneration = nativeSessionStatus.generation
@@ -201,7 +226,10 @@ final class WirelessGimbalModel {
             return
         }
         publishNativeSessionStatus()
-        let link = Pocket3Datalink(clientIdentifier: clientIdentifier, pairedDeviceID: credentials.peripheralID.uuidString)
+        let link = Pocket3Datalink(clientIdentifier: clientIdentifier,
+            pairedDeviceID: credentials.peripheralID.uuidString,
+            networkConfiguration: nativeNetworkConfiguration,
+            routePlan: routeCheck.plan)
         datalink = link
         var reservedBinding: ContinuousGimbalBinding?
         do {
@@ -598,6 +626,8 @@ final class WirelessGimbalModel {
         .object(["bluetooth": try .encode(discovery),
                  "native": try nativeStatus.map(JSONValue.encode) ?? .null,
                  "nativeReadiness": try .encode(nativeSessionStatus),
+                 "nativeNetworkConfiguration": try .encode(nativeNetworkConfiguration),
+                 "nativeRouteStatus": try .encode(nativeRouteStatus),
                  "nativeBodyValidationBusy": .bool(nativeBodyValidationBusy),
                  "capabilities": try .encode(capabilityGraph),
                  "credentialsAvailable": .bool(credentials != nil)])

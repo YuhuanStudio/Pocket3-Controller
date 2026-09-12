@@ -160,6 +160,21 @@ import MCP
                         arguments["timeout"] = .number(timeout)
                     }
                 }
+                if command == "validation-wireless-connect" {
+                    if let name = option("--interface-name") {
+                        arguments["interfaceName"] = .string(name)
+                    }
+                    if let rawIndex = option("--interface-index") {
+                        guard let value = UInt64(rawIndex), value > 0,
+                              value <= UInt64(UInt32.max) else {
+                            throw BridgeFailure("invalid_network_interface", "Use a positive UInt32 for --interface-index")
+                        }
+                        arguments["interfaceIndex"] = .number(Double(value))
+                    }
+                    if let host = option("--camera-host") {
+                        arguments["cameraHost"] = .string(host)
+                    }
+                }
                 if command == "validation-wireless-route" {
                     guard args.contains("--hardware-validation") else {
                         throw BridgeFailure("validation_disabled", "Network route validation requires --hardware-validation")
@@ -339,6 +354,8 @@ import MCP
         pocket3 doctor
         pocket3 validation-wireless-route [--interface-name BSD-NAME] [--interface-index INDEX] [--camera-host IPv4] --hardware-validation
           Developer only, read-only: observes local interfaces, the current route to the camera host and the primary-interface baseline. It never joins Wi-Fi or changes the default route.
+        pocket3 validation-wireless-connect --peripheral PERIPHERAL-UUID [--interface-name BSD-NAME] [--interface-index INDEX] [--camera-host IPv4]
+          Developer only: stores an explicit network selector for this native connection; route observation must pass before a datalink is created.
         pocket3 devices
         pocket3 formats [device-id]
         pocket3 validation-connect --mode MODE-ID [--pixel-format automatic|nv12|uyvy] [--skip-uvc]
