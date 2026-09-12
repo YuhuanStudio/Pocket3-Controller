@@ -406,6 +406,10 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 第21/22批把H.264解碼移出AVFoundation callback，並只對H.264 encoded output關閉`alwaysDiscardsLateVideoFrames`，由自有bounded queue明確處理backpressure。20秒warmup後同一4K30案例取得713 avc1 samples、713次BGRA decode，median 30.10 fps（29.75–30.19），decode failure、pipeline drop、AVFoundation drop與backpressure均為0；cleanup及初始模式restore成功。這證明Mac host-output H.264 4K30在本機／本firmware有界通過，仍不代表USB wire H.264或4K60。[結果](../artifacts/hardware-complete-2026-09-12/capture-format-4k30-h264-async-pass.json)
 
+2026-09-13第23/24批重測H.264直幅：1080×1920@30取得711個avc1 samples／711 BGRA decode，median29.98fps（29.78–30.61）；720×1280@30取得710／710，median29.98fps（29.96–30.00）。兩案steady sample window均零AVFoundation drop、decode drop與backpressure，cleanup及初始模式restore成功，未fallback或保存影像。[結果](../artifacts/hardware-complete-2026-09-13/h264-portrait-async.json)
+
+同輪host HEVC validation由1080p30 BGRA capture source取得六個時間上遞增且sequence1–6的distinct frames，透過Mac VideoToolbox產生六個不同hvc1 access-unit hashes；首筆為keyframe，parameter sets共68 bytes，capability verified且stop cleanup完成。這證明Mac端host HEVC編碼，不代表Pocket 3 USB wire輸出HEVC；只保存scalar與hash，沒有保存影像或encoded payload。[結果](../artifacts/hardware-complete-2026-09-13/host-hevc-live.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

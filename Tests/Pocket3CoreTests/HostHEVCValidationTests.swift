@@ -25,7 +25,8 @@ private final class ValidationSource: @unchecked Sendable,
     }
 
     func freshFrame(expected: HostHEVCFrameSourceBinding,
-                    maxAgeSeconds _: Double) throws -> HostHEVCFreshFrame {
+                    maxAgeSeconds _: Double,
+                    afterReceivedUptime _: Double) throws -> HostHEVCFreshFrame {
         try lock.withLock {
             guard bindingValue == expected else {
                 throw HostHEVCFrameSourceError.sessionChanged
@@ -179,6 +180,8 @@ struct HostHEVCValidationTests {
         #expect(result.cleanup.requested && result.cleanup.completed)
         #expect(result.cleanup.phase == .stopped)
         #expect(backend.encodeCount == 2 && backend.cancelCount == 1)
+        let encoded = try JSONValue.encode(result)
+        #expect(encoded["completed"].bool == true)
     }
 
     @Test func wrongDeviceOrGenerationIsRejectedBeforeFreshRead() async throws {

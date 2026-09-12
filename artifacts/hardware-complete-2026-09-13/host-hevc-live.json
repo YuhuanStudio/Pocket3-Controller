@@ -1,0 +1,230 @@
+{
+  "binding" : {
+    "captureSessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+    "deviceID" : "0x11000002ca30023",
+    "generation" : 1,
+    "height" : 1080,
+    "inputPixelFormat" : "bgra",
+    "width" : 1920
+  },
+  "capability" : {
+    "codec" : "hevc",
+    "codecIdentifier" : "hvc1",
+    "configured" : true,
+    "frameRate" : 30,
+    "generation" : 1,
+    "height" : 1080,
+    "inputPixelFormats" : [
+      "bgra",
+      "nv12VideoRange",
+      "nv12FullRange"
+    ],
+    "observedSampleCount" : 6,
+    "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+    "transport" : "macVideoToolboxHost",
+    "verified" : true,
+    "width" : 1920
+  },
+  "cleanup" : {
+    "completed" : true,
+    "generation" : 1,
+    "phase" : "stopped",
+    "requested" : true,
+    "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+  },
+  "dryRun" : false,
+  "freshFrameObserved" : true,
+  "freshInputPixelFormat" : "bgra",
+  "operation" : "validation-host-hevc",
+  "request" : {
+    "deviceID" : "0x11000002ca30023",
+    "execute" : true,
+    "maxAgeSeconds" : 1,
+    "maxFrames" : 6,
+    "session" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+  },
+  "samples" : [
+    {
+      "accessUnitByteCount" : 158241,
+      "accessUnitSHA256" : "425b3bbd1961ff461529aca63c9bcc52631361f869577c8a0f535a8980c25ec2",
+      "codec" : "hevc",
+      "codecIdentifier" : "hvc1",
+      "generation" : 1,
+      "height" : 1080,
+      "isKeyFrame" : true,
+      "parameterSetByteCount" : 68,
+      "parameterSetSHA256" : "dc81e556e8db48676f4ab8c2cb53d86c2c9c298a7368c202eeb2c2e25733a7ee",
+      "sequence" : 1,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+      "transport" : "macVideoToolboxHost",
+      "width" : 1920
+    },
+    {
+      "accessUnitByteCount" : 76009,
+      "accessUnitSHA256" : "f2b8bbb6388143f3126e5743511da29e410ab6abc003ace2e1c6bc3dc03599b0",
+      "codec" : "hevc",
+      "codecIdentifier" : "hvc1",
+      "generation" : 1,
+      "height" : 1080,
+      "isKeyFrame" : false,
+      "parameterSetByteCount" : 68,
+      "parameterSetSHA256" : "dc81e556e8db48676f4ab8c2cb53d86c2c9c298a7368c202eeb2c2e25733a7ee",
+      "sequence" : 2,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+      "transport" : "macVideoToolboxHost",
+      "width" : 1920
+    },
+    {
+      "accessUnitByteCount" : 21848,
+      "accessUnitSHA256" : "85f68c9a1d6b4c654577f308f6ab74eb9af881d3c3bd23f0f9bcfb4ea21a75f3",
+      "codec" : "hevc",
+      "codecIdentifier" : "hvc1",
+      "generation" : 1,
+      "height" : 1080,
+      "isKeyFrame" : false,
+      "parameterSetByteCount" : 68,
+      "parameterSetSHA256" : "dc81e556e8db48676f4ab8c2cb53d86c2c9c298a7368c202eeb2c2e25733a7ee",
+      "sequence" : 3,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+      "transport" : "macVideoToolboxHost",
+      "width" : 1920
+    },
+    {
+      "accessUnitByteCount" : 37241,
+      "accessUnitSHA256" : "5844a8b64f553b59bae313a04f7b041579a127b49b037d9ffbf257c51948506d",
+      "codec" : "hevc",
+      "codecIdentifier" : "hvc1",
+      "generation" : 1,
+      "height" : 1080,
+      "isKeyFrame" : false,
+      "parameterSetByteCount" : 68,
+      "parameterSetSHA256" : "dc81e556e8db48676f4ab8c2cb53d86c2c9c298a7368c202eeb2c2e25733a7ee",
+      "sequence" : 4,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+      "transport" : "macVideoToolboxHost",
+      "width" : 1920
+    },
+    {
+      "accessUnitByteCount" : 52195,
+      "accessUnitSHA256" : "a33e363d77bd156bc6384382d3ba0ba958afb02c58c7f4db117363f3aabe971b",
+      "codec" : "hevc",
+      "codecIdentifier" : "hvc1",
+      "generation" : 1,
+      "height" : 1080,
+      "isKeyFrame" : false,
+      "parameterSetByteCount" : 68,
+      "parameterSetSHA256" : "dc81e556e8db48676f4ab8c2cb53d86c2c9c298a7368c202eeb2c2e25733a7ee",
+      "sequence" : 5,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+      "transport" : "macVideoToolboxHost",
+      "width" : 1920
+    },
+    {
+      "accessUnitByteCount" : 29491,
+      "accessUnitSHA256" : "5e067287f52fcb1aaa2505d2e8fa90a60c4c4f24ff75e7203f38a2ff1d6c3052",
+      "codec" : "hevc",
+      "codecIdentifier" : "hvc1",
+      "generation" : 1,
+      "height" : 1080,
+      "isKeyFrame" : false,
+      "parameterSetByteCount" : 68,
+      "parameterSetSHA256" : "dc81e556e8db48676f4ab8c2cb53d86c2c9c298a7368c202eeb2c2e25733a7ee",
+      "sequence" : 6,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6",
+      "transport" : "macVideoToolboxHost",
+      "width" : 1920
+    }
+  ],
+  "submissions" : [
+    {
+      "disposition" : "accepted",
+      "encoder" : {
+        "disposition" : "accepted",
+        "generation" : 1,
+        "queueDepth" : 1,
+        "sequence" : 1,
+        "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+      },
+      "generation" : 1,
+      "inputAgeSeconds" : 0.032192041660891846,
+      "inputPixelFormat" : "bgra",
+      "sequence" : 1,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+    },
+    {
+      "disposition" : "accepted",
+      "encoder" : {
+        "disposition" : "accepted",
+        "generation" : 1,
+        "queueDepth" : 1,
+        "sequence" : 2,
+        "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+      },
+      "generation" : 1,
+      "inputAgeSeconds" : 0.021368916670326144,
+      "inputPixelFormat" : "bgra",
+      "sequence" : 2,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+    },
+    {
+      "disposition" : "accepted",
+      "encoder" : {
+        "disposition" : "accepted",
+        "generation" : 1,
+        "queueDepth" : 1,
+        "sequence" : 3,
+        "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+      },
+      "generation" : 1,
+      "inputAgeSeconds" : 0.006176958326250315,
+      "inputPixelFormat" : "bgra",
+      "sequence" : 3,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+    },
+    {
+      "disposition" : "accepted",
+      "encoder" : {
+        "disposition" : "accepted",
+        "generation" : 1,
+        "queueDepth" : 1,
+        "sequence" : 4,
+        "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+      },
+      "generation" : 1,
+      "inputAgeSeconds" : 0.002023833309067413,
+      "inputPixelFormat" : "bgra",
+      "sequence" : 4,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+    },
+    {
+      "disposition" : "accepted",
+      "encoder" : {
+        "disposition" : "accepted",
+        "generation" : 1,
+        "queueDepth" : 1,
+        "sequence" : 5,
+        "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+      },
+      "generation" : 1,
+      "inputAgeSeconds" : 0.0023923749977257103,
+      "inputPixelFormat" : "bgra",
+      "sequence" : 5,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+    },
+    {
+      "disposition" : "accepted",
+      "encoder" : {
+        "disposition" : "accepted",
+        "generation" : 1,
+        "queueDepth" : 1,
+        "sequence" : 6,
+        "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+      },
+      "generation" : 1,
+      "inputAgeSeconds" : 0.002511416678316891,
+      "inputPixelFormat" : "bgra",
+      "sequence" : 6,
+      "sessionID" : "A9A64270-F7CB-4955-B050-A248D69B3BB6"
+    }
+  ]
+}

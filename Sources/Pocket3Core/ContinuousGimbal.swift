@@ -35,7 +35,18 @@ public struct ContinuousGimbalSchedulerStatus: Sendable {
     public let phase: Phase
     public let lease: ContinuousGimbalLease?
     public let completedCommandSends: Int
+    public let heartbeatRenewalCount: Int
     public let lastStop: ContinuousGimbalStopResult?
+    public init(phase: Phase, lease: ContinuousGimbalLease?,
+                completedCommandSends: Int,
+                heartbeatRenewalCount: Int = 0,
+                lastStop: ContinuousGimbalStopResult?) {
+        self.phase = phase
+        self.lease = lease
+        self.completedCommandSends = completedCommandSends
+        self.heartbeatRenewalCount = heartbeatRenewalCount
+        self.lastStop = lastStop
+    }
 }
 
 /// A transport must reject stale connection bindings immediately before its
@@ -83,6 +94,7 @@ public actor ContinuousGimbalScheduler {
     private var stoppingLease: ContinuousGimbalLease?
     private var cleanup: Task<ContinuousGimbalStopResult, Never>?
     private var completedCommandSends = 0
+    private var heartbeatRenewalCount = 0
     private var lastStop: ContinuousGimbalStopResult?
 
     public init(transport: any ContinuousGimbalTransport, clock: any ContinuousGimbalClock = SystemContinuousGimbalClock()) {
@@ -113,6 +125,7 @@ public actor ContinuousGimbalScheduler {
         active = Active(lease: lease, permit: OperationPermit(), durationDeadline: maximumDuration.map { now + $0 },
                         heartbeatDeadline: now + Self.heartbeatTimeout, input: input)
         completedCommandSends = 0
+        heartbeatRenewalCount = 0
         worker = Task.detached(priority: .userInitiated) { await self.drive(lease) }
         watchdog = Task.detached(priority: .userInitiated) { await self.watch(lease) }
         return lease
@@ -131,6 +144,7 @@ public actor ContinuousGimbalScheduler {
         catch { _ = initiateStop(lease, reason: .invalidInput); throw error }
         current.heartbeatDeadline = clock.now + Self.heartbeatTimeout
         active = current
+        heartbeatRenewalCount += 1
     }
 
     /// This method intentionally completes cleanup even if its caller is
@@ -144,7 +158,10 @@ public actor ContinuousGimbalScheduler {
 
     public func status() -> ContinuousGimbalSchedulerStatus {
         ContinuousGimbalSchedulerStatus(phase: active != nil ? .active : cleanup != nil ? .stopping : .idle,
-            lease: active?.lease ?? stoppingLease, completedCommandSends: completedCommandSends, lastStop: lastStop)
+            lease: active?.lease ?? stoppingLease,
+            completedCommandSends: completedCommandSends,
+            heartbeatRenewalCount: heartbeatRenewalCount,
+            lastStop: lastStop)
     }
 
     private func expiration(_ current: Active) -> ContinuousGimbalStopReason? {

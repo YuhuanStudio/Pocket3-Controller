@@ -259,6 +259,7 @@ public struct HostHEVCValidationResult: Codable, Sendable, Equatable {
     public let samples: [HostHEVCSampleDigest]
     public let cleanup: HostHEVCValidationCleanupEvidence
     public let failureCode: String?
+    public let completed: Bool
 
     public init(
         request: HostHEVCValidationRequest,
@@ -282,10 +283,8 @@ public struct HostHEVCValidationResult: Codable, Sendable, Equatable {
         self.samples = Array(samples.prefix(HostHEVCValidationRequest.maximumFrames))
         self.cleanup = cleanup
         self.failureCode = failureCode.map { String($0.prefix(128)) }
-    }
-
-    public var completed: Bool {
-        request.execute && failureCode == nil && !samples.isEmpty && cleanup.completed
+        self.completed = request.execute && failureCode == nil &&
+            !samples.isEmpty && cleanup.completed
     }
 }
 
@@ -345,7 +344,8 @@ public actor HostHEVCValidationService {
         do {
             fresh = try source.freshFrame(
                 expected: binding,
-                maxAgeSeconds: request.maximumInputAgeSeconds)
+                maxAgeSeconds: request.maximumInputAgeSeconds,
+                afterReceivedUptime: 0)
         } catch {
             return Self.failure(request, binding: binding,
                                 capability: baseCapability,
@@ -411,9 +411,10 @@ public actor HostHEVCValidationService {
                     break
                 }
                 if index > 0 {
-                    nextFrame = try source.freshFrame(
-                        expected: binding,
-                        maxAgeSeconds: request.maximumInputAgeSeconds)
+                    nextFrame = try await nextDistinctFrame(
+                        source: source, binding: binding,
+                        after: nextFrame.receivedUptime,
+                        maximumAge: request.maximumInputAgeSeconds)
                 }
                 let now = clock()
                 let evidence = await session.submit(
@@ -480,6 +481,30 @@ public actor HostHEVCValidationService {
             try await Task.sleep(for: .milliseconds(2))
         }
         return false
+    }
+
+    private func nextDistinctFrame(
+        source: any HostHEVCFrameSource,
+        binding: HostHEVCFrameSourceBinding,
+        after receivedUptime: Double,
+        maximumAge: Double
+    ) async throws -> HostHEVCFreshFrame {
+        let started = clock()
+        guard started.isFinite else {
+            throw HostHEVCFrameSourceError.invalidTimestamp
+        }
+        let deadline = started + 1
+        while clock() < deadline {
+            try Task.checkCancellation()
+            do {
+                return try source.freshFrame(
+                    expected: binding, maxAgeSeconds: maximumAge,
+                    afterReceivedUptime: receivedUptime)
+            } catch HostHEVCFrameSourceError.noFreshFrame {
+                try await Task.sleep(for: .milliseconds(2))
+            }
+        }
+        throw HostHEVCFrameSourceError.noFreshFrame
     }
 
     private static func sourceErrorCode(_ error: Error) -> String {

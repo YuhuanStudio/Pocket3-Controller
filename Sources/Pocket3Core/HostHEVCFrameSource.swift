@@ -62,7 +62,8 @@ public enum HostHEVCFrameSourceError: Error, LocalizedError, Sendable,
 public protocol HostHEVCFrameSource: Sendable {
     func currentBinding() -> HostHEVCFrameSourceBinding?
     func freshFrame(expected: HostHEVCFrameSourceBinding,
-                    maxAgeSeconds: Double) throws -> HostHEVCFreshFrame
+                    maxAgeSeconds: Double,
+                    afterReceivedUptime: Double) throws -> HostHEVCFreshFrame
 }
 
 /// Read-only adapter over the real CaptureEngine/FrameStore. It snapshots a
@@ -98,7 +99,8 @@ public final class CaptureEngineHostHEVCFrameSource: @unchecked Sendable,
     }
 
     public func freshFrame(expected: HostHEVCFrameSourceBinding,
-                           maxAgeSeconds: Double) throws -> HostHEVCFreshFrame {
+                           maxAgeSeconds: Double,
+                           afterReceivedUptime: Double = 0) throws -> HostHEVCFreshFrame {
         guard maxAgeSeconds.isFinite, maxAgeSeconds > 0,
               maxAgeSeconds <= 5 else {
             throw HostHEVCFrameSourceError.invalidFreshnessWindow
@@ -108,7 +110,8 @@ public final class CaptureEngineHostHEVCFrameSource: @unchecked Sendable,
         }
         let packet: FramePacket
         do {
-            packet = try capture.store.latest(maxAge: maxAgeSeconds)
+            packet = try capture.store.latest(
+                maxAge: maxAgeSeconds, after: afterReceivedUptime)
         } catch {
             throw HostHEVCFrameSourceError.noFreshFrame
         }

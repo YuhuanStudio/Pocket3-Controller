@@ -15,6 +15,12 @@ private actor GestureTestTransport: ContinuousGimbalTransport {
         }
     }
 }
+private struct NonExpiringGestureClock: ContinuousGimbalClock {
+    var now: TimeInterval { 0 }
+    func sleep(until _: TimeInterval) async throws {
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
 private actor GesturePreparationGate {
     private var waiter: CheckedContinuation<Void, Never>?
     var waiting: Bool { waiter != nil }
@@ -62,20 +68,23 @@ private let gestureTestBinding = ContinuousGimbalBinding(sessionID: "gesture-fix
     #expect(await scheduler.status().phase == .idle)
 }
 
-// This asserts a real 50 ms MainActor heartbeat across the Core 250 ms lease.
-// Keep it serial: concurrent MainActor tests can otherwise prevent *any* UI
-// heartbeat from receiving a scheduling turn, which tests runner contention
-// rather than the controller's renewal contract.
+// This observes the real 50 ms MainActor heartbeat at the scheduler boundary.
+// The suite stays serial so other controller cases cannot reuse its timing.
 @MainActor @Test func heldGestureRenewsHeartbeatAndSpeedUntilMatchingRelease() async throws {
     let controller = ContinuousGimbalGestureController(monitorsEnabled: false)
     let transport = GestureTestTransport()
-    let scheduler = ContinuousGimbalScheduler(transport: transport)
+    let scheduler = ContinuousGimbalScheduler(
+        transport: transport, clock: NonExpiringGestureClock())
     controller.configure(scheduler: scheduler, binding: gestureTestBinding, availability: .ready)
     let id = UUID()
     #expect(controller.beginGesture(id: id, input: .init(x: 1, y: 0)))
     try await eventuallyGesture { controller.isHolding }
-    // Longer than Core's 250 ms lease: only the UI's 50 ms renew loop keeps it active.
-    try await Task.sleep(for: .milliseconds(330))
+    // Observe actual scheduler renewals instead of inferring them from a
+    // wall-clock sleep that is unreliable when unrelated MainActor render
+    // tests run concurrently.
+    try await eventuallyGesture {
+        await scheduler.status().heartbeatRenewalCount >= 2
+    }
     #expect(controller.isHolding && controller.gestureID == id)
     #expect(await scheduler.status().phase == .active)
     controller.setSpeed(0.8)
