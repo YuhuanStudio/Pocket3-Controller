@@ -57,6 +57,7 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     case zoom
     case productShowcase
     case audioDSP
+    case advancedSetting
     case cameraCapture
     case bodyFormat
     case mediaPresence
@@ -76,7 +77,7 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
             .credentialsAvailable
         case .whiteBalance, .exposure, .focusMode, .colorProfile, .record,
              .tracking, .gimbal, .gimbalPreset, .zoom, .productShowcase, .audioDSP,
-             .cameraCapture:
+             .advancedSetting, .cameraCapture:
             .commandReady
         case .bodyFormat, .mediaPresence, .mediaPlayback, .mediaList,
              .mediaFavorite, .mediaDelete:
@@ -98,6 +99,7 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     public static let readCameraSettings = Self.cameraSettingsRead
     public static let startStopRecording = Self.record
     public static let activeTrack = Self.tracking
+    public static let advancedSettings = Self.advancedSetting
     public static let liveView = Self.livePreview
 
     public static func minimumReadiness(for command: Self) -> NativeCameraSessionState {
