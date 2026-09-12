@@ -63,6 +63,13 @@ public struct ServiceStatus: Codable, Sendable {
     public var controlReadIssueCode: String? = nil
     public var lastControlReadFailureAt: Date? = nil
     public var nativeControl: NativeControlStatus? = nil
+    /// Typed capability graph.  The optional keeps older status replies
+    /// decodable while new replies always publish the current graph.
+    public var capabilities: Pocket3CapabilityGraph? = nil
+    public var capabilityGraph: Pocket3CapabilityGraph? {
+        get { capabilities }
+        set { capabilities = newValue }
+    }
     /// Developer capture isolation only; nil remains compatible with older replies.
     public var uvcControlDisabledForCapture: Bool? = nil
     /// Independent Roll motion/stop hardware acceptance. Pan/Tilt evidence does
@@ -523,6 +530,10 @@ public actor CameraService {
             result.controlTransport = transport + "_degraded"
         }
         result.nativeControl = nativeSnapshot
+        result.capabilities = Pocket3CapabilityGraph.from(
+            phase: reportedPhase, capture: captureStats,
+            requestedMode: requestedMode, requestedPixelFormat: requestedPixelFormat,
+            requestedOutputPolicy: requestedOutputPolicy, nativeControl: nativeSnapshot)
         if nativeControl != nil {
             result.controlTransport = "native_joystick"
             result.stopStrategy = "native_joystick_neutral_and_telemetry"
