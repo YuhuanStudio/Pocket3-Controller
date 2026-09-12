@@ -1157,6 +1157,26 @@
 "Native command" = "原生指令";
 "Interrupted" = "已中断";
 "Evidence" = "证据";
+"Camera body capabilities" = "机身能力";
+"Body recording is separate from USB Webcam capture." = "机内录制与 USB Webcam 捕获是不同路径。";
+"Current body recording" = "当前机内录制";
+"Legal body formats" = "合法机身格式";
+"Known camera resolutions are listed even when this session has not read back a legal FPS or codec pair." = "即使本次连接尚未回读合法 FPS 或编码组合，也会列出已知的相机分辨率。";
+"Native session readiness" = "原生连接阶段就绪状态";
+"Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass." = "每项能力都会报告读取／写入／验证状态和证据等级。候选写入器会在连接阶段和回读门槛通过前保持不可用。";
+"No current body status" = "没有当前机身状态";
+"Current format" = "当前格式";
+"Known camera resolution; current legal FPS/codec pair is not read back" = "相机已知的分辨率；当前尚未回读合法的 FPS／编码组合";
+"Unknown body-format flags" = "未知的机身格式标志";
+"No native camera session" = "没有原生相机连接阶段";
+"BLE pairing is available; command session is not ready" = "蓝牙已配对；命令连接阶段尚未就绪";
+"Native datalink has not completed its handshake" = "原生数据链路尚未完成握手";
+"Datalink handshake is in progress" = "数据链路握手进行中";
+"No camera setting write has been verified" = "尚未验证任何相机设置写入";
+"Camera Wi-Fi live view is disabled; USB capture remains independent" = "相机 Wi-Fi 现场画面已停用；USB 捕获保持独立";
+"Native session is not bound to the current camera" = "原生连接阶段未绑定当前相机";
+"Native session reported an error" = "原生连接阶段报告错误";
+"Native telemetry is stale" = "原生遥测已过期";
 
 "USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app." = "USB 配置值不是实测充电电流。请查看相机的电池图标；目前 Webcam USB 连接不会向 App 回报电池是否正在充电。";
 

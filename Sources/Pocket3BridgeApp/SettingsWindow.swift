@@ -158,6 +158,7 @@ struct PreferencesWindow: View {
                 caption("Format changes take effect when reconnecting. Only the selected Pocket 3 is used.")
                 caption("Match the shooting orientation on Pocket 3 to this format to avoid black borders.")
             } }
+            BodyCapabilitySection(model: model).measuredForLayout("settingsBodyCapability")
             heading("AI access")
             settingsCard { VStack(alignment: .leading, spacing: Yun.Space.md) {
                 YunSelect(selection: Binding(get: { model.access }, set: { value in Task { await model.setAccess(value) } }), options: AccessMode.allCases.map { .init(value: $0, title: loc($0.title)) })
@@ -202,6 +203,7 @@ struct PreferencesWindow: View {
                 Button(loc("Export diagnostics")) { Task { await model.exportDiagnostics() } }.buttonStyle(YunButtonStyle(.secondary, small: true))
                 caption("Exports omit camera images and device identifiers by default.")
             } }
+            BodyCapabilitySection(model: model).measuredForLayout("diagnosticsBodyCapability")
             settingsCard { VStack(alignment: .leading, spacing: Yun.Space.md) {
                 Text(loc("USB audio test")).font(Yun.Text.title)
                 Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)

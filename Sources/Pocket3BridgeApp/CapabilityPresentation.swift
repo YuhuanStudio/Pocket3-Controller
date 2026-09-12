@@ -3,7 +3,7 @@ import Pocket3Core
 import YunDesign
 
 /// Small, pure presentation helpers for the shared capability graph. Keeping
-/// the mapping here lets the footer and Diagnostics use identical wording
+/// the mapping here lets settings and Diagnostics use identical wording
 /// without exposing protocol payloads or creating a transport.
 enum CapabilityPresentation {
     static func access(_ availability: CapabilityAvailability) -> String {
@@ -15,6 +15,36 @@ enum CapabilityPresentation {
 
     static func evidence(_ level: CapabilityEvidenceLevel) -> String {
         level.rawValue
+    }
+
+    static func reason(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        switch value {
+        case "Known camera resolution; current legal FPS/codec pair is not read back":
+            return loc("Known camera resolution; current legal FPS/codec pair is not read back")
+        case "Unknown body-format flags":
+            return loc("Unknown body-format flags")
+        case "No native camera session":
+            return loc("No native camera session")
+        case "BLE pairing is available; command session is not ready":
+            return loc("BLE pairing is available; command session is not ready")
+        case "Native datalink has not completed its handshake":
+            return loc("Native datalink has not completed its handshake")
+        case "Datalink handshake is in progress":
+            return loc("Datalink handshake is in progress")
+        case "No camera setting write has been verified":
+            return loc("No camera setting write has been verified")
+        case "Camera Wi-Fi live view is disabled; USB capture remains independent":
+            return loc("Camera Wi-Fi live view is disabled; USB capture remains independent")
+        case "Native session is not bound to the current camera":
+            return loc("Native session is not bound to the current camera")
+        case "Native session reported an error":
+            return loc("Native session reported an error")
+        case "Native telemetry is stale":
+            return loc("Native telemetry is stale")
+        default:
+            return value
+        }
     }
 
     static func detail(_ availability: CapabilityAvailability,
@@ -51,9 +81,7 @@ enum CapabilityPresentation {
 
     static func bodyRecording(_ graph: Pocket3CapabilityGraph) -> String {
         if let current = graph.bodyRecordingFormats.first(where: { $0.availability.read && $0.format.frameRate != nil }) {
-            let resolution = current.format.resolution.map(resolutionName) ?? loc("Unknown")
-            let fps = current.format.frameRate.map(frameRateName) ?? loc("Unknown")
-            return "\(resolution) · \(fps) fps · \(access(current.availability))"
+            return "\(bodyFormat(current)) · \(access(current.availability))"
         }
         let known = graph.bodyRecordingFormats.filter { $0.evidence == .officialSpecification }.count
         return known > 0 ? "\(known) \(loc("Known families")) · \(loc("Readback pending"))" : loc("Unavailable")
@@ -65,6 +93,16 @@ enum CapabilityPresentation {
         }
         let known = graph.bodyRecordingFormats.filter { $0.evidence == .officialSpecification }.count
         return known > 0 ? "\(known) \(loc("Known families")) · \(loc("No current body readback"))" : loc("Unavailable")
+    }
+
+    static func bodyFormat(_ capability: BodyRecordingFormatCapability) -> String {
+        let resolution = capability.format.resolution.map(resolutionName) ?? loc("Unknown")
+        let fps = capability.format.frameRate.map(frameRateName) ?? loc("Unknown")
+        var parts = [resolution, "\(fps) fps"]
+        if let compression = capability.format.compression {
+            parts.append(compression == .h264Compatibility ? "H.264" : "HEVC")
+        }
+        return parts.joined(separator: " · ")
     }
 
     static func nativeSession(_ graph: Pocket3CapabilityGraph) -> String {
@@ -122,7 +160,7 @@ enum CapabilityPresentation {
         }
     }
 
-    private static func resolutionName(_ value: CameraVideoResolution) -> String {
+    static func resolutionName(_ value: CameraVideoResolution) -> String {
         switch value {
         case .p1080: "1080p"
         case .p2_7K: "2.7K"
@@ -136,7 +174,7 @@ enum CapabilityPresentation {
         }
     }
 
-    private static func frameRateName(_ value: CameraFrameRate) -> String {
+    static func frameRateName(_ value: CameraFrameRate) -> String {
         switch value {
         case .fps24: "24"
         case .fps25: "25"

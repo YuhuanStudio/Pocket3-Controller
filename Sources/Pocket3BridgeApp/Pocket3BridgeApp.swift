@@ -1159,16 +1159,6 @@ struct RootView: View {
                             detail(loc("Permissions"), model.status?.permission ?? loc("Unknown"))
                             detail(loc("Frames received"), "\(model.status?.capture.frames ?? 0)")
                             detail("FPS", String(format: "%.1f", model.status?.capture.recentFPS ?? 0))
-                            if let graph = model.status?.capabilities {
-                                detail(loc("USB input format"), CapabilityPresentation.usbCapture(graph))
-                                detail(loc("Webcam output format"), CapabilityPresentation.hostOutput(graph))
-                                detail(loc("Camera recording format"), CapabilityPresentation.bodyRecording(graph))
-                                detail(loc("Native command"), CapabilityPresentation.nativeSession(graph))
-                                detail(loc("Live view"), CapabilityPresentation.liveSession(graph))
-                                Text(CapabilityPresentation.graphDetail(graph))
-                                    .font(Yun.Text.mono).foregroundStyle(Yun.Palette.textTertiary)
-                                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                            }
                             detail(loc("Stopping behaviour"), loc("Hold the current position and verify readback"))
                             Text(model.status?.stopValidated == true ? loc("AI movement passed the local stopping test.") : loc("AI movement is unavailable until stopping is validated.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                             Button(loc("Validate camera control")) { Task { await model.validateControl() } }
@@ -1187,6 +1177,7 @@ struct RootView: View {
                         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }.measuredForLayout("perceptionDiagnostics")
                 }.fixedSize(horizontal: false, vertical: true)
+                BodyCapabilitySection(model: model).measuredForLayout("mainDiagnosticsBodyCapability")
                 YunCard {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text(loc("USB audio")).font(Yun.Text.title); Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }; Spacer(); Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady) }
                 }

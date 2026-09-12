@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 import Pocket3Core
 @testable import Pocket3BridgeApp
@@ -36,5 +37,16 @@ import Pocket3Core
         #expect(CapabilityPresentation.bodyRecording(graph).contains("Readback pending"))
         #expect(CapabilityPresentation.bodyRecordingDetail(graph).contains("No current body readback"))
         #expect(graph.bodyRecordingFormats.contains { $0.format.resolution == .square3K })
+    }
+
+    @MainActor @Test func bodyCapabilitySectionFitsTheSettingsColumnWithoutOpeningHardware() async throws {
+        let model = AppModel()
+        model.status = await model.service.status()
+        let renderer = ImageRenderer(content: BodyCapabilitySection(model: model).frame(width: 560))
+        renderer.proposedSize = ProposedViewSize(width: 560, height: nil)
+        let image = try #require(renderer.nsImage)
+        #expect(image.size.width <= 560)
+        #expect(image.size.height > 300 && image.size.height < 1_200)
+        #expect(!model.wireless.bluetooth.isBluetoothInitialized)
     }
 }

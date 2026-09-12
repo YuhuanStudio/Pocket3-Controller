@@ -41,11 +41,21 @@ final class WirelessGimbalModel {
     /// graph's official resolution families remain visible even when this
     /// readback is unavailable; these entries add only session evidence.
     var bodyRecordingCapabilitySnapshot: [BodyRecordingFormatCapability] {
-        guard let observation = discovery.cameraSettingsObservations.first(where: {
-            $0.property == .videoFormatCapabilities &&
+        let fresh = discovery.cameraSettingsObservations.filter {
             $0.isFresh(now: ProcessInfo.processInfo.systemUptime)
-        }), let capabilities = observation.bodyRecordingCapabilities else { return [] }
-        return capabilities.entries.map { BodyRecordingFormatCapability(capability: $0) }
+        }
+        var result: [BodyRecordingFormatCapability] = []
+        if let current = fresh.first(where: { $0.property == .videoParameters }),
+           case .videoParameters(let value) = current.readOnlyValue {
+            // Keep the selected body format first so presentation can
+            // distinguish current state from the legal format table.
+            result.append(BodyRecordingFormatCapability(readback: value))
+        }
+        if let observation = fresh.first(where: { $0.property == .videoFormatCapabilities }),
+           let capabilities = observation.bodyRecordingCapabilities {
+            result.append(contentsOf: capabilities.entries.map { BodyRecordingFormatCapability(capability: $0) })
+        }
+        return result
     }
     var capabilityGraph: Pocket3CapabilityGraph {
         Pocket3CapabilityGraph(

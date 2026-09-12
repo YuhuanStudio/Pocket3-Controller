@@ -1157,6 +1157,26 @@
 "Native command" = "Native command";
 "Interrupted" = "Interrupted";
 "Evidence" = "Evidence";
+"Camera body capabilities" = "Camera body capabilities";
+"Body recording is separate from USB Webcam capture." = "Body recording is separate from USB Webcam capture.";
+"Current body recording" = "Current body recording";
+"Legal body formats" = "Legal body formats";
+"Known camera resolutions are listed even when this session has not read back a legal FPS or codec pair." = "Known camera resolutions are listed even when this session has not read back a legal FPS or codec pair.";
+"Native session readiness" = "Native session readiness";
+"Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass." = "Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass.";
+"No current body status" = "No current body status";
+"Current format" = "Current format";
+"Known camera resolution; current legal FPS/codec pair is not read back" = "Known camera resolution; current legal FPS/codec pair is not read back";
+"Unknown body-format flags" = "Unknown body-format flags";
+"No native camera session" = "No native camera session";
+"BLE pairing is available; command session is not ready" = "BLE pairing is available; command session is not ready";
+"Native datalink has not completed its handshake" = "Native datalink has not completed its handshake";
+"Datalink handshake is in progress" = "Datalink handshake is in progress";
+"No camera setting write has been verified" = "No camera setting write has been verified";
+"Camera Wi-Fi live view is disabled; USB capture remains independent" = "Camera Wi-Fi live view is disabled; USB capture remains independent";
+"Native session is not bound to the current camera" = "Native session is not bound to the current camera";
+"Native session reported an error" = "Native session reported an error";
+"Native telemetry is stale" = "Native telemetry is stale";
 
 "USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app." = "USB allocation is not measured charging current. Check the camera's battery indicator; Webcam USB does not report battery charging status to this app.";
 
