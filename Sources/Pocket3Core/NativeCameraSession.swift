@@ -59,6 +59,11 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     case audioDSP
     case cameraCapture
     case bodyFormat
+    case mediaPresence
+    case mediaPlayback
+    case mediaList
+    case mediaFavorite
+    case mediaDelete
 
     // Live view is a separate phase and is not implied by command readiness.
     case livePreview
@@ -73,7 +78,8 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
              .tracking, .gimbal, .gimbalPreset, .zoom, .productShowcase, .audioDSP,
              .cameraCapture:
             .commandReady
-        case .bodyFormat:
+        case .bodyFormat, .mediaPresence, .mediaPlayback, .mediaList,
+             .mediaFavorite, .mediaDelete:
             .commandReady
         case .livePreview:
             .liveReady
