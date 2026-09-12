@@ -15,19 +15,50 @@ protocol Pocket3DatalinkIO: AnyObject, Sendable {
 
 final class Pocket3DatalinkSocket: Pocket3DatalinkIO, @unchecked Sendable {
     private var udp: Int32 = -1
+    private let configuration: Pocket3DatalinkSocketConfiguration
+    private let routePlan: Pocket3DatalinkRoutePlan?
+    private let optionApplier: any Pocket3DatalinkSocketOptionApplying
+    private var resolvedInterfaceIndex: UInt32?
+
+    init(configuration: Pocket3DatalinkSocketConfiguration = .legacy,
+         routePlan: Pocket3DatalinkRoutePlan? = nil,
+         optionApplier: any Pocket3DatalinkSocketOptionApplying = DarwinPocket3DatalinkSocketOptionApplier()) {
+        self.configuration = configuration
+        self.routePlan = routePlan
+        self.optionApplier = optionApplier
+    }
+
     var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
     var isOpen: Bool { udp >= 0 }
     private func address(port: UInt16) throws -> sockaddr_in {
         var value = sockaddr_in()
         value.sin_len = UInt8(MemoryLayout<sockaddr_in>.size); value.sin_family = sa_family_t(AF_INET)
         value.sin_port = port.bigEndian
-        guard inet_pton(AF_INET, "192.168.2.1", &value.sin_addr) == 1 else { throw failure("native_address") }
+        guard inet_pton(AF_INET, configuration.cameraHost, &value.sin_addr) == 1 else { throw failure("native_address") }
         return value
     }
     private func failure(_ code: String) -> BridgeFailure { BridgeFailure(code, "Pocket 3 無線通訊失敗（\(code)）") }
+    private func validateRoute() throws {
+        guard configuration.isInterfaceBound else { return }
+        guard let routePlan,
+              routePlan.configuration == configuration,
+              routePlan.allowed,
+              let index = routePlan.boundInterfaceIndex, index != 0 else {
+            throw failure(routePlan?.failureCode ?? "native_route_unvalidated")
+        }
+        resolvedInterfaceIndex = index
+    }
     private func socket(_ type: Int32) throws -> Int32 {
         let descriptor = Darwin.socket(AF_INET, type, 0)
         guard descriptor >= 0 else { throw failure("native_socket") }
+        do {
+            if let index = resolvedInterfaceIndex {
+                try optionApplier.apply(.bindIPv4Interface(index: index), descriptor: descriptor)
+            }
+        } catch {
+            Darwin.close(descriptor)
+            throw error
+        }
         let flags = fcntl(descriptor, F_GETFL)
         guard flags >= 0, fcntl(descriptor, F_SETFL, flags | O_NONBLOCK) == 0 else {
             Darwin.close(descriptor); throw failure("native_nonblocking")
@@ -43,6 +74,7 @@ final class Pocket3DatalinkSocket: Pocket3DatalinkIO, @unchecked Sendable {
         }
     }
     func tcpPoke(_ frame: Data, permit: OperationPermit) throws {
+        try validateRoute()
         let tcp = try socket(SOCK_STREAM); defer { Darwin.close(tcp) }
         let result = try connect(tcp, port: 7001)
         if result != 0 {
@@ -83,6 +115,7 @@ final class Pocket3DatalinkSocket: Pocket3DatalinkIO, @unchecked Sendable {
         while now < settle { try permit.perform {}; _ = poll(nil, 0, 20) }
     }
     func openUDP() throws {
+        try validateRoute()
         close()
         let descriptor = try socket(SOCK_DGRAM)
         do {
@@ -116,4 +149,25 @@ final class Pocket3DatalinkSocket: Pocket3DatalinkIO, @unchecked Sendable {
     }
     func close() { if udp >= 0 { Darwin.close(udp); udp = -1 } }
     deinit { close() }
+}
+
+/// Darwin's public `IP_BOUND_IF` option keeps each TCP/UDP descriptor on the
+/// selected interface without changing the process or system default route.
+private struct DarwinPocket3DatalinkSocketOptionApplier: Pocket3DatalinkSocketOptionApplying {
+    func apply(_ option: Pocket3DatalinkSocketOption, descriptor: Int32) throws {
+        switch option {
+        case .bindIPv4Interface(let index):
+            guard index != 0 else {
+                throw Pocket3DatalinkSocketOptionError.invalidInterfaceIndex
+            }
+            var value = index
+            let result = withUnsafePointer(to: &value) {
+                setsockopt(descriptor, IPPROTO_IP, IP_BOUND_IF, $0,
+                           socklen_t(MemoryLayout<UInt32>.size))
+            }
+            guard result == 0 else {
+                throw BridgeFailure("native_interface_bind", "指定的相機網路介面無法綁定")
+            }
+        }
+    }
 }

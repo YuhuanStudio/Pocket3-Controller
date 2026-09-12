@@ -88,6 +88,17 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
     public convenience init(clientIdentifier: String = UUID().uuidString.replacingOccurrences(of: "-", with: ""), pairedDeviceID: String? = nil) {
         self.init(io: Pocket3DatalinkSocket(), clientIdentifier: clientIdentifier, pairedDeviceID: pairedDeviceID)
     }
+    /// Explicit network configuration for callers that already have a
+    /// route-safe plan.  A bound interface without a matching allowed plan is
+    /// rejected by the socket before any TCP/UDP descriptor is opened.
+    public convenience init(clientIdentifier: String = UUID().uuidString.replacingOccurrences(of: "-", with: ""),
+                            pairedDeviceID: String? = nil,
+                            networkConfiguration: Pocket3DatalinkSocketConfiguration,
+                            routePlan: Pocket3DatalinkRoutePlan? = nil) {
+        self.init(io: Pocket3DatalinkSocket(configuration: networkConfiguration,
+                                             routePlan: routePlan),
+                  clientIdentifier: clientIdentifier, pairedDeviceID: pairedDeviceID)
+    }
     init(io: any Pocket3DatalinkIO, clientIdentifier: String, pairedDeviceID: String? = nil,
          queue: DispatchQueue? = nil, maximumQueuedOperations: Int = 16) {
         self.io = io; self.clientIdentifier = clientIdentifier
