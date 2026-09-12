@@ -2,7 +2,7 @@ import Foundation
 
 /// Capture-confirmed shooting-mode IDs from unsolicited Pocket 3 `02/80`
 /// status frames. Unknown future values remain available as `shootingModeRaw`.
-public enum Pocket3ShootingMode: UInt8, Codable, Sendable, CaseIterable {
+public enum Pocket3ShootingMode: UInt8, Codable, Sendable, Equatable, CaseIterable {
     case slowMotion = 0x00
     case video = 0x01
     case timelapse = 0x02
