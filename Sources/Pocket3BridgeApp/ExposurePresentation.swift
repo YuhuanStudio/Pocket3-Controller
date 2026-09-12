@@ -1,5 +1,6 @@
 import Foundation
 import Pocket3Core
+import YunDesign
 
 /// Read-only presentation for the typed `cam_expo_param` observation. The
 /// formatter keeps raw selectors visible when a local enum is not known and
@@ -67,7 +68,8 @@ enum ExposurePresentation {
         switch observation.typedValue {
         case .isoLimit(let value): return "ISO \(value.iso)"
         case .unknown(let raw): return unknownRaw(raw)
-        case nil: return loc("Unknown")
+        case nil: return observation.readback.value.isEmpty
+            ? loc("Unknown") : unknownRaw(observation.readback.value)
         default: return loc("Unknown")
         }
     }
