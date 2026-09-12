@@ -115,6 +115,9 @@ private func nativeMediaValidationFailure(
     case .terminalReadbackMissing:
         BridgeFailure("native_media_terminal_readback_missing",
             "A complete 00/27 terminal chunk is required")
+    case .playbackRequired:
+        BridgeFailure("native_media_playback_required",
+            "Older media pages require a fresh matching playback status")
     case .operationInFlight:
         BridgeFailure("native_media_validation_busy",
             "A native media validation operation is already in flight")

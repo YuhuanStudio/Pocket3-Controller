@@ -31,6 +31,10 @@ public enum NativeMediaValidationError: Error, Codable, Sendable, Equatable {
     case fetcherUnavailable
     case responseTooLarge
     case terminalReadbackMissing
+    /// An older media-list cursor is only valid after a fresh, matching
+    /// 02/80 playback observation.  This is deliberately distinct from a
+    /// transport failure so callers can request a new readback/session.
+    case playbackRequired
     case operationInFlight
     case staleTransaction
 }
@@ -428,15 +432,25 @@ public struct NativeMediaValidationSnapshot: Codable, Sendable, Equatable {
     public let session: NativeCameraSessionStatus
     public let routeStatus: Pocket3DatalinkRouteStatus
     public let nowUptime: TimeInterval
+    /// The latest validated 02/80 media state for this exact session and
+    /// generation.  It is optional because newest media pages do not require
+    /// playback and a caller may not have observed a status frame yet.
+    public let mediaSession: Pocket3MediaSessionObservation?
 
     public init(session: NativeCameraSessionStatus,
                 routeStatus: Pocket3DatalinkRouteStatus = .init(
                     state: .legacyUnbound,
                     evidence: "legacy_route_explicit"),
-                nowUptime: TimeInterval) {
+                nowUptime: TimeInterval,
+                mediaSession: Pocket3MediaSessionObservation? = nil) {
         self.session = session
         self.routeStatus = routeStatus
         self.nowUptime = nowUptime
+        self.mediaSession = mediaSession
+    }
+
+    public var currentMediaSession: Pocket3MediaSessionObservation? {
+        mediaSession
     }
 
     public var routeAllowed: Bool {
@@ -468,14 +482,17 @@ public struct NativeMediaValidationRequestEvidence: Codable, Sendable,
     public let id: UUID
     public let command: NativeCameraSessionCommand
     public let sessionID: UUID?
+    public let peripheralID: UUID?
     public let generation: UInt64
     public let frame: NativeCommandFrame
     public let timeout: TimeInterval
 
-    init(_ request: NativeCommandTransactionRequest) {
+    init(_ request: NativeCommandTransactionRequest,
+         peripheralID: UUID? = nil) {
         id = request.id
         command = request.command
         sessionID = request.sessionID
+        self.peripheralID = peripheralID
         generation = request.generation
         frame = request.frame
         timeout = request.timeout
@@ -553,6 +570,38 @@ public struct NativeMediaValidationResult: Codable, Sendable, Equatable {
     public let failureCode: String?
 
     public var dryRun: Bool { !executeRequested }
+
+    /// Typed 02/80 evidence captured by a playback transaction.  The raw
+    /// payload remains in `transaction` so an unknown future flag layout is
+    /// still inspectable even when no known state can be projected.
+    public var mediaSessionReadback: Pocket3MediaSessionReadback? {
+        guard let payload = transaction?.observedPayload else { return nil }
+        return Pocket3MediaSessionReadback.decode(payload)
+    }
+
+    public var playbackReadback: Pocket3MediaSessionReadback? {
+        mediaSessionReadback
+    }
+
+    /// Session/generation-bound typed playback evidence.  A missing or
+    /// malformed payload never becomes an observation merely because an ACK
+    /// was received.
+    public var mediaSessionObservation: Pocket3MediaSessionObservation? {
+        guard let readback = mediaSessionReadback,
+              let request,
+              let sessionID = request.sessionID,
+              let observedUptime = transaction?.observedUptime else {
+            return nil
+        }
+        return try? Pocket3MediaSessionObservation(
+            sessionID: sessionID, peripheralID: request.peripheralID,
+            generation: request.generation, receivedUptime: observedUptime,
+            readback: readback)
+    }
+
+    public var playbackObservation: Pocket3MediaSessionObservation? {
+        mediaSessionObservation
+    }
 }
 
 public struct NativeMediaValidationExecutorAdapter: Sendable {
@@ -755,6 +804,24 @@ public struct NativeMediaValidationService: Sendable {
         guard snapshot.session.generation != 0,
               snapshot.session.state.satisfies(.commandReady) else {
             throw NativeMediaValidationError.sessionNotReady
+        }
+
+        // The newest page cursors are available in normal camera mode. An
+        // older cursor is an explicit playback operation and must be fenced
+        // by a fresh status frame from this exact session and generation.
+        // Dry-run still builds the request for inspection without requiring
+        // an unproven transition.
+        if request.action == .list, request.execute,
+           request.cursor != Pocket3MediaListRequest.newestSD,
+           request.cursor != Pocket3MediaListRequest.newestInternal {
+            guard let mediaSession = snapshot.mediaSession,
+                  mediaSession.sessionID == request.expectedSessionID,
+                  mediaSession.peripheralID == request.peripheralID,
+                  mediaSession.generation == request.generation,
+                  mediaSession.isFresh(nowUptime: snapshot.nowUptime),
+                  mediaSession.state == .playback else {
+                throw NativeMediaValidationError.playbackRequired
+            }
         }
 
         if request.action == .range {
@@ -982,6 +1049,24 @@ public struct NativeMediaValidationService: Sendable {
                     collector.observe(frame)
                 }
         }
+        if [.playbackEnter, .playbackExit].contains(request.action) {
+            // 02/0C is ACKed separately from the camera's unsolicited 02/80
+            // status. Only the latter is a terminal readback candidate;
+            // every other frame leaves the transaction at ACK-only evidence.
+            return try NativeCommandTransactionRequest(
+                command: command(for: request.action),
+                generation: request.generation,
+                sessionID: request.expectedSessionID, frame: frame,
+                timeout: request.timeout) { frame in
+                    guard frame.source & 0x1f == 0x01,
+                          frame.destination & 0x1f == 0x02,
+                          frame.commandSet == 0x02,
+                          frame.commandID == 0x80,
+                          let readback = Pocket3MediaSessionReadback.decode(
+                              frame: frame) else { return nil }
+                    return readback.raw
+                }
+        }
         return try NativeCommandTransactionRequest(
             command: command(for: request.action),
             generation: request.generation,
@@ -1025,7 +1110,8 @@ public struct NativeMediaValidationService: Sendable {
             // ACK wait timeout into a false list failure.
             completed = transaction?.observed == true && index != nil
         case .playbackEnter, .playbackExit:
-            completed = transaction?.observed == true
+            completed = playbackTerminalState(
+                action: request.action, transaction: transaction)
         case .presence:
             completed = transaction?.completed == true
         case .range: completed = false
@@ -1046,7 +1132,8 @@ public struct NativeMediaValidationService: Sendable {
         return NativeMediaValidationResult(
             action: request.action, executeRequested: request.execute,
             routeStatus: routeStatus,
-            request: NativeMediaValidationRequestEvidence(nativeRequest),
+            request: NativeMediaValidationRequestEvidence(nativeRequest,
+                peripheralID: request.peripheralID),
             transaction: transaction, list: listEvidence,
             mediaIndex: index, range: nil, phase: phase,
             requested: true, submitted: submitted,
@@ -1063,15 +1150,50 @@ public struct NativeMediaValidationService: Sendable {
         case .cancelled: return .cancelled
         case .generationChanged: return .generationChanged
         case .timedOut:
-            return collector?.pack() != nil && transaction.observed
-                ? .completed : .timedOut
+            if collector?.pack() != nil && transaction.observed { return .completed }
+            // An ACK without its 02/80 status remains explicitly pending;
+            // callers may request a fresh readback at their own boundary.
+            if [.playbackEnter, .playbackExit].contains(action),
+               transaction.acknowledged { return .awaitingReadback }
+            return .timedOut
         case .rejected, .failed: return .failed
         case .acknowledged:
             if collector != nil { return .awaitingReadback }
             return [.playbackEnter, .playbackExit].contains(action)
                 ? .awaitingReadback : .completed
         case .observed:
+            if [.playbackEnter, .playbackExit].contains(action) {
+                return playbackTerminalState(action: action,
+                    transaction: transaction) ? .completed : .awaitingReadback
+            }
             return collector?.pack() == nil ? .failed : .completed
+        }
+    }
+
+    private func playbackTerminalState(
+        action: NativeMediaValidationOperation,
+        transaction: NativeCommandTransactionResult?
+    ) -> Bool {
+        guard let transaction,
+              transaction.acknowledged,
+              transaction.observed,
+              let payload = transaction.observedPayload,
+              let readback = Pocket3MediaSessionReadback.decode(payload),
+              let observedUptime = transaction.observedUptime else {
+            return false
+        }
+        // A frame queued before this command is not proof that the command
+        // changed the camera. The transaction owner supplies host receive
+        // times for this freshness fence.
+        if let submittedUptime = transaction.submittedUptime,
+           !observedUptime.isFinite || observedUptime <= submittedUptime {
+            return false
+        }
+        guard observedUptime.isFinite, observedUptime >= 0 else { return false }
+        switch action {
+        case .playbackEnter: return readback.state == .playback
+        case .playbackExit: return readback.state == .normal
+        default: return false
         }
     }
 

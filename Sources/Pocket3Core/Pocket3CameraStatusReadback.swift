@@ -95,6 +95,39 @@ public struct Pocket3CameraStatusObservation: Codable, Sendable, Equatable {
     public let storageFreeMiB: UInt32?
     public let remainingRecordSeconds: UInt16?
     public let elapsedRecordSeconds: UInt16?
+    /// Complete @0 flags word when the status payload includes it.
+    public let statusFlagsRaw: UInt32?
+    /// @0 bit 30 (`0x4000_0000`), the camera-reported playback bit.
+    public let playbackBit: Bool?
+    /// State derived from the recording transition bit and playback bit.
+    public let mediaSessionState: Pocket3MediaSessionState?
+
+    public init(sessionID: UUID, peripheralID: UUID, receivedAt: Date,
+                receivedUptime: TimeInterval, statusByte: UInt8,
+                recording: Bool, transitioning: Bool, videoLike: Bool?,
+                shootingModeRaw: UInt8?, shootingMode: Pocket3ShootingMode?,
+                storageTotalMiB: UInt32?, storageFreeMiB: UInt32?,
+                remainingRecordSeconds: UInt16?, elapsedRecordSeconds: UInt16?,
+                statusFlagsRaw: UInt32? = nil, playbackBit: Bool? = nil,
+                mediaSessionState: Pocket3MediaSessionState? = nil) {
+        self.sessionID = sessionID
+        self.peripheralID = peripheralID
+        self.receivedAt = receivedAt
+        self.receivedUptime = receivedUptime
+        self.statusByte = statusByte
+        self.recording = recording
+        self.transitioning = transitioning
+        self.videoLike = videoLike
+        self.shootingModeRaw = shootingModeRaw
+        self.shootingMode = shootingMode
+        self.storageTotalMiB = storageTotalMiB
+        self.storageFreeMiB = storageFreeMiB
+        self.remainingRecordSeconds = remainingRecordSeconds
+        self.elapsedRecordSeconds = elapsedRecordSeconds
+        self.statusFlagsRaw = statusFlagsRaw
+        self.playbackBit = playbackBit
+        self.mediaSessionState = mediaSessionState
+    }
 
     /// Typed lifecycle projection of `statusByte`. Unknown low/status bits
     /// remain available through `recordingStatus.rawValue`.
@@ -106,6 +139,19 @@ public struct Pocket3CameraStatusObservation: Codable, Sendable, Equatable {
     public var bodyRecordingLifecycle: Pocket3BodyRecordingLifecycle { recordingLifecycle }
     public var recordingState: Pocket3BodyRecordingLifecycle { recordingLifecycle }
     public var bodyRecordingState: Pocket3BodyRecordingLifecycle { recordingLifecycle }
+    public var flagsRaw: UInt32? { statusFlagsRaw }
+    public var playback: Bool? { playbackBit }
+    public var inPlayback: Bool? { playbackBit }
+    public var activeStoreTotalMiB: UInt32? { storageTotalMiB }
+    public var activeStoreFreeMiB: UInt32? { storageFreeMiB }
+    public var mediaState: Pocket3MediaSessionState {
+        if let mediaSessionState { return mediaSessionState }
+        if statusByte & 0x40 != 0 { return .transition }
+        switch statusByte {
+        case 0x01, 0x81: return .normal
+        default: return .unknown(raw: statusByte)
+        }
+    }
 
     public func isFresh(nowUptime: TimeInterval, maximumAge: TimeInterval = 5) -> Bool {
         receivedAt.timeIntervalSinceReferenceDate.isFinite && nowUptime.isFinite && receivedUptime.isFinite && maximumAge.isFinite && maximumAge >= 0 &&
@@ -139,12 +185,16 @@ public enum Pocket3CameraStatusParser {
               frame.commandSet == 0x02, frame.commandID == 0x80,
               let status = frame.payload.first, receivedUptime.isFinite, receivedUptime >= 0 else { return nil }
         let recording = status & 0x80 != 0, transitioning = status & 0x40 != 0
+        let mediaReadback = Pocket3MediaSessionReadback.decode(frame.payload)
         guard frame.payload.count >= 58 else {
             return .init(sessionID: sessionID, peripheralID: peripheralID, receivedAt: receivedAt,
                 receivedUptime: receivedUptime, statusByte: status, recording: recording,
                 transitioning: transitioning, videoLike: nil, shootingModeRaw: nil, shootingMode: nil,
                 storageTotalMiB: nil, storageFreeMiB: nil, remainingRecordSeconds: nil,
-                elapsedRecordSeconds: nil)
+                elapsedRecordSeconds: nil,
+                statusFlagsRaw: mediaReadback?.flagsRaw,
+                playbackBit: mediaReadback?.playback,
+                mediaSessionState: mediaReadback?.state)
         }
         let payload = frame.payload
         let modeRaw = payload[57], videoLike = payload[4] == 0x01
@@ -154,7 +204,10 @@ public enum Pocket3CameraStatusParser {
             shootingMode: Pocket3ShootingMode(rawValue: modeRaw),
             storageTotalMiB: u32(payload, 5), storageFreeMiB: u32(payload, 9),
             remainingRecordSeconds: videoLike ? u16(payload, 17) : nil,
-            elapsedRecordSeconds: videoLike ? u16(payload, 29) : nil)
+            elapsedRecordSeconds: videoLike ? u16(payload, 29) : nil,
+            statusFlagsRaw: mediaReadback?.flagsRaw,
+            playbackBit: mediaReadback?.playback,
+            mediaSessionState: mediaReadback?.state)
     }
 
     public static func parseStorage(_ frame: DUMLFrame, sessionID: UUID, peripheralID: UUID,
