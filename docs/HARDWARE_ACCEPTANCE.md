@@ -390,6 +390,12 @@ recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload�
 
 在既有paired session只讀訂閱`cam_video_param_v2`，單次subscription已送出、property push成功、沒有matching ACK；回覆value長度10，解碼為4K（`0x10`）、30 fps（`0x03`）、HEVC（`compression=0x01`）。這確認機身目前的HEVC baseline，沒有送`02/AB`或任何設定寫入。後續developer writer的HEVC no-op必須以完整fresh raw baseline作零寫入驗證；H.264→HEVC→H.264的受控測試仍等追蹤關閉與新版App重啟。[唯讀結果](../artifacts/hardware-complete-2026-09-11/hevc-current-readonly-property.json)
 
+## 2026-09-12：USB 接回後的 BLE 充電狀態正向驗證
+
+使用者將同一台 Pocket 3 開機並接回 USB 後，IORegistry 唯讀確認 `DJIPocket3@01100000`、VID/PID `2ca3:0023`、480 Mb/s。既有 build25 背景 App 重新掃描並連接 BLE peer `OsmoPocket3-7CF5`，完成 protocol pairing；session `7118E395-9991-4ADA-81C2-E57A4A3CB9CD` 的新鮮 `0D/02` 相機遙測回報電量 95%、`chargingState=charging`、`chargingStateRaw=1`。同時相機為未錄影、SD total 488,015 MiB／free 176,032 MiB。
+
+這是相機端 BLE 充電旗標的正向證據，與先前 `raw=0/notCharging` 明確不同；結論不是由 USB 500 mA allocation 推算。此輪沒有啟動預覽、保存畫面、送雲台／設定／錄影命令，也沒有讀取 Wi-Fi credentials 或切換 Mac 網路。
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
