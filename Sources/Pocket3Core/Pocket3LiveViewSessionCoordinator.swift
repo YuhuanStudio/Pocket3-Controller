@@ -648,15 +648,19 @@ public final class Pocket3LiveViewSessionCoordinator: @unchecked Sendable {
                 return false
             }
             enableEvidence = enable
+            if enable.submitted {
+                enableSendCount += 1
+                let sentAt = max(now, clock.now)
+                enableUptime = sentAt
+                lastMediaUptime = sentAt
+                cooldownUntil = sentAt + configuration.cooldown
+            }
             guard enable.accepted else {
                 phase = .failed
                 failureCode = enable.failureCode ?? "live_view_enable_not_acknowledged"
                 attemptID = nil
                 return false
             }
-            enableSendCount += enable.submitted ? 1 : 0
-            enableUptime = max(now, clock.now)
-            lastMediaUptime = enableUptime
             codecReady = false
             firstRandomAccessObserved = false
             stallStage = .awaitingCodec

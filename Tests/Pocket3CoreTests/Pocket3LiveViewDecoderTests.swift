@@ -451,4 +451,59 @@ struct Pocket3LiveViewDecoderTests {
         ]))
         #expect(idr.receiverType == 0x01 && idr.receiverID == 0x02)
     }
+
+    @Test func dryRunDiagnosticProjectionIsCredentialFreeAndActionable() throws {
+        let sessionID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        let peripheralID = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
+        let request = try Pocket3LiveViewValidationRequest(
+            expectedSessionID: sessionID, peripheralID: peripheralID,
+            generation: 9, sendPreEnableHint: true)
+        let route = Pocket3DatalinkRouteStatus(
+            state: .samePrimaryRoute, interfaceName: "en9",
+            interfaceIndex: 9, cameraRouteReachable: true,
+            samePrimaryRoute: true, defaultRouteChanged: false,
+            evidence: "fake_route_observation")
+        let diagnostics = Pocket3LiveViewValidationDiagnostics(
+            requestedSessionID: sessionID,
+            requestedPeripheralID: peripheralID,
+            requestedGeneration: 9,
+            currentSessionID: sessionID,
+            currentPeerID: peripheralID,
+            currentGeneration: 9,
+            nativeState: .commandReady,
+            datalinkAvailable: true,
+            datalinkPhase: .ready,
+            datalinkBindingGeneration: 1,
+            routeStatus: route)
+        let result = Pocket3LiveViewValidationResult(
+            request: request, exactSessionMatch: true,
+            routeAllowed: true, commandReady: true,
+            diagnostics: diagnostics)
+        #expect(result.dryRun && !result.executeRequested)
+        #expect(result.attachBeforeEnable && !result.automaticJoinAttempted)
+        #expect(result.plannedCommands == [.preEnableHint, .enable, .requestIDR])
+        #expect(result.diagnostics?.noNetworkMutation == true)
+        #expect(result.diagnostics?.noCredentialRead == true)
+        #expect(result.diagnostics?.datalinkBindingGeneration == 1)
+        let encoded = try JSONEncoder().encode(result)
+        let text = String(decoding: encoded, as: UTF8.self)
+        #expect(!text.localizedCaseInsensitiveContains("password"))
+    }
+
+    @Test func autoSessionSinkBindsOnlyToFirstAdmittedTransportSession() throws {
+        let decoder = RecordingPocket3LiveViewDecoder()
+        let service = try Pocket3LiveViewDecodeService(
+            decoder: decoder, generation: 1)
+        let sink = try Pocket3LiveViewMediaSink(
+            sessionID: 0, generation: 1, decoderService: service)
+        #expect(sink.sessionID == 0)
+        sink.receive(try datagram(annex([sps, pps, idr])), generation: 1)
+        #expect(sink.sessionID == session)
+        #expect(service.waitUntilIdle(timeout: 1))
+        #expect(decoder.calls == 1)
+        sink.receive(try datagram(annex([sps, pps, idr]), sequence: 16), generation: 1)
+        #expect(sink.sessionID == session)
+        #expect(service.waitUntilIdle(timeout: 1))
+        #expect(decoder.calls == 2)
+    }
 }

@@ -166,6 +166,59 @@ public enum Pocket3LiveViewValidationError: Error, Codable, Sendable,
     case coordinatorBusy
 }
 
+/// Credential-free snapshot evidence exposed by the developer dry-run route.
+/// It makes the hardware preflight useful without opening a new link or
+/// reading the stored Wi-Fi credentials.
+public struct Pocket3LiveViewValidationDiagnostics: Codable, Sendable,
+    Equatable {
+    public let requestedSessionID: UUID
+    public let requestedPeripheralID: UUID
+    public let requestedGeneration: UInt64
+    public let currentSessionID: UUID?
+    public let currentPeerID: UUID?
+    public let currentGeneration: UInt64
+    public let nativeState: NativeCameraSessionState
+    public let datalinkAvailable: Bool
+    public let datalinkPhase: Pocket3DatalinkPhase?
+    public let datalinkBindingGeneration: UInt64?
+    public let routeStatus: Pocket3DatalinkRouteStatus
+    public let liveViewSinkAttached: Bool
+    public let noNetworkMutation: Bool
+    public let noCredentialRead: Bool
+
+    public init(
+        requestedSessionID: UUID,
+        requestedPeripheralID: UUID,
+        requestedGeneration: UInt64,
+        currentSessionID: UUID?,
+        currentPeerID: UUID?,
+        currentGeneration: UInt64,
+        nativeState: NativeCameraSessionState,
+        datalinkAvailable: Bool,
+        datalinkPhase: Pocket3DatalinkPhase?,
+        datalinkBindingGeneration: UInt64?,
+        routeStatus: Pocket3DatalinkRouteStatus,
+        liveViewSinkAttached: Bool = false,
+        noNetworkMutation: Bool = true,
+        noCredentialRead: Bool = true
+    ) {
+        self.requestedSessionID = requestedSessionID
+        self.requestedPeripheralID = requestedPeripheralID
+        self.requestedGeneration = requestedGeneration
+        self.currentSessionID = currentSessionID
+        self.currentPeerID = currentPeerID
+        self.currentGeneration = currentGeneration
+        self.nativeState = nativeState
+        self.datalinkAvailable = datalinkAvailable
+        self.datalinkPhase = datalinkPhase
+        self.datalinkBindingGeneration = datalinkBindingGeneration
+        self.routeStatus = routeStatus
+        self.liveViewSinkAttached = liveViewSinkAttached
+        self.noNetworkMutation = noNetworkMutation
+        self.noCredentialRead = noCredentialRead
+    }
+}
+
 /// The App route returns this even when execute is false or an explicit gate
 /// rejects the attempt, so developer tooling can inspect the reason without
 /// guessing whether a packet was sent.
@@ -177,6 +230,7 @@ public struct Pocket3LiveViewValidationResult: Codable, Sendable,
     public let exactSessionMatch: Bool
     public let routeAllowed: Bool
     public let commandReady: Bool
+    public let diagnostics: Pocket3LiveViewValidationDiagnostics?
     public let attachBeforeEnable: Bool
     public let automaticJoinAttempted: Bool
     public let plannedCommands: [Pocket3LiveViewSessionCommandKind]
@@ -189,6 +243,7 @@ public struct Pocket3LiveViewValidationResult: Codable, Sendable,
         exactSessionMatch: Bool,
         routeAllowed: Bool,
         commandReady: Bool,
+        diagnostics: Pocket3LiveViewValidationDiagnostics? = nil,
         coordinator: Pocket3LiveViewSessionSnapshot? = nil,
         sessionResult: Pocket3LiveViewSessionResult? = nil,
         failureCode: String? = nil
@@ -199,6 +254,7 @@ public struct Pocket3LiveViewValidationResult: Codable, Sendable,
         self.exactSessionMatch = exactSessionMatch
         self.routeAllowed = routeAllowed
         self.commandReady = commandReady
+        self.diagnostics = diagnostics
         attachBeforeEnable = true
         automaticJoinAttempted = false
         plannedCommands = request.sendPreEnableHint

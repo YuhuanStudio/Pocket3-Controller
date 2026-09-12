@@ -38,6 +38,20 @@ extension WirelessGimbalModel {
         let routeAllowed = nativeRouteStatus.state != .unknown &&
             nativeRouteStatus.defaultRouteChanged != true
         let commandReady = readiness.state.satisfies(.commandReady)
+        let diagnostics = Pocket3LiveViewValidationDiagnostics(
+            requestedSessionID: input.expectedSessionID,
+            requestedPeripheralID: input.peripheralID,
+            requestedGeneration: input.generation,
+            currentSessionID: readiness.sessionID,
+            currentPeerID: readiness.peerID,
+            currentGeneration: readiness.generation,
+            nativeState: readiness.state,
+            datalinkAvailable: datalink != nil,
+            datalinkPhase: nativeStatus?.phase,
+            datalinkBindingGeneration: nativeStatus?.binding?.generation ??
+                binding?.generation,
+            routeStatus: nativeRouteStatus,
+            liveViewSinkAttached: liveViewAdapter != nil)
 
         func result(
             coordinator: Pocket3LiveViewSessionSnapshot? = nil,
@@ -47,6 +61,7 @@ extension WirelessGimbalModel {
             Pocket3LiveViewValidationResult(
                 request: input, exactSessionMatch: exactSessionMatch,
                 routeAllowed: routeAllowed, commandReady: commandReady,
+                diagnostics: diagnostics,
                 coordinator: coordinator, sessionResult: sessionResult,
                 failureCode: failureCode)
         }
@@ -79,15 +94,27 @@ extension WirelessGimbalModel {
             return result(failureCode: "native_live_view_executor_unavailable")
         }
         if let existing = liveViewCoordinator {
-            let phase = existing.snapshot().phase
-            let terminal: Set<Pocket3LiveViewSessionPhase> = [
-                .idle, .disconnected, .cancelled, .cooldown, .failed
-            ]
-            guard terminal.contains(phase) else {
-                return result(coordinator: existing.snapshot(),
-                              failureCode: "native_live_view_busy")
+            let existingSnapshot = existing.snapshot()
+            if let until = existingSnapshot.cooldownUntil,
+               ProcessInfo.processInfo.systemUptime < until {
+                return result(coordinator: existingSnapshot,
+                              failureCode: "native_live_view_cooldown")
             }
-            invalidateLiveViewValidation()
+            let phase = existingSnapshot.phase
+            let terminal: Set<Pocket3LiveViewSessionPhase> = [
+                .idle, .disconnected, .cancelled, .failed
+            ]
+            if phase == .cooldown {
+                // The cooldown has expired; retire the old coordinator before
+                // creating a fresh attempt for this same native generation.
+                invalidateLiveViewValidation()
+            } else {
+                guard terminal.contains(phase) else {
+                    return result(coordinator: existingSnapshot,
+                                  failureCode: "native_live_view_busy")
+                }
+                invalidateLiveViewValidation()
+            }
         }
 
         let routePlan = Pocket3DatalinkRoutePlan(
@@ -133,7 +160,7 @@ extension WirelessGimbalModel {
         defer {
             if !routeFinished {
                 _ = coordinator.cancel(generation: readiness.generation)
-                clearLiveViewValidation(coordinator)
+                releaseLiveViewValidationResources(coordinator)
             }
         }
 
@@ -160,6 +187,17 @@ extension WirelessGimbalModel {
                           failureCode: Self.liveViewFailureCode(error))
         }
 
+        if afterIngest.phase == .failed || afterIngest.phase == .cancelled ||
+           afterIngest.phase == .generationChanged {
+            let snapshot = coordinator.snapshot()
+            routeFinished = true
+            _ = coordinator.disconnect(generation: readiness.generation)
+            releaseLiveViewValidationResources(coordinator)
+            return result(coordinator: snapshot, sessionResult: afterIngest,
+                          failureCode: afterIngest.failureCode ??
+                            "native_live_view_enable_failed")
+        }
+
         let readyDeadline = ProcessInfo.processInfo.systemUptime + input.waitSeconds
         while ProcessInfo.processInfo.systemUptime < readyDeadline {
             _ = coordinator.ingestLatestMedia()
@@ -172,7 +210,7 @@ extension WirelessGimbalModel {
         let finalResult = coordinator.result ?? afterIngest
         routeFinished = true
         _ = coordinator.disconnect(generation: readiness.generation)
-        clearLiveViewValidation(coordinator)
+        releaseLiveViewValidationResources(coordinator)
         return result(coordinator: finalSnapshot,
                       sessionResult: finalResult,
                       failureCode: finalResult.ready ? nil :
@@ -211,11 +249,10 @@ extension WirelessGimbalModel {
         liveViewSink = nil
     }
 
-    private func clearLiveViewValidation(
+    private func releaseLiveViewValidationResources(
         _ coordinator: Pocket3LiveViewSessionCoordinator
     ) {
         guard liveViewCoordinator === coordinator else { return }
-        liveViewCoordinator = nil
         liveViewAdapter = nil
         liveViewSink = nil
     }
