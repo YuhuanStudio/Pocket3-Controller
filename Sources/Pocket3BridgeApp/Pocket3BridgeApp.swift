@@ -80,6 +80,9 @@ final class AppModel {
     /// Diagnostics and never exposed to normal users or persisted as a
     /// command replay surface.
     var developerBodyValidationResult: NativeBodyValidationResult?
+    /// Last developer-only exposure validation evidence. The body capability
+    /// Disclosure shows this only when developer mode is explicitly enabled.
+    var developerExposureValidationResult: NativeExposureValidationResult?
     @ObservationIgnored private var powerChargingReducer = Pocket3PowerChargingDiagnosisReducer()
     var powerChargingDiagnosis: Pocket3PowerChargingDiagnosis?
     var modelStatus: IntelligenceStatus?

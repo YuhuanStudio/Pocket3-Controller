@@ -49,6 +49,10 @@ extension AppModel {
                 ? wireless.nativeExposureValidationAdapter() : nil
             let result = try await NativeExposureValidationService(adapter: adapter)
                 .run(input, snapshot: snapshot)
+            // Keep only the credential-free, typed validation evidence for the
+            // developer Disclosure. It is memory-only and remains fenced by
+            // the exact native session in the presentation layer.
+            developerExposureValidationResult = result
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as Pocket3ExposureValidationError {
             throw nativeExposureValidationFailure(error)

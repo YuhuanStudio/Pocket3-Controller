@@ -42,6 +42,12 @@ enum CapabilityPresentation {
             return loc("No current body readback")
         case "No current ActiveTrack readback":
             return loc("No current ActiveTrack readback")
+        case "No current exposure readback":
+            return loc("No current exposure readback")
+        case "No current ISO limit readback":
+            return loc("No current ISO limit readback")
+        case "ISO limit raw selector is unknown":
+            return loc("ISO limit raw selector is unknown")
         case "ActiveTrack state is read-only; the A6 command path is not exposed.":
             return loc("ActiveTrack state is read-only; the A6 command path is not exposed.")
         case "Body validation is already in progress":

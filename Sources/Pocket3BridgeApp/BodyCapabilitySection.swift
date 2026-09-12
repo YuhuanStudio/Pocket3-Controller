@@ -10,15 +10,18 @@ struct BodyCapabilitySection: View {
     let developerMode: Bool
     let developerValidationExpanded: Bool
     let advancedSettingsExpanded: Bool
+    let exposureExpanded: Bool
 
     init(model: AppModel,
          developerMode: Bool = CommandLine.arguments.contains("--hardware-validation"),
          developerValidationExpanded: Bool = false,
-         advancedSettingsExpanded: Bool = false) {
+         advancedSettingsExpanded: Bool = false,
+         exposureExpanded: Bool = false) {
         self.model = model
         self.developerMode = developerMode
         self.developerValidationExpanded = developerValidationExpanded
         self.advancedSettingsExpanded = advancedSettingsExpanded
+        self.exposureExpanded = exposureExpanded
     }
 
     var body: some View {
@@ -26,7 +29,8 @@ struct BodyCapabilitySection: View {
             BodyCapabilityDetails(model: model, showsHeader: true,
                                   showsDeveloperValidation: developerMode,
                                   developerValidationExpanded: developerValidationExpanded,
-                                  advancedSettingsExpanded: advancedSettingsExpanded)
+                                  advancedSettingsExpanded: advancedSettingsExpanded,
+                                  exposureExpanded: exposureExpanded)
         }
             .accessibilityIdentifier("Pocket3BodyCapabilitySection")
             .measuredForLayout("bodyCapabilitySection")
@@ -83,15 +87,18 @@ private struct BodyCapabilityDetails: View {
     let showsHeader: Bool
     let showsDeveloperValidation: Bool
     @State private var activeTrackExpanded = false
+    @State private var exposureExpanded: Bool
     @State private var advancedSettingsExpanded: Bool
     @State private var validationExpanded: Bool
 
     init(model: AppModel, showsHeader: Bool, showsDeveloperValidation: Bool,
          developerValidationExpanded: Bool = false,
-         advancedSettingsExpanded: Bool = false) {
+         advancedSettingsExpanded: Bool = false,
+         exposureExpanded: Bool = false) {
         self.model = model
         self.showsHeader = showsHeader
         self.showsDeveloperValidation = showsDeveloperValidation
+        _exposureExpanded = State(initialValue: exposureExpanded)
         _advancedSettingsExpanded = State(initialValue: advancedSettingsExpanded)
         _validationExpanded = State(initialValue: developerValidationExpanded)
     }
@@ -120,6 +127,15 @@ private struct BodyCapabilityDetails: View {
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            YunDisclosure(loc("Exposure (read-only)"),
+                          subtitle: ExposurePresentation.summary(
+                              currentExposureReadback,
+                              isoLimit: currentISOLimitReadback),
+                          isExpanded: $exposureExpanded) {
+                exposureDetails
+            }
+            .accessibilityIdentifier("Pocket3ExposureDisclosure")
 
             YunDivider()
             Text(loc("Legal body formats")).font(Yun.Text.label)
@@ -305,6 +321,69 @@ private struct BodyCapabilityDetails: View {
         .padding(.vertical, 2)
     }
 
+    @ViewBuilder private var exposureDetails: some View {
+        let readback = currentExposureReadback
+        let isoLimit = currentISOLimitReadback
+        let validation = currentExposureValidationResult
+        capabilityRow(loc("Shooting mode"), ExposurePresentation.mode(readback),
+                      availability: ExposurePresentation.availability(
+                          hasReadback: readback != nil),
+                      evidence: ExposurePresentation.evidence(
+                          hasReadback: readback != nil, validation: validation))
+        capabilityRow("EV", ExposurePresentation.ev(readback),
+                      availability: ExposurePresentation.availability(
+                          hasReadback: readback != nil),
+                      evidence: ExposurePresentation.evidence(
+                          hasReadback: readback != nil, validation: validation))
+        capabilityRow(loc("Selected ISO"),
+                      ExposurePresentation.selectedISO(readback),
+                      availability: ExposurePresentation.availability(
+                          hasReadback: readback != nil),
+                      evidence: ExposurePresentation.evidence(
+                          hasReadback: readback != nil, validation: validation))
+        capabilityRow(loc("Effective ISO"),
+                      ExposurePresentation.effectiveISO(readback),
+                      availability: ExposurePresentation.availability(
+                          hasReadback: readback != nil),
+                      evidence: ExposurePresentation.evidence(
+                          hasReadback: readback != nil, validation: validation))
+        capabilityRow(loc("Shutter"), ExposurePresentation.shutter(readback),
+                      availability: ExposurePresentation.availability(
+                          hasReadback: readback != nil),
+                      evidence: ExposurePresentation.evidence(
+                          hasReadback: readback != nil, validation: validation))
+        capabilityRow(loc("ISO limit"), ExposurePresentation.isoLimitValue(isoLimit),
+                      availability: ExposurePresentation.isoLimitAvailability(isoLimit),
+                      evidence: isoLimit == nil ? .publicReverseEngineering :
+                          ExposurePresentation.evidence(hasReadback: true,
+                                                        validation: validation))
+
+        if showsDeveloperValidation {
+            Text(loc("Developer exposure validation")).font(Yun.Text.label)
+            capabilityRow(loc("Validation result"),
+                          ExposurePresentation.validationSummary(validation),
+                          availability: .readOnly,
+                          evidence: .localReadOnly)
+            if let validation {
+                YunWrap(spacing: 4, lineSpacing: 4) {
+                    ForEach(Array(ExposurePresentation.validationStages(validation).enumerated()),
+                            id: \.offset) { _, stage in
+                        YunBadge(stageLabel(stage.label, result: stage.value))
+                    }
+                }
+                Text(ExposurePresentation.validationReason(validation,
+                    currentSession: true))
+                    .font(Yun.Text.caption)
+                    .foregroundStyle(Yun.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        Text(loc("Unknown exposure selectors remain visible as raw values; this UI never submits exposure commands."))
+            .font(Yun.Text.caption)
+            .foregroundStyle(Yun.Palette.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     private func capabilityRow(_ label: String, _ value: String,
                                availability: CapabilityAvailability,
                                evidence: CapabilityEvidenceLevel) -> some View {
@@ -398,5 +477,48 @@ private struct BodyCapabilityDetails: View {
     private var currentActiveTrack: Pocket3ActiveTrackObservation? {
         model.wireless.discovery.activeTrackObservation(
             nowUptime: ProcessInfo.processInfo.systemUptime)
+    }
+
+    private var currentExposureReadback: Pocket3ExposureReadback? {
+        if let validation = currentExposureValidationResult?.exposureReadback,
+           validation.isFresh(session: model.wireless.nativeSessionStatus,
+                              nowUptime: ProcessInfo.processInfo.systemUptime) {
+            return validation.readback
+        }
+        let discovery = model.wireless.discovery
+        guard discovery.pairing?.peerReportedPaired == true,
+              discovery.selectedPeripheralID != nil else { return nil }
+        let binding = ContinuousGimbalBinding(
+            sessionID: "ble:\(discovery.sessionID.uuidString)", generation: 0)
+        return discovery.cameraSettingsObservations.reversed().first(where: {
+            $0.property == .exposure && $0.binding == binding &&
+                $0.isFresh(now: ProcessInfo.processInfo.systemUptime,
+                           maximumAge: Pocket3ExposureObservation.maximumAge)
+        }).flatMap { observation in
+            guard observation.binding == binding,
+                  case .exposure(let value) = observation.readOnlyValue else {
+                return nil
+            }
+            return Pocket3ExposureReadback.decode(value.raw)
+        }
+    }
+
+    private var currentExposureValidationResult: NativeExposureValidationResult? {
+        guard let result = model.developerExposureValidationResult,
+              let request = result.request,
+              request.sessionID == model.wireless.nativeSessionStatus.sessionID,
+              request.generation == model.wireless.nativeSessionStatus.generation else {
+            return nil
+        }
+        return result
+    }
+
+    private var currentISOLimitReadback: Pocket3AdvancedSettingObservation? {
+        guard let observation = currentExposureValidationResult?.isoLimitReadback,
+              observation.isFresh(session: model.wireless.nativeSessionStatus,
+                                  nowUptime: ProcessInfo.processInfo.systemUptime) else {
+            return nil
+        }
+        return observation
     }
 }
