@@ -198,6 +198,8 @@ final class AppModel {
                 case "ui-capture": return try await AppModel.shared.captureWindow(request)
                 case "ui-check": return try await AppModel.shared.checkInterface(request)
                 case "image-workspace": return try await AppModel.shared.handleImageWorkspace(request)
+                case USBManualAcceptanceRequest.operation:
+                    return try await AppModel.shared.handleUSBManualAcceptance(request)
                 case "validation-manual-control": return try await AppModel.shared.handleManualControlValidation(request)
                 case "focus-status":
                     // Read the exact active AVFoundation input capability. This

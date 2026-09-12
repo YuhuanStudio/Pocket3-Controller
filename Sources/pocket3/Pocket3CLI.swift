@@ -19,6 +19,21 @@ import MCP
             if command == "mcp" { try await runMCP(); return }
             if command == "--version" { print("\(Pocket3Product.displayName) \(Pocket3Product.displayVersion)"); return }
             if command == "--help" || command == "help" { usage(); return }
+            if command == USBManualAcceptanceRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "USB manual acceptance requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request = try USBManualAcceptanceRequest(
+                    cliArguments: requestArguments)
+                let reply = try await IPCClient.call(
+                    command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == "devices" { print(try JSONValue.encode(CaptureEngine.devices()).pretty); return }
             if command == "formats" {
                 let id = args.count > 1 ? args[1] : CaptureEngine.devices().first?.id ?? ""
@@ -472,6 +487,8 @@ import MCP
           Developer only: one axis, at most 5 nominal UVC degrees from the exact fresh expected origin.
         pocket3 validation-trajectory-probe --direction left|right|up|down --expected-pan-raw RAW --expected-tilt-raw RAW
           Developer only: fixed 1.2-second USB retarget and hold experiment.
+        pocket3 validation-usb-manual-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--hold-seconds SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute collects bounded pan/tilt holds, zoom progress, fresh-frame evidence, verified Stop/restore and reconnect session fencing through the existing USB owner; it never stores images.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
