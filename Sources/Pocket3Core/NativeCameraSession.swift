@@ -139,6 +139,29 @@ public struct NativeCameraSessionStatus: Codable, Equatable, Sendable {
     public func canIssue(_ command: NativeCameraSessionCommand) -> Bool {
         isReady(for: command)
     }
+
+    public func require(_ command: NativeCameraSessionCommand,
+                        generation callbackGeneration: UInt64? = nil) throws {
+        guard let callbackGeneration else {
+            guard generation != 0, state != .disconnected else {
+                throw NativeCameraSessionTransitionError.noActiveSession
+            }
+            guard state.satisfies(command.minimumReadiness) else {
+                throw NativeCameraSessionTransitionError.commandUnavailable(command: command, state: state)
+            }
+            return
+        }
+        guard callbackGeneration == generation else {
+            throw NativeCameraSessionTransitionError.staleGeneration(expected: generation,
+                                                                      received: callbackGeneration)
+        }
+        guard generation != 0, state != .disconnected else {
+            throw NativeCameraSessionTransitionError.noActiveSession
+        }
+        guard state.satisfies(command.minimumReadiness) else {
+            throw NativeCameraSessionTransitionError.commandUnavailable(command: command, state: state)
+        }
+    }
 }
 
 /// Pure readiness state machine for the native Pocket 3 path.

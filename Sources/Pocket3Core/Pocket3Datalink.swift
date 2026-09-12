@@ -77,6 +77,13 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
     private var nextPresence: TimeInterval = 0
     private var ownerStopVerifier: NativeStopTelemetryVerifier?
     private var telemetrySequenceAdmission = NativeTelemetrySequenceAdmission()
+    private var nativeCommandTransactionID: UUID?
+    private var pendingNativeCommand: (id: UUID, sequence: UInt16, matcher: NativeCommandResponseMatcher,
+                                        observation: (@Sendable (DUMLFrame) -> Data?)?)?
+    private var nativeCommandReply: DUMLFrame?
+    private var nativeCommandObservedPayload: Data?
+    private var nativeCommandObservedUptime: TimeInterval?
+    private var nativeCommandObservationTooLarge = false
 
     public convenience init(clientIdentifier: String = UUID().uuidString.replacingOccurrences(of: "-", with: ""), pairedDeviceID: String? = nil) {
         self.init(io: Pocket3DatalinkSocket(), clientIdentifier: clientIdentifier, pairedDeviceID: pairedDeviceID)
@@ -323,6 +330,157 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
     public func flip(binding: ContinuousGimbalBinding, permit: OperationPermit) async throws -> Pocket3DatalinkActionResult {
         try await nativeAction("flip", payload: Data([0xfe, 9]), binding: binding, permit: permit)
     }
+
+    /// Sends one command through the existing owner queue.  The request's
+    /// logical generation must match the caller's NativeCameraSession status;
+    /// the datalink binding then supplies a second fence for disconnects and
+    /// reconnects.  This method never joins Wi-Fi, starts live view, retries,
+    /// or acquires the ContinuousGimbal lease.
+    public func transact(_ request: NativeCommandTransactionRequest,
+                         readiness: NativeCameraSessionStatus,
+                         permit: OperationPermit = OperationPermit()) async throws -> NativeCommandTransactionResult {
+        guard readiness.generation == request.generation else {
+            throw NativeCommandTransactionError.staleGeneration
+        }
+        guard readiness.isReady(for: request.command) else {
+            throw NativeCommandTransactionError.commandNotReady
+        }
+        let binding = try lock.withLock { () throws -> ContinuousGimbalBinding in
+            guard snapshot.phase == .ready, let binding = snapshot.binding else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            guard nativeCommandTransactionID == nil else {
+                throw NativeCommandTransactionError.nativeBusy
+            }
+            nativeCommandTransactionID = request.id
+            return binding
+        }
+        defer {
+            lock.withLock {
+                if nativeCommandTransactionID == request.id { nativeCommandTransactionID = nil }
+            }
+        }
+        return try await queued(permit: permit) { [self] in
+            executeNativeCommand(request, readiness: readiness, binding: binding, permit: permit)
+        }
+    }
+
+    /// Descriptive spelling for adapters that treat the operation as an
+    /// execution rather than a transport transaction.
+    public func executeNativeCommand(_ request: NativeCommandTransactionRequest,
+                                     readiness: NativeCameraSessionStatus,
+                                     permit: OperationPermit = OperationPermit()) async throws -> NativeCommandTransactionResult {
+        try await transact(request, readiness: readiness, permit: permit)
+    }
+
+    private func executeNativeCommand(_ request: NativeCommandTransactionRequest,
+                                      readiness: NativeCameraSessionStatus,
+                                      binding: ContinuousGimbalBinding,
+                                      permit: OperationPermit) -> NativeCommandTransactionResult {
+        var result = NativeCommandTransactionResult(id: request.id, command: request.command,
+            generation: request.generation)
+        result.startedUptime = io.now
+        defer {
+            pendingNativeCommand = nil
+            nativeCommandReply = nil
+            nativeCommandObservedPayload = nil
+            nativeCommandObservedUptime = nil
+            nativeCommandObservationTooLarge = false
+        }
+        do {
+            try checkpoint(binding, permit: permit)
+            // This check is owner-queue serialized, so a transaction can
+            // never steal an active ContinuousGimbal lease.  A caller must
+            // stop the lease explicitly before trying again.
+            guard activeLease == nil, velocityPermit == nil else {
+                throw NativeCommandTransactionError.nativeBusy
+            }
+            guard readiness.generation == request.generation else {
+                throw NativeCommandTransactionError.staleGeneration
+            }
+            guard readiness.isReady(for: request.command) else {
+                throw NativeCommandTransactionError.commandNotReady
+            }
+            let sequence = dumlSequence
+            pendingNativeCommand = (request.id, sequence, request.responseMatcher,
+                                    request.observationHandler())
+            nativeCommandReply = nil
+            nativeCommandObservedPayload = nil
+            nativeCommandObservedUptime = nil
+            nativeCommandObservationTooLarge = false
+            try sendFrame(request.frame.frame(sequence: sequence), binding: binding,
+                          permit: permit, requireReady: true)
+            result.sequence = sequence
+            result.submitted = true
+            result.submittedUptime = io.now
+
+            let deadline = io.now + request.timeout
+            while (nativeCommandReply == nil || (request.hasObservation && nativeCommandObservedPayload == nil))
+                  && io.now < deadline {
+                try checkpoint(binding, permit: permit)
+                let remaining = max(0, deadline - io.now)
+                let timeoutMS = max(0, min(20, Int((remaining * 1_000).rounded(.down))))
+                _ = try receive(binding, timeoutMS: timeoutMS, permit: permit)
+                try maintenance(binding)
+            }
+            guard let response = nativeCommandReply else {
+                if nativeCommandObservationTooLarge {
+                    result.end = .failed
+                    result.failureCode = "native_command_observation_too_large"
+                } else {
+                    result.end = .timedOut
+                    result.failureCode = request.hasObservation && nativeCommandObservedPayload != nil
+                        ? "native_command_ack_timeout" : "native_command_timeout"
+                }
+                if let observed = nativeCommandObservedPayload {
+                    result.observed = true; result.observedPayload = observed
+                    result.observedUptime = nativeCommandObservedUptime
+                }
+                result.finishedUptime = io.now
+                return result
+            }
+            result.responseReceived = true
+            result.responseStatus = response.payload.first
+            let responseAt = io.now
+            result.acknowledged = response.payload.first == 0
+            if result.acknowledged { result.acknowledgedUptime = responseAt }
+            if nativeCommandObservationTooLarge {
+                result.end = .failed
+                result.failureCode = "native_command_observation_too_large"
+                result.finishedUptime = responseAt
+                return result
+            }
+            if let observed = nativeCommandObservedPayload {
+                result.observed = true
+                result.observedPayload = observed
+                result.observedUptime = nativeCommandObservedUptime ?? responseAt
+            } else if request.hasObservation {
+                result.end = .timedOut
+                result.failureCode = "native_command_observation_timeout"
+                result.finishedUptime = responseAt
+                return result
+            }
+            if !result.acknowledged {
+                result.end = .rejected
+                result.failureCode = result.responseStatus == nil ? "native_command_ack_invalid" : "native_command_nack"
+            } else if result.observed { result.end = .observed }
+            else { result.end = .acknowledged }
+            result.finishedUptime = responseAt
+            return result
+        } catch {
+            result.end = nativeCommandTransactionEnd(for: error)
+            result.failureCode = code(error)
+            result.finishedUptime = io.now
+            return result
+        }
+    }
+
+    private func nativeCommandTransactionEnd(for error: Error) -> NativeCommandTransactionEnd {
+        if error is CancellationError || code(error) == "cancelled" { return .cancelled }
+        if error is ContinuousGimbalError || code(error) == "native_connection_changed" { return .generationChanged }
+        return .failed
+    }
+
     private func nativeAction(_ name: String, payload: Data, binding: ContinuousGimbalBinding, permit: OperationPermit) async throws -> Pocket3DatalinkActionResult {
         let epoch = try permit.perform {
             try lock.withLock { () throws -> UInt64 in
@@ -402,7 +560,8 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
     private func checkpoint(_ binding: ContinuousGimbalBinding, permit: OperationPermit, epoch: UInt64? = nil) throws {
         try permit.perform {
             try lock.withLock {
-                guard snapshot.binding == binding, epoch == nil || epoch == motionEpoch else { throw ContinuousGimbalError.staleLease }
+                guard snapshot.binding == binding, disconnectTask == nil,
+                      epoch == nil || epoch == motionEpoch else { throw ContinuousGimbalError.staleLease }
             }
         }
     }
@@ -494,9 +653,28 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
             accepted = true
             if type == .handshake && datagram.payload.count >= 2 { handshake = true }
             lock.withLock { snapshot.receivedDatagrams += 1; snapshot.transmitLagSlots = Int(window?.transmitLagSlots ?? 0) }
-            for frame in Pocket3DatalinkProtocol.controlFrames(in: datagram) where frame.destination & 0x1f == 2 {
+            for frame in Pocket3DatalinkProtocol.controlFrames(in: datagram) {
+                let matchesNativeCommand = pendingNativeCommand.map {
+                    $0.matcher.matches(frame, sequence: $0.sequence)
+                } == true
+                if matchesNativeCommand, nativeCommandReply == nil { nativeCommandReply = frame }
+                if nativeCommandObservedPayload == nil,
+                   let handler = pendingNativeCommand?.observation,
+                   let observed = handler(frame) {
+                    if observed.count <= DUMLCodec.maximumPayloadLength {
+                        nativeCommandObservedPayload = observed
+                        nativeCommandObservedUptime = io.now
+                    } else {
+                        nativeCommandObservationTooLarge = true
+                    }
+                }
+                guard frame.destination & 0x1f == 2 else { continue }
                 if frame.commandSet == 4, frame.commandID == 0x50, frame.source & 0x1f == 4, !frame.payload.isEmpty {
-                    if frame.flags & 0x80 != 0, pendingHeartbeats.removeValue(forKey: frame.sequence) != nil {
+                    if matchesNativeCommand {
+                        // A gimbal 04/50 GET shares the heartbeat command ID;
+                        // its exact transaction match must not be counted as
+                        // an unmatched heartbeat.
+                    } else if frame.flags & 0x80 != 0, pendingHeartbeats.removeValue(forKey: frame.sequence) != nil {
                         lock.withLock { heartbeatTime = io.now }
                     } else { lock.withLock { snapshot.unmatchedHeartbeatReplies += 1 } }
                 } else if frame.commandSet == 4, frame.commandID == 5, frame.source & 0x1f == 4, frame.payload.count >= 6, telemetryIsNew {
@@ -565,6 +743,10 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
         timer?.cancel(); timer = nil; io.close(); window = nil; ownerReady = false
         dumlSequence = 0xa000; commandCounter = 0; activeLease = nil; retiredLeases = []
         pendingHeartbeats = [:]; nativeActionSequence = nil; nativeActionReply = nil; nextAck = 0
+        pendingNativeCommand = nil; nativeCommandReply = nil
+        nativeCommandObservedPayload = nil; nativeCommandObservedUptime = nil
+        nativeCommandObservationTooLarge = false
+        lock.withLock { nativeCommandTransactionID = nil }
         telemetrySequenceAdmission = NativeTelemetrySequenceAdmission()
     }
     private func closeOwner(binding: ContinuousGimbalBinding?, phase: Pocket3DatalinkPhase, errorCode: String?) {
@@ -579,6 +761,16 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
     }
     private func code(_ error: Error) -> String {
         if error is CancellationError { return "cancelled" }
+        if let error = error as? NativeCommandTransactionError {
+            switch error {
+            case .invalidPayload: return "native_command_invalid_payload"
+            case .invalidTimeout: return "native_command_invalid_timeout"
+            case .commandNotReady: return "native_command_not_ready"
+            case .staleGeneration: return "native_command_generation_changed"
+            case .datalinkUnavailable: return "native_datalink_unavailable"
+            case .nativeBusy: return "native_busy"
+            }
+        }
         return (error as? BridgeFailure)?.code ?? "native_protocol_error"
     }
     deinit { timer?.cancel(); io.close() }
