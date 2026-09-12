@@ -84,6 +84,30 @@ private final class FakePocket3Wire: Pocket3DatalinkIO, @unchecked Sendable {
     func close() { lock.withLock { opened = false; incoming = [] } }
 }
 
+private final class RecordingPocket3LiveViewSink: @unchecked Sendable,
+    Pocket3DatalinkLiveViewSink {
+    private let lock = NSLock()
+    private var attached: [UInt64] = []
+    private var received: [UInt64] = []
+    private var flushed: [UInt64] = []
+
+    var attachGenerations: [UInt64] { lock.withLock { attached } }
+    var receivedGenerations: [UInt64] { lock.withLock { received } }
+    var flushGenerations: [UInt64] { lock.withLock { flushed } }
+
+    func attach(generation: UInt64) {
+        lock.withLock { attached.append(generation) }
+    }
+
+    func receive(_: DJIUDPDatagram, generation: UInt64) {
+        lock.withLock { received.append(generation) }
+    }
+
+    func flush(generation: UInt64) {
+        lock.withLock { flushed.append(generation) }
+    }
+}
+
 @Suite("Explicit Pocket 3 native datalink with fake I/O") struct Pocket3DatalinkTests {
     private func hex(_ string: String) -> Data {
         let c = Array(string)
@@ -226,5 +250,31 @@ private final class FakePocket3Wire: Pocket3DatalinkIO, @unchecked Sendable {
             let frames = Pocket3DatalinkProtocol.controlFrames(in: datagram)
             #expect(frames == (type == .video ? [] : [outer]))
         }
+    }
+
+    @Test func optionalLiveViewSinkIsPassiveAndGenerationFenced() async throws {
+        let wire = FakePocket3Wire(), link = make(wire)
+        let binding = try await link.connect()
+        let sink = RecordingPocket3LiveViewSink()
+        let before = wire.sentCommands.count
+        let token = link.attachLiveViewSink(sink, binding: binding)
+
+        #expect(link.hasLiveViewSink)
+        #expect(sink.attachGenerations == [binding.generation])
+        #expect(wire.sentCommands.count == before)
+        #expect(!wire.sentCommands.contains {
+            $0.commandSet == 9 && $0.commandID == 0xa8
+        })
+
+        link.detachLiveViewSink(Pocket3DatalinkLiveViewSinkToken(
+            generation: binding.generation + 1))
+        #expect(sink.flushGenerations.isEmpty)
+        #expect(link.hasLiveViewSink)
+        link.detachLiveViewSink(token)
+        #expect(sink.flushGenerations == [binding.generation])
+        #expect(!link.hasLiveViewSink)
+
+        _ = await link.disconnect()
+        #expect(sink.flushGenerations == [binding.generation])
     }
 }

@@ -60,6 +60,10 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
     private var telemetryTime: TimeInterval?
     private var disconnectTask: Task<Pocket3DatalinkDisconnectResult, Never>?
     private var pendingOperations = 0
+    // Optional receive-only live-view consumer.  The transport remains the
+    // sole socket/control owner; this slot is never constructed by default.
+    private var liveViewSink: (token: Pocket3DatalinkLiveViewSinkToken,
+                               sink: any Pocket3DatalinkLiveViewSink)?
 
     // Owner-queue state only.
     private var window: DJIUDPWindowState?
@@ -115,6 +119,58 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
             if result.battery?.isFresh(now: Date()) != true { result.battery = nil }
             return result
         }
+    }
+
+    /// Attach one passive pktType-02 consumer to an exact datalink
+    /// generation.  Replacing an existing sink flushes the old sink first;
+    /// this method never sends a packet or enables live view.
+    @discardableResult
+    public func attachLiveViewSink(
+        _ sink: any Pocket3DatalinkLiveViewSink,
+        generation: UInt64
+    ) -> Pocket3DatalinkLiveViewSinkToken {
+        let token = Pocket3DatalinkLiveViewSinkToken(generation: generation)
+        guard generation != 0 else { return token }
+        let replaced = lock.withLock {
+            let old = liveViewSink
+            liveViewSink = (token: token, sink: sink)
+            return old
+        }
+        if let replaced {
+            replaced.sink.flush(generation: replaced.token.generation)
+        }
+        sink.attach(generation: generation)
+        return token
+    }
+
+    /// Binding overload that derives the generation from the caller's exact
+    /// connection lease.
+    @discardableResult
+    public func attachLiveViewSink(
+        _ sink: any Pocket3DatalinkLiveViewSink,
+        binding: ContinuousGimbalBinding
+    ) -> Pocket3DatalinkLiveViewSinkToken {
+        attachLiveViewSink(sink, generation: binding.generation)
+    }
+
+    public func detachLiveViewSink(_ token: Pocket3DatalinkLiveViewSinkToken) {
+        let detached = lock.withLock { () -> (Pocket3DatalinkLiveViewSinkToken,
+                                               any Pocket3DatalinkLiveViewSink)? in
+            guard let current = liveViewSink, current.token == token else {
+                return nil
+            }
+            liveViewSink = nil
+            return current
+        }
+        if let detached {
+            detached.1.flush(generation: detached.0.generation)
+        }
+    }
+
+    /// Diagnostic state only; attaching a sink does not imply command or
+    /// decoder readiness.
+    public var hasLiveViewSink: Bool {
+        lock.withLock { liveViewSink != nil }
     }
 
     /// The caller must explicitly select the Pocket network beforehand. A
@@ -667,6 +723,16 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
             accepted = true
             if type == .handshake && datagram.payload.count >= 2 { handshake = true }
             lock.withLock { snapshot.receivedDatagrams += 1; snapshot.transmitLagSlots = Int(window?.transmitLagSlots ?? 0) }
+            if type == .video,
+               let sink = lock.withLock({ () -> (any Pocket3DatalinkLiveViewSink)? in
+                guard let current = liveViewSink,
+                      current.token.generation == generation else { return nil }
+                return current.sink
+            }) {
+                // Only the already accepted type-02 datagram is forwarded.
+                // The sink has no path back into this transport's sender.
+                sink.receive(datagram, generation: generation)
+            }
             for frame in Pocket3DatalinkProtocol.controlFrames(in: datagram) {
                 let matchesNativeCommand = pendingNativeCommand.map {
                     $0.matcher.matches(frame, sequence: $0.sequence)
@@ -754,6 +820,15 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
         }
     }
     private func resetOwner() {
+        let detachedSink = lock.withLock { () -> (Pocket3DatalinkLiveViewSinkToken,
+                                                   any Pocket3DatalinkLiveViewSink)? in
+            let value = liveViewSink
+            liveViewSink = nil
+            return value
+        }
+        if let detachedSink {
+            detachedSink.1.flush(generation: detachedSink.0.generation)
+        }
         timer?.cancel(); timer = nil; io.close(); window = nil; ownerReady = false
         dumlSequence = 0xa000; commandCounter = 0; activeLease = nil; retiredLeases = []
         pendingHeartbeats = [:]; nativeActionSequence = nil; nativeActionReply = nil; nextAck = 0

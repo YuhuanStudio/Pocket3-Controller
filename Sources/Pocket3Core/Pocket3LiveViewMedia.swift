@@ -165,6 +165,10 @@ public struct Pocket3LiveViewMediaMessage: Codable, Sendable, Equatable {
     public let crossedGroupBoundary: Bool
     public let codec: VideoToolboxCodec?
     public let normalizedData: Data?
+    /// The current bounded codec parameter-set cache.  These are the raw NAL
+    /// units (without Annex-B start codes) needed by a decoder adapter when a
+    /// completed message is handed off after the normalizer has admitted it.
+    public let parameterSets: [Data]
     public let decodeReadiness: Pocket3LiveViewDecodeReadiness
     public let nalTypes: [UInt8]
     public let containsIDR: Bool
@@ -185,7 +189,8 @@ public struct Pocket3LiveViewMediaMessage: Codable, Sendable, Equatable {
     public var timestampCounter: UInt32 { firstHeader.timestampCounter }
 
     var memoryCost: Int {
-        data.count + (normalizedData?.count ?? 0)
+        data.count + (normalizedData?.count ?? 0) +
+            parameterSets.reduce(0) { $0 + $1.count }
     }
 }
 
@@ -613,6 +618,7 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
             groupIDs: groupIDs,
             crossedGroupBoundary: crossedGroupBoundary,
             codec: nil, normalizedData: nil,
+            parameterSets: [],
             decodeReadiness: .unknown, nalTypes: [],
             containsIDR: false, containsIRAP: false,
             parameterSetsChanged: false,
@@ -628,7 +634,8 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
         guard let detected else {
             codecDetectionFailureCount &+= 1
             result = with(result, codec: nil, normalizedData: nil,
-                          decodeReadiness: .unknown, nalTypes: [],
+                          parameterSets: [], decodeReadiness: .unknown,
+                          nalTypes: [],
                           containsIDR: false, containsIRAP: false,
                           parameterSetsChanged: false,
                           videoToolboxInputValidated: false,
@@ -657,6 +664,8 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
                     != nil
                 result = with(result, codec: .h264,
                     normalizedData: normalized.data,
+                    parameterSets: [h264Normalizer.cachedSPS,
+                                    h264Normalizer.cachedPPS].compactMap { $0 },
                     decodeReadiness: map(normalized.readiness),
                     nalTypes: normalized.nalUnits.map(\.type),
                     containsIDR: normalized.containsIDR,
@@ -669,6 +678,8 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
                 normalizationFailureCount &+= 1
                 result = with(result, codec: .h264,
                     normalizedData: nil,
+                    parameterSets: [h264Normalizer.cachedSPS,
+                                    h264Normalizer.cachedPPS].compactMap { $0 },
                     decodeReadiness: map(h264Normalizer.decodeReadiness),
                     nalTypes: [],
                     containsIDR: false, containsIRAP: false,
@@ -687,6 +698,9 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
                     != nil
                 result = with(result, codec: .hevc,
                     normalizedData: normalized.data,
+                    parameterSets: [hevcNormalizer.cachedVPS,
+                                    hevcNormalizer.cachedSPS,
+                                    hevcNormalizer.cachedPPS].compactMap { $0 },
                     decodeReadiness: map(normalized.readiness),
                     nalTypes: normalized.nalUnits.map(\.type),
                     containsIDR: false,
@@ -699,6 +713,9 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
                 normalizationFailureCount &+= 1
                 result = with(result, codec: .hevc,
                     normalizedData: nil,
+                    parameterSets: [hevcNormalizer.cachedVPS,
+                                    hevcNormalizer.cachedSPS,
+                                    hevcNormalizer.cachedPPS].compactMap { $0 },
                     decodeReadiness: map(hevcNormalizer.decodeReadiness),
                     nalTypes: [],
                     containsIDR: false, containsIRAP: false,
@@ -716,6 +733,7 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
         _ value: Pocket3LiveViewMediaMessage,
         codec: VideoToolboxCodec?,
         normalizedData: Data?,
+        parameterSets: [Data],
         decodeReadiness: Pocket3LiveViewDecodeReadiness,
         nalTypes: [UInt8],
         containsIDR: Bool,
@@ -733,6 +751,7 @@ public struct Pocket3LiveViewMediaAssembler: Sendable {
             fragmentCount: value.fragmentCount, groupIDs: value.groupIDs,
             crossedGroupBoundary: value.crossedGroupBoundary,
             codec: codec, normalizedData: normalizedData,
+            parameterSets: parameterSets,
             decodeReadiness: decodeReadiness, nalTypes: nalTypes,
             containsIDR: containsIDR, containsIRAP: containsIRAP,
             parameterSetsChanged: parameterSetsChanged,
