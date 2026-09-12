@@ -1154,6 +1154,9 @@
 
 "Auto" = "自動";
 "Prefer NV12" = "優先 NV12";
+"Webcam output format" = "Webcam 輸出格式";
+"Select a webcam output format" = "選擇 Webcam 輸出格式";
+"Body recording formats such as 3K portrait are separate from currently advertised Webcam UVC formats." = "機內錄影格式（例如直幅 3K）與目前宣告的 Webcam UVC 格式不同。";
 "USB input format" = "USB 輸入格式";
 "This input format is not advertised for the selected mode." = "相機未宣告支援所選影像模式與此輸入格式的組合。";
 

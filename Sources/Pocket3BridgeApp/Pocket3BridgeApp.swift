@@ -790,7 +790,10 @@ struct RootView: View {
                             }
                             if !model.ready || showCaptureSettings {
                             YunSelect(selection: $model.selectedID, placeholder: model.cameraSelectionPlaceholder, options: (model.status?.devices ?? []).map { .init(value: $0.id, title: $0.name) })
-                            YunSelect(selection: $model.captureModeID, placeholder: loc("Select a capture format"), options: model.availableModes.map { .init(value: $0.id, title: $0.compactTitle, detail: loc($0.isPortrait ? "Portrait" : "Landscape")) })
+                            VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                                Text(loc("Webcam output format")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                                YunSelect(selection: $model.captureModeID, placeholder: loc("Select a webcam output format"), options: model.availableModes.map { .init(value: $0.id, title: $0.compactTitle, detail: loc($0.isPortrait ? "Portrait" : "Landscape")) })
+                            }
                             VStack(alignment: .leading, spacing: Yun.Space.sm) {
                                 Text(loc("USB input format")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                                 YunSelect(selection: $model.capturePixelFormat, options: model.capturePixelFormatOptions)
@@ -803,6 +806,7 @@ struct RootView: View {
                                 YunSelect(selection: $model.captureOutputPolicy, options: model.captureOutputPolicyOptions)
                             }
                             Text(loc("Match the shooting orientation on Pocket 3 to this format to avoid black borders.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
+                            Text(loc("Body recording formats such as 3K portrait are separate from currently advertised Webcam UVC formats.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary).fixedSize(horizontal: false, vertical: true)
                             Button(model.isConnecting ? loc("Connecting…") : model.ready ? loc("Reconnect") : loc("Connect camera")) { Task { await model.connect() } }.buttonStyle(YunButtonStyle(.primary)).disabled(!model.canConnect)
                             Text(loc("Choose Webcam mode on the camera after connecting USB.")).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                             } else if let frame = model.status?.capture.frame {

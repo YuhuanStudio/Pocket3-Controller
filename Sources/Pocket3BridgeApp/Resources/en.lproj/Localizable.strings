@@ -1154,6 +1154,9 @@
 
 "Auto" = "Auto";
 "Prefer NV12" = "Prefer NV12";
+"Webcam output format" = "Webcam output format";
+"Select a webcam output format" = "Select a webcam output format";
+"Body recording formats such as 3K portrait are separate from currently advertised Webcam UVC formats." = "Body recording formats such as 3K portrait are separate from currently advertised Webcam UVC formats.";
 "USB input format" = "USB input format";
 "This input format is not advertised for the selected mode." = "This input format is not advertised for the selected mode.";
 
