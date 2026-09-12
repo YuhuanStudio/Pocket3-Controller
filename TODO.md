@@ -30,6 +30,9 @@
 - [x] Native setting developer validation：WB／focus／color／Showcase已接App route、CLI與唯一datalink executor；預設dry-run，exact identity、fresh baseline、no-op、single send、ACK＋matching readback、partial/cancel/no-retry皆保留。CLI Kelvin字串解析已由完整Release gate抓出並修正。
 - [x] Audio DSP developer validation：A0 GET→單次9F byte-2 patch→matching A0 readback；variable-length完整blob與未知bytes保留，未知selector／stale baseline拒絕，execute才進既有owner。
 - [x] Photo／Panorama／Timelapse系列typed coordinator：mode、aspect、JPEG/RAW、countdown、shutter、pano type/RAW、timelapse/hyperlapse/motionlapse bounded config與lifecycle已建模；mode-aware、fresh baseline、single request與matching readback生效。第九批Release gate共785項通過（Core648、Intelligence44、Evaluation1、App86、XCTest6）。
+- [x] Camera capture developer validation：Photo／Panorama／Timelapse各操作已接App route、CLI與唯一datalink executor；預設dry-run，execute才單次送出，side-effect、mode/fresh baseline、ACK＋matching/terminal readback、timeout/cancel/stale partial evidence均保留。
+- [x] Media protocol foundation：playback enter/exit、presence hold、media list/chunk bounded reassembly、cursor/counter、HTTP `/v2` range、favorite candidate與strict delete encoder已型別化；尚未接Wi-Fi executor或一般UI，delete不會送出。
+- [x] 進階設定evidence inventory：Med-Tele、breathing compensation、sharpness、noise reduction、ISO limit、audio channel、Vocal Boost、Selfie Flip已分清official-only與公開協議candidate；無schema者不猜opcode。第十批Release gate共804項通過（Core667、Intelligence44、Evaluation1、App86、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
