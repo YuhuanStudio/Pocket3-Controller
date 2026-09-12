@@ -12,6 +12,9 @@
 - [x] Phase 1 body coordinator：機身 `02/02` start／stop 只以同 session/generation 的新鮮 `02/80` terminal state 完成；transition與ACK都不冒稱完成。`02/18`格式設定需 matching `cam_video_param_v2`，合法 capability table 只證明可選，不證明已套用。
 - [x] Phase 1進階設定資料層：audio DSP `02/A0`／`02/9F`保留variable-length完整blob，只從同session新鮮baseline修改已確認欄位；Product Showcase與color candidate亦已型別化，未送真機。
 - [x] Camera／Diagnostics新增唯讀機身能力區塊，呈現錄影狀態、3K直拍／方形與合法FPS、native/live readiness、A–E evidence及不可用原因；一般UI沒有candidate writer，footer未變。第三批Release gate共698項通過（Core567、Intelligence44、Evaluation1、App80、XCTest6）；三語469字串、62張UI parity與7個Yun共用設計檔通過。
+- [x] Developer-only `validation-wireless-body`／CLI：預設dry-run；只有明確execute、command-ready、exact session/generation、新鮮baseline與合法capability才進可注入executor。App目前未注入owner時明確拒絕，不會送硬體、加入Wi-Fi或盲目重試。
+- [x] ActiveTrack唯讀 typed state：A5 idle／locked與A89 subject box、unknown raw、freshness、session/peripheral/generation store已完成；可由既有event recording與`camera_body_status` context投影，A6 writer仍未開放。
+- [x] 機身能力UI去除Main重複入口；Camera以16:9／1:1／9:16群組呈現，Diagnostics預設收合。raw布林改為Yun badge，不把工程字串堆給使用者；footer未變。第四批Release gate共711項通過（Core579、Intelligence44、Evaluation1、App81、XCTest6），62張UI parity與獨立560px render已檢視。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
