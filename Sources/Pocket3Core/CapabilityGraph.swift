@@ -558,8 +558,8 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
         values.max() ?? fallback
     }
 
-    private static func finitePositive(_ value: Double) -> Double? {
-        guard value.isFinite, value > 0 else { return nil }
+    private static func finitePositive(_ value: Double?) -> Double? {
+        guard let value, value.isFinite, value > 0 else { return nil }
         return value
     }
 }
