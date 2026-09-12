@@ -589,6 +589,24 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Returns the same single-owner transaction boundary for native WB,
+    /// focus, color and Product Showcase validation. It never creates another
+    /// datalink; the setting service owns the one-request/readback policy.
+    func nativeSettingValidationAdapter() -> NativeSettingValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeSettingValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection, expectedLink: expectedLink)
+        }
+    }
+
     /// Executes exactly one already-prepared transaction through the current
     /// Pocket3Datalink owner.  The surrounding service owns command-specific
     /// readback rules; this method owns model-level identity and busy fences.

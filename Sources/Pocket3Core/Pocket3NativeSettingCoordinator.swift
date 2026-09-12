@@ -454,6 +454,19 @@ public struct Pocket3NativeSettingCoordinator: Sendable {
         return true
     }
 
+    /// Records an execution gate failure without creating another request or
+    /// touching a transport. The prepared request remains available as
+    /// partial evidence for a developer validation result.
+    @discardableResult
+    public mutating func blockExecution(reason: String) -> Bool {
+        guard phase == .awaitingAcknowledgment || phase == .awaitingReadback else {
+            return false
+        }
+        phase = .failed
+        failureCode = String(reason.prefix(128))
+        return true
+    }
+
     public var result: Pocket3NativeSettingResult? {
         guard let target, let baseline else { return nil }
         return Pocket3NativeSettingResult(target: target, sessionID: sessionID,
