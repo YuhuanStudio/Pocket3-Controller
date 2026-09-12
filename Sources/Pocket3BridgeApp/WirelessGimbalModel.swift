@@ -85,10 +85,13 @@ final class WirelessGimbalModel {
     @ObservationIgnored private var credentials: BluetoothWiFiCredentials?
     @ObservationIgnored private var nativeSession = NativeCameraSession()
     @ObservationIgnored private var nativeSessionBluetoothID: UUID?
-    @ObservationIgnored private var datalink: Pocket3Datalink?
+    @ObservationIgnored var datalink: Pocket3Datalink?
     @ObservationIgnored private var scheduler: ContinuousGimbalScheduler?
-    @ObservationIgnored private var binding: ContinuousGimbalBinding?
-    @ObservationIgnored private var generation = UUID()
+    @ObservationIgnored var binding: ContinuousGimbalBinding?
+    @ObservationIgnored var generation = UUID()
+    @ObservationIgnored var liveViewCoordinator: Pocket3LiveViewSessionCoordinator?
+    @ObservationIgnored var liveViewAdapter: Pocket3LiveViewDatalinkAdapter?
+    @ObservationIgnored var liveViewSink: Pocket3LiveViewMediaSink?
     @ObservationIgnored private var disconnectTask: Task<Void, Never>?
     @ObservationIgnored private var joinTask: Task<Void, Error>?
     @ObservationIgnored private var joinRequest: CameraWiFiJoinRequest?
@@ -452,6 +455,7 @@ final class WirelessGimbalModel {
         settingsReadTask?.cancel()
         bluetooth.cancelNativeProbe()
         nativeBodyValidationPermit?.invalidate()
+        invalidateLiveViewValidation()
         cancelPreset()
         joinRequest?.cancel(); joinTask?.cancel()
     }
@@ -465,6 +469,7 @@ final class WirelessGimbalModel {
     }
     private func disconnectNativeOnly() async {
         cancelPreset()
+        invalidateLiveViewValidation()
         if let disconnectTask { await disconnectTask.value; return }
         let oldLink = datalink, oldBinding = binding, oldScheduler = scheduler
         generation = UUID()

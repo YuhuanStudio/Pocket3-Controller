@@ -74,6 +74,29 @@ public protocol Pocket3LiveViewCommandExecutor: Sendable {
     ) async throws -> NativeCommandTransactionResult
 }
 
+/// Closure-backed executor for developer routes that need one extra model
+/// identity fence around the existing datalink owner.
+public struct Pocket3LiveViewCommandExecutorAdapter:
+    Pocket3LiveViewCommandExecutor, Sendable {
+    public typealias Execute = @Sendable (
+        _ request: NativeCommandTransactionRequest,
+        _ readiness: NativeCameraSessionStatus
+    ) async throws -> NativeCommandTransactionResult
+
+    private let body: Execute
+
+    public init(_ body: @escaping Execute) {
+        self.body = body
+    }
+
+    public func execute(
+        _ request: NativeCommandTransactionRequest,
+        readiness: NativeCameraSessionStatus
+    ) async throws -> NativeCommandTransactionResult {
+        try await body(request, readiness)
+    }
+}
+
 public enum Pocket3LiveViewSessionCommandKind: String, Codable, Sendable,
     Equatable, CaseIterable {
     case preEnableHint
@@ -924,6 +947,8 @@ public final class Pocket3LiveViewDatalinkAdapter: @unchecked Sendable,
 
     private let lock = NSLock()
     private var attachment: Pocket3DatalinkLiveViewSinkToken?
+    private var transportGeneration: UInt64?
+    private var logicalGeneration: UInt64?
 
     public init(datalink: Pocket3Datalink,
                 sink: Pocket3LiveViewMediaSink) {
@@ -935,21 +960,49 @@ public final class Pocket3LiveViewDatalinkAdapter: @unchecked Sendable,
     public func attach(binding: ContinuousGimbalBinding)
         -> Pocket3DatalinkLiveViewSinkToken {
         let token = datalink.attachLiveViewSink(sink, binding: binding)
-        lock.withLock { attachment = token }
+        lock.withLock {
+            attachment = token
+            transportGeneration = binding.generation
+            logicalGeneration = nil
+        }
         return token
     }
 
     public func attach(generation: UInt64) {
-        let token = datalink.attachLiveViewSink(sink, generation: generation)
-        lock.withLock { attachment = token }
+        let physical = lock.withLock {
+            transportGeneration ?? generation
+        }
+        let token = datalink.attachLiveViewSink(sink, generation: physical)
+        lock.withLock {
+            attachment = token
+            transportGeneration = physical
+            logicalGeneration = generation
+        }
+    }
+
+    /// Bind the transport token to the native-session generation used by
+    /// command/readiness requests.  Pocket3Datalink and NativeCameraSession
+    /// intentionally have independent counters; this mapping keeps both
+    /// fences exact without pretending they are the same counter.
+    @discardableResult
+    public func attach(binding: ContinuousGimbalBinding,
+                       logicalGeneration: UInt64)
+        -> Pocket3DatalinkLiveViewSinkToken {
+        let token = attach(binding: binding)
+        lock.withLock { self.logicalGeneration = logicalGeneration }
+        return token
     }
 
     public func flush(generation: UInt64) {
         let token = lock.withLock { () -> Pocket3DatalinkLiveViewSinkToken? in
-            guard let attachment, attachment.generation == generation else {
+            guard let attachment,
+                  logicalGeneration == generation ||
+                  (logicalGeneration == nil && attachment.generation == generation) else {
                 return nil
             }
             self.attachment = nil
+            transportGeneration = nil
+            logicalGeneration = nil
             return attachment
         }
         if let token {
@@ -961,7 +1014,17 @@ public final class Pocket3LiveViewDatalinkAdapter: @unchecked Sendable,
 
     public func latestMediaObservation()
         -> Pocket3LiveViewMediaObservation? {
-        sink.latestMediaObservation()
+        guard let observation = sink.latestMediaObservation() else {
+            return nil
+        }
+        guard let logical = lock.withLock({ logicalGeneration }) else {
+            return observation
+        }
+        return Pocket3LiveViewMediaObservation(
+            generation: logical, messageID: observation.messageID,
+            codec: observation.codec, codecReady: observation.codecReady,
+            hasRandomAccessPoint: observation.hasRandomAccessPoint,
+            receivedUptime: observation.receivedUptime)
     }
 
     public func execute(

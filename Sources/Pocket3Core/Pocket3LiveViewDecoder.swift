@@ -710,10 +710,15 @@ public final class Pocket3LiveViewVideoToolboxDecoder: @unchecked Sendable,
 /// remain available through ``dequeueMessage()`` and no decode is attempted.
 public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
     Pocket3DatalinkLiveViewSink {
-    public let sessionID: UInt16
+    /// A zero session ID enables the developer datalink adapter to bind the
+    /// assembler to the first admitted UDP session without guessing the
+    /// private transport cursor. Explicit callers may continue to provide a
+    /// known nonzero session ID.
+    public private(set) var sessionID: UInt16
     public let limits: Pocket3LiveViewMediaLimits
 
     private let lock = NSLock()
+    private let autoSessionID: Bool
     private var assembler: Pocket3LiveViewMediaAssembler
     private let decoderService: Pocket3LiveViewDecodeService?
     private var activeGeneration: UInt64?
@@ -730,6 +735,7 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
     ) throws {
         self.sessionID = sessionID
         self.limits = limits
+        self.autoSessionID = sessionID == 0
         self.assembler = try Pocket3LiveViewMediaAssembler(
             sessionID: sessionID, generation: generation, limits: limits)
         self.decoderService = decoderService
@@ -737,7 +743,7 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
     }
 
     public convenience init(
-        sessionID: UInt16,
+        sessionID: UInt16 = 0,
         generation: UInt64 = 1,
         limits: Pocket3LiveViewMediaLimits = .default,
         decoder: any Pocket3LiveViewDecoder,
@@ -795,7 +801,15 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
         guard generation != 0 else { return }
         lock.withLock {
             activeGeneration = generation
-            try? assembler.reset(to: generation)
+            if autoSessionID {
+                if let fresh = try? Pocket3LiveViewMediaAssembler(
+                    sessionID: 0, generation: generation, limits: limits) {
+                    assembler = fresh
+                    sessionID = 0
+                }
+            } else {
+                try? assembler.reset(to: generation)
+            }
             lastErrorCode = nil
             staleDatagramCount = 0
             assemblerErrorCount = 0
@@ -816,6 +830,12 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
             return
         }
         do {
+            if autoSessionID, sessionID == 0 {
+                assembler = try Pocket3LiveViewMediaAssembler(
+                    sessionID: datagram.header.sessionID,
+                    generation: generation, limits: limits)
+                sessionID = datagram.header.sessionID
+            }
             if let message = try assembler.consume(
                 datagram,
                 receivedUptime: receivedUptime,
@@ -844,7 +864,15 @@ public final class Pocket3LiveViewMediaSink: @unchecked Sendable,
         let shouldFlush = lock.withLock { () -> Bool in
             guard activeGeneration == generation else { return false }
             activeGeneration = nil
-            assembler.reset()
+            if autoSessionID {
+                if let fresh = try? Pocket3LiveViewMediaAssembler(
+                    sessionID: 0, generation: generation, limits: limits) {
+                    assembler = fresh
+                    sessionID = 0
+                }
+            } else {
+                assembler.reset()
+            }
             latestObservationValue = nil
             return true
         }

@@ -108,7 +108,7 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == NativeAudioDSPValidationRequest.operation {
                     guard args.contains("--hardware-validation") else {
@@ -222,6 +222,21 @@ import MCP
                         cliArguments: requestArguments)
                     let reply = try await IPCClient.call(command,
                         arguments: request.arguments, address: bridgeAddress)
+                    print(reply.result?.pretty ?? "{}")
+                    return
+                }
+                if command == Pocket3LiveViewValidationRequest.operation {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled",
+                            "Native live-view validation requires --hardware-validation")
+                    }
+                    let requestArguments = Array(args.dropFirst().filter {
+                        $0 != "--hardware-validation"
+                    })
+                    let request = try Pocket3LiveViewValidationRequest(
+                        cliArguments: requestArguments)
+                    let reply = try await IPCClient.call(
+                        command, arguments: request.arguments, address: bridgeAddress)
                     print(reply.result?.pretty ?? "{}")
                     return
                 }
@@ -485,6 +500,8 @@ import MCP
           Developer only: dry-run by default. ISO/audio/Vocal writes require a fresh typed keyed baseline; Selfie Flip is GET-only and official-only settings return unsupported_no_protocol.
         pocket3 validation-wireless-native-exposure --action mode|ev|iso|shutter|iso-limit|manual-preset --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--value VALUE | --iso ISO --shutter SHUTTER] [--execute] --hardware-validation
           Developer only: dry-run by default. Exposure writes require a fresh cam_expo_param baseline; shutter validation uses only known mode/FPS bounds, and manual-preset sends mode → ISO → shutter one step at a time with ACK plus matching readback.
+        pocket3 validation-wireless-live-view --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--hint] [--wait SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute attaches the existing passive pktType-02 sink before ingest, then sends at most one optional 02/68 hint, one 01/01 enable and one 09/A8 IDR request; it never joins Wi-Fi or retries.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON

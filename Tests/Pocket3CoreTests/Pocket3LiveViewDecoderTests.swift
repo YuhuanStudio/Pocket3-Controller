@@ -418,4 +418,37 @@ struct Pocket3LiveViewDecoderTests {
             generation: session.generation, nowUptime: 4)
         #expect(disconnected.phase == .disconnected)
     }
+
+    @Test func developerValidationRequestIsDryRunByDefaultAndCommandsAreExact() throws {
+        let sessionID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let peripheralID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        let request = try Pocket3LiveViewValidationRequest(
+            expectedSessionID: sessionID, peripheralID: peripheralID,
+            generation: 4)
+        #expect(!request.execute)
+        #expect(!request.sendPreEnableHint)
+        #expect(request.waitSeconds == Pocket3LiveViewValidationRequest.defaultWaitSeconds)
+
+        let cli = try Pocket3LiveViewValidationRequest(cliArguments: [
+            "--session", sessionID.uuidString,
+            "--peripheral", peripheralID.uuidString,
+            "--generation", "4", "--hint", "--execute", "--wait", "6"
+        ])
+        #expect(cli.execute && cli.sendPreEnableHint && cli.waitSeconds == 6)
+
+        let hint = try Pocket3LiveViewSessionCommand(kind: .preEnableHint)
+        #expect(hint.commandSet == 0x02 && hint.commandID == 0x68)
+        #expect(hint.payload == Data([0x08]))
+        #expect(hint.receiverType == 0x01 && hint.receiverID == 0x01)
+        let enable = try Pocket3LiveViewSessionCommand(kind: .enable)
+        #expect(enable.commandSet == 0x01 && enable.commandID == 0x01)
+        #expect(enable.payload == Pocket3LiveViewSessionCommand.enablePayload)
+        let idr = try Pocket3LiveViewSessionCommand(kind: .requestIDR)
+        #expect(idr.commandSet == 0x09 && idr.commandID == 0xa8)
+        #expect(idr.payload == Data([
+            0x00, 0x04, 0x02, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00
+        ]))
+        #expect(idr.receiverType == 0x01 && idr.receiverID == 0x02)
+    }
 }
