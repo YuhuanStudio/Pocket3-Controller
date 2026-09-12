@@ -117,6 +117,15 @@ struct NativeCaptureFormatValidationTests {
                 expectedSessionID: sessionID, expectedDeviceID: deviceID,
                 caseIDs: [first.id, first.id])
         }
+
+        let execute = try NativeCaptureFormatValidationRequest(cliArguments: [
+            "--session", sessionID, "--device", deviceID,
+            "--case", first.id, "--execute", "--warmup-seconds", "2",
+            "--sample-interval", "0.25", "--max-samples", "3"
+        ])
+        #expect(execute.execute && execute.warmupSeconds == 2 &&
+                execute.sampleInterval == 0.25 &&
+                execute.maximumSamplesPerCase == 3)
     }
 
     @Test func evaluatorSeparatesVerifiedPositiveModesFromExpectedZeroCallback()
@@ -172,7 +181,8 @@ struct NativeCaptureFormatValidationTests {
         let foreignSample = sample(definition, session: "other-session")
         let foreignSession = NativeCaptureFormatValidationMetrics(
             caseID: definition.id, sessionID: "other-session", deviceID: deviceID,
-            samples: [foreignSample, foreignSample], cleanup: cleanup())
+            samples: [foreignSample, foreignSample], cleanup: cleanup(),
+            initialSessionID: "other-session")
         let changedCleanup = positiveMetrics(definition, cleanup: cleanup(false))
         let fallback = positiveMetrics(definition, sampleOverride: sample(
             definition, fallback: true))
@@ -211,4 +221,101 @@ struct NativeCaptureFormatValidationTests {
                 sample.outputFourCC == "BGRA")
         #expect(sample.videoSampleCount == 12 && !sample.fallbackUsed)
     }
+
+    @Test func fakeExecutorRunsCasesSequentiallyCleansEachAndRestores()
+        async throws {
+        let request = try NativeCaptureFormatValidationRequest(
+            expectedSessionID: sessionID, expectedDeviceID: deviceID,
+            maximumSamplesPerCase: 3, execute: true, warmupSeconds: 1,
+            sampleInterval: 0.1)
+        let definitions = NativeCaptureFormatValidationCase.representative
+        let positive = Dictionary(uniqueKeysWithValues: definitions.prefix(3).map {
+            ($0.id, positiveMetrics($0))
+        })
+        let zero = definitions[3]
+        let zeroMetrics = NativeCaptureFormatValidationMetrics(
+            caseID: zero.id, sessionID: "zero-trial-session", deviceID: deviceID,
+            samples: [], cleanup: cleanup(), initialSessionID: sessionID,
+            requestedOutputPolicy: "h264")
+        let metricsByID = positive.merging([zero.id: zeroMetrics]) {
+            existing, _ in existing
+        }
+        let events = MatrixEventCounter()
+        let adapter = NativeCaptureFormatValidationExecutorAdapter(
+            runCase: { definition, _ in
+                events.append("run:\(definition.id)")
+                guard let metrics = metricsByID[definition.id] else {
+                    throw NativeCaptureFormatValidationError.unknownCase
+                }
+                return metrics
+            },
+            cleanup: {
+                events.append("cleanup")
+                return NativeCaptureFormatCleanupEvidence(
+                    stopRequested: true, finalPhase: "paused",
+                    finalFrameCount: 0)
+            },
+            restore: {
+                events.append("restore")
+                return NativeCaptureFormatRestoreEvidence(
+                    attempted: true, succeeded: true,
+                    sessionID: "restored-session")
+            })
+
+        let report = await NativeCaptureFormatValidationService.execute(
+            request, adapter: adapter)
+        #expect(report.completed && report.passed)
+        #expect(report.verifiedCaseCount == 3 &&
+                report.expectedFailureCount == 1)
+        #expect(report.restoration?.succeeded == true)
+        #expect(events.values.filter { $0 == "cleanup" }.count == 4)
+        #expect(events.values.last == "restore")
+        let expectedPrefix = definitions.flatMap {
+            ["run:\($0.id)", "cleanup"]
+        }
+        #expect(Array(events.values.prefix(8)) == expectedPrefix)
+    }
+
+    @Test func cancellationPreservesPartialMetricsAndStillRestoresWhenClean()
+        async throws {
+        let request = try NativeCaptureFormatValidationRequest(
+            expectedSessionID: sessionID, expectedDeviceID: deviceID,
+            maximumSamplesPerCase: 2, execute: true, warmupSeconds: 1,
+            sampleInterval: 0.1)
+        let events = MatrixEventCounter()
+        let adapter = NativeCaptureFormatValidationExecutorAdapter(
+            runCase: { definition, _ in
+                events.append("run:\(definition.id)")
+                throw CancellationError()
+            },
+            cleanup: {
+                events.append("cleanup")
+                return NativeCaptureFormatCleanupEvidence(
+                    stopRequested: true, finalPhase: "paused",
+                    finalFrameCount: 0)
+            },
+            restore: {
+                events.append("restore")
+                return NativeCaptureFormatRestoreEvidence(
+                    attempted: true, succeeded: true)
+            })
+        let report = await NativeCaptureFormatValidationService.execute(
+            request, adapter: adapter)
+        #expect(!report.completed && !report.passed && report.phase == "cancelled")
+        #expect(report.trials.first?.failureCode == "capture_format_cancelled")
+        #expect(report.restoration?.attempted == true)
+        #expect(report.restoration?.succeeded == true)
+        #expect(events.values == [
+            "run:\(NativeCaptureFormatValidationCase.nv12BGRA1080p30.id)",
+            "cleanup", "restore"
+        ])
+    }
+}
+
+private final class MatrixEventCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var eventsStorage: [String] = []
+
+    func append(_ value: String) { lock.withLock { eventsStorage.append(value) } }
+    var values: [String] { lock.withLock { eventsStorage } }
 }

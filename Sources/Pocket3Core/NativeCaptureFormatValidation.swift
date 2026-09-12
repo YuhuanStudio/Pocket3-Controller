@@ -90,24 +90,31 @@ public enum NativeCaptureFormatValidationError: Error, Codable, Sendable,
     case invalidSampleLimit
 }
 
-/// Developer-only request for a bounded format plan. The route has no execute
-/// flag by design: it can return a dry-run plan, while a test harness can feed
-/// scalar metrics into the evaluator without opening a camera.
+/// Developer-only request for a bounded format plan or execution. Execution is
+/// opt-in and is available only through the development App route; the Core
+/// evaluator itself accepts scalar metrics and never opens a camera.
 public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
     Equatable {
     public static let operation = "validation-capture-format-matrix"
     public static let maximumCases = 4
     public static let maximumSamples = 20
+    public static let maximumExecutionWindow: TimeInterval = 90
 
     public let expectedSessionID: String
     public let expectedDeviceID: String
     public let caseIDs: [String]
     public let maximumSamplesPerCase: Int
+    public let execute: Bool
+    public let warmupSeconds: TimeInterval
+    public let sampleInterval: TimeInterval
 
     public init(expectedSessionID: String, expectedDeviceID: String,
                 caseIDs: [String] = NativeCaptureFormatValidationCase
                     .representative.map(\.id),
-                maximumSamplesPerCase: Int = Self.maximumSamples) throws {
+                maximumSamplesPerCase: Int = Self.maximumSamples,
+                execute: Bool = false,
+                warmupSeconds: TimeInterval = 10,
+                sampleInterval: TimeInterval = 0.5) throws {
         guard Self.isNonEmpty(expectedSessionID),
               Self.isNonEmpty(expectedDeviceID) else {
             throw NativeCaptureFormatValidationError.invalidSession
@@ -124,16 +131,27 @@ public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
         guard (1...Self.maximumSamples).contains(maximumSamplesPerCase) else {
             throw NativeCaptureFormatValidationError.invalidSampleLimit
         }
+        guard warmupSeconds.isFinite, (1...30).contains(warmupSeconds),
+              sampleInterval.isFinite, (0.1...5).contains(sampleInterval),
+              warmupSeconds + sampleInterval *
+                  Double(maximumSamplesPerCase - 1) <=
+                  Self.maximumExecutionWindow else {
+            throw NativeCaptureFormatValidationError.invalidArguments
+        }
         self.expectedSessionID = expectedSessionID
         self.expectedDeviceID = expectedDeviceID
         self.caseIDs = caseIDs
         self.maximumSamplesPerCase = maximumSamplesPerCase
+        self.execute = execute
+        self.warmupSeconds = warmupSeconds
+        self.sampleInterval = sampleInterval
     }
 
     public init(arguments: JSONValue) throws {
         guard case .object(let fields) = arguments,
               Set(fields.keys).isSubset(of: [
-                "expectedSessionID", "deviceID", "cases", "maxSamples"
+                "expectedSessionID", "deviceID", "cases", "maxSamples",
+                "execute", "warmupSeconds", "sampleInterval"
               ]),
               let session = fields["expectedSessionID"]?.string,
               let device = fields["deviceID"]?.string else {
@@ -160,8 +178,21 @@ public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
         } else {
             maxSamples = Self.maximumSamples
         }
+        let execute: Bool
+        if let value = fields["execute"] {
+            guard let parsed = value.bool else {
+                throw NativeCaptureFormatValidationError.invalidArguments
+            }
+            execute = parsed
+        } else {
+            execute = false
+        }
+        let warmupSeconds = fields["warmupSeconds"]?.number ?? 10
+        let sampleInterval = fields["sampleInterval"]?.number ?? 0.5
         try self.init(expectedSessionID: session, expectedDeviceID: device,
-                      caseIDs: cases, maximumSamplesPerCase: maxSamples)
+                      caseIDs: cases, maximumSamplesPerCase: maxSamples,
+                      execute: execute, warmupSeconds: warmupSeconds,
+                      sampleInterval: sampleInterval)
     }
 
     public init(cliArguments: [String]) throws {
@@ -169,9 +200,20 @@ public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
         var device: String?
         var cases: [String] = []
         var maxSamples: Int?
+        var execute = false
+        var warmupSeconds: TimeInterval?
+        var sampleInterval: TimeInterval?
         var index = 0
         while index < cliArguments.count {
             let option = cliArguments[index]
+            if option == "--execute" {
+                guard !execute else {
+                    throw NativeCaptureFormatValidationError.invalidArguments
+                }
+                execute = true
+                index += 1
+                continue
+            }
             guard index + 1 < cliArguments.count else {
                 throw NativeCaptureFormatValidationError.invalidArguments
             }
@@ -189,6 +231,18 @@ public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
                     throw NativeCaptureFormatValidationError.invalidSampleLimit
                 }
                 maxSamples = value
+            case "--warmup-seconds":
+                guard warmupSeconds == nil,
+                      let value = Double(cliArguments[index + 1]) else {
+                    throw NativeCaptureFormatValidationError.invalidArguments
+                }
+                warmupSeconds = value
+            case "--sample-interval":
+                guard sampleInterval == nil,
+                      let value = Double(cliArguments[index + 1]) else {
+                    throw NativeCaptureFormatValidationError.invalidArguments
+                }
+                sampleInterval = value
             default:
                 throw NativeCaptureFormatValidationError.invalidArguments
             }
@@ -199,7 +253,10 @@ public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
                       caseIDs: cases.isEmpty
                         ? NativeCaptureFormatValidationCase.representative.map(\.id)
                         : cases,
-                      maximumSamplesPerCase: maxSamples ?? Self.maximumSamples)
+                      maximumSamplesPerCase: maxSamples ?? Self.maximumSamples,
+                      execute: execute,
+                      warmupSeconds: warmupSeconds ?? 10,
+                      sampleInterval: sampleInterval ?? 0.5)
     }
 
     public var arguments: JSONValue {
@@ -207,7 +264,10 @@ public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
             "expectedSessionID": .string(expectedSessionID),
             "deviceID": .string(expectedDeviceID),
             "cases": .array(caseIDs.map(JSONValue.string)),
-            "maxSamples": .number(Double(maximumSamplesPerCase))
+            "maxSamples": .number(Double(maximumSamplesPerCase)),
+            "execute": .bool(execute),
+            "warmupSeconds": .number(warmupSeconds),
+            "sampleInterval": .number(sampleInterval)
         ])
     }
 
@@ -231,6 +291,9 @@ public struct NativeCaptureFormatValidationPlan: Codable, Sendable,
     public let expectedDeviceID: String
     public let cases: [NativeCaptureFormatValidationCase]
     public let maximumSamplesPerCase: Int
+    public let executeRequested: Bool
+    public let warmupSeconds: TimeInterval
+    public let sampleInterval: TimeInterval
     public let hardwareExecutionEnabled: Bool
     public let cameraImagesStored: Bool
     public let automaticFallback: Bool
@@ -241,7 +304,10 @@ public struct NativeCaptureFormatValidationPlan: Codable, Sendable,
         expectedDeviceID = request.expectedDeviceID
         cases = request.caseIDs.compactMap(NativeCaptureFormatValidationCase.resolve)
         maximumSamplesPerCase = request.maximumSamplesPerCase
-        hardwareExecutionEnabled = false
+        executeRequested = request.execute
+        warmupSeconds = request.warmupSeconds
+        sampleInterval = request.sampleInterval
+        hardwareExecutionEnabled = request.execute
         cameraImagesStored = false
         automaticFallback = false
     }
@@ -370,6 +436,10 @@ public struct NativeCaptureFormatCleanupEvidence: Codable, Sendable,
 public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
     Equatable {
     public let caseID: String
+    /// Session that was active before the matrix began. Each trial receives a
+    /// fresh capture session after its explicit connect, so this stays
+    /// separate from the per-trial `sessionID`.
+    public let initialSessionID: String?
     public let sessionID: String
     public let deviceID: String
     public let samples: [NativeCaptureFormatValidationSample]
@@ -383,11 +453,13 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
     public let interruptionCount: Int
     public let requestedOutputPolicy: String?
     public let fallbackUsed: Bool
+    public let executionFailureCode: String?
     public let cleanup: NativeCaptureFormatCleanupEvidence
 
     public init(caseID: String, sessionID: String, deviceID: String,
                 samples: [NativeCaptureFormatValidationSample],
                 cleanup: NativeCaptureFormatCleanupEvidence,
+                initialSessionID: String? = nil,
                 videoSampleCount: Int? = nil, pixelBufferCount: Int? = nil,
                 nonImageVideoSampleCount: Int? = nil,
                 nonImageVideoBlockBufferCount: Int? = nil,
@@ -395,9 +467,11 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
                 h264DecodeFailureCount: Int? = nil,
                 runtimeErrorCount: Int? = nil, interruptionCount: Int? = nil,
                 requestedOutputPolicy: String? = nil,
-                fallbackUsed: Bool = false) {
+                fallbackUsed: Bool = false,
+                executionFailureCode: String? = nil) {
         let last = samples.last
         self.caseID = caseID
+        self.initialSessionID = initialSessionID
         self.sessionID = sessionID
         self.deviceID = deviceID
         self.samples = samples
@@ -418,18 +492,101 @@ public struct NativeCaptureFormatValidationMetrics: Codable, Sendable,
         self.requestedOutputPolicy = requestedOutputPolicy ??
             last?.requestedOutputPolicy
         self.fallbackUsed = fallbackUsed || samples.contains { $0.fallbackUsed }
+        self.executionFailureCode = executionFailureCode
         self.cleanup = cleanup
     }
 
     public init(caseID: String, stats: [CaptureStats],
                 expectedDeviceID: String,
-                cleanup: NativeCaptureFormatCleanupEvidence) {
+                cleanup: NativeCaptureFormatCleanupEvidence,
+                initialSessionID: String? = nil) {
         self.init(caseID: caseID,
                   sessionID: stats.last?.sessionID ?? "",
                   deviceID: stats.last?.frame?.deviceID ?? expectedDeviceID,
                   samples: stats.map { NativeCaptureFormatValidationSample(
                       stats: $0, expectedDeviceID: expectedDeviceID) },
-                  cleanup: cleanup)
+                  cleanup: cleanup, initialSessionID: initialSessionID)
+    }
+
+    func withCleanup(_ cleanup: NativeCaptureFormatCleanupEvidence) -> Self {
+        Self(caseID: caseID, sessionID: sessionID, deviceID: deviceID,
+             samples: samples, cleanup: cleanup,
+             initialSessionID: initialSessionID,
+             videoSampleCount: videoSampleCount,
+             pixelBufferCount: pixelBufferCount,
+             nonImageVideoSampleCount: nonImageVideoSampleCount,
+             nonImageVideoBlockBufferCount: nonImageVideoBlockBufferCount,
+             decodedH264FrameCount: decodedH264FrameCount,
+             h264DecodeFailureCount: h264DecodeFailureCount,
+             runtimeErrorCount: runtimeErrorCount,
+             interruptionCount: interruptionCount,
+             requestedOutputPolicy: requestedOutputPolicy,
+             fallbackUsed: fallbackUsed,
+             executionFailureCode: executionFailureCode)
+    }
+
+    func withExecutionFailure(_ code: String) -> Self {
+        Self(caseID: caseID, sessionID: sessionID, deviceID: deviceID,
+             samples: samples, cleanup: cleanup,
+             initialSessionID: initialSessionID,
+             videoSampleCount: videoSampleCount,
+             pixelBufferCount: pixelBufferCount,
+             nonImageVideoSampleCount: nonImageVideoSampleCount,
+             nonImageVideoBlockBufferCount: nonImageVideoBlockBufferCount,
+             decodedH264FrameCount: decodedH264FrameCount,
+             h264DecodeFailureCount: h264DecodeFailureCount,
+             runtimeErrorCount: runtimeErrorCount,
+             interruptionCount: interruptionCount,
+             requestedOutputPolicy: requestedOutputPolicy,
+             fallbackUsed: fallbackUsed,
+             executionFailureCode: code)
+    }
+}
+
+/// Scalar restoration evidence for the mode that was active before the
+/// matrix. The adapter decides whether restoration is safe after the final
+/// cleanup and exact-session checks.
+public struct NativeCaptureFormatRestoreEvidence: Codable, Sendable,
+    Equatable {
+    public let attempted: Bool
+    public let succeeded: Bool
+    public let sessionID: String?
+    public let failureCode: String?
+
+    public init(attempted: Bool, succeeded: Bool,
+                sessionID: String? = nil, failureCode: String? = nil) {
+        self.attempted = attempted
+        self.succeeded = succeeded
+        self.sessionID = sessionID
+        self.failureCode = failureCode
+    }
+}
+
+/// Existing-owner seam for the bounded matrix. `runCase` may select and
+/// sample one format, while `cleanup` must pause that case before the next
+/// one. No production transport is stored by this value.
+public struct NativeCaptureFormatValidationExecutorAdapter: Sendable {
+    public typealias RunCase = @Sendable (
+        _ definition: NativeCaptureFormatValidationCase,
+        _ request: NativeCaptureFormatValidationRequest
+    ) async throws -> NativeCaptureFormatValidationMetrics
+    public typealias Cleanup = @Sendable () async
+        -> NativeCaptureFormatCleanupEvidence
+    public typealias Restore = @Sendable () async throws
+        -> NativeCaptureFormatRestoreEvidence
+
+    let runCase: RunCase
+    let cleanup: Cleanup
+    let restore: Restore?
+
+    public init(
+        runCase: @escaping RunCase,
+        cleanup: @escaping Cleanup,
+        restore: Restore? = nil
+    ) {
+        self.runCase = runCase
+        self.cleanup = cleanup
+        self.restore = restore
     }
 }
 
@@ -485,6 +642,7 @@ public struct NativeCaptureFormatValidationReport: Codable, Sendable,
     public let failureCode: String?
     public let cameraImagesStored: Bool
     public let automaticFallback: Bool
+    public let restoration: NativeCaptureFormatRestoreEvidence?
 }
 
 public enum NativeCaptureFormatValidationService {
@@ -499,7 +657,83 @@ public enum NativeCaptureFormatValidationService {
             phase: "dry_run", completed: false, passed: false,
             verifiedCaseCount: 0, expectedFailureCount: 0,
             failureCode: nil, cameraImagesStored: false,
-            automaticFallback: false)
+            automaticFallback: false, restoration: nil)
+    }
+
+    /// Runs each case through an injected owner in strict order. The owner is
+    /// responsible for the actual CameraService connect; this coordinator only
+    /// imposes warmup/sample bounds, pause cleanup between cases, and optional
+    /// safe restoration. Tests inject a fake owner, while the route supplies
+    /// the existing CameraService owner.
+    public static func execute(
+        _ request: NativeCaptureFormatValidationRequest,
+        adapter: NativeCaptureFormatValidationExecutorAdapter
+    ) async -> NativeCaptureFormatValidationReport {
+        var metrics: [NativeCaptureFormatValidationMetrics] = []
+        var cleanupAllowsRestore = true
+        let definitions = request.caseIDs.compactMap(
+            NativeCaptureFormatValidationCase.resolve)
+
+        for definition in definitions {
+            do {
+                let value = try await adapter.runCase(definition, request)
+                let caseMetrics = value.caseID == definition.id ? value
+                    : value.withExecutionFailure("capture_format_case_mismatch")
+                let cleanup = await adapter.cleanup()
+                metrics.append(caseMetrics.withCleanup(cleanup))
+                guard cleanup.isClean else {
+                    cleanupAllowsRestore = false
+                    break
+                }
+            } catch is CancellationError {
+                let cleanup = await adapter.cleanup()
+                metrics.append(.empty(caseID: definition.id,
+                    sessionID: request.expectedSessionID,
+                    deviceID: request.expectedDeviceID,
+                    cleanup: cleanup,
+                    initialSessionID: request.expectedSessionID,
+                    executionFailureCode: "capture_format_cancelled"))
+                cleanupAllowsRestore = cleanup.isClean
+                break
+            } catch {
+                let cleanup = await adapter.cleanup()
+                metrics.append(.empty(caseID: definition.id,
+                    sessionID: request.expectedSessionID,
+                    deviceID: request.expectedDeviceID,
+                    cleanup: cleanup,
+                    initialSessionID: request.expectedSessionID,
+                    executionFailureCode: executionFailureCode(error)))
+                cleanupAllowsRestore = cleanup.isClean
+                break
+            }
+        }
+
+        var restoration: NativeCaptureFormatRestoreEvidence?
+        if let restore = adapter.restore,
+           cleanupAllowsRestore, !metrics.isEmpty {
+            do {
+                restoration = try await restore()
+            } catch is CancellationError {
+                restoration = .init(attempted: true, succeeded: false,
+                    failureCode: "capture_format_restore_cancelled")
+            } catch {
+                restoration = .init(attempted: true, succeeded: false,
+                    failureCode: executionFailureCode(error))
+            }
+        } else if adapter.restore != nil {
+            restoration = .init(attempted: false, succeeded: false,
+                failureCode: cleanupAllowsRestore
+                    ? "capture_format_restore_not_ready"
+                    : "capture_format_restore_not_safe")
+        }
+
+        let report = evaluate(request, metrics: metrics)
+        let cancelled = metrics.contains {
+            $0.executionFailureCode == "capture_format_cancelled"
+        }
+        let phase = cancelled ? "cancelled" :
+            report.completed ? "completed" : "partial"
+        return report.withExecutionPhase(phase, restoration: restoration)
     }
 
     public static func evaluate(
@@ -563,13 +797,14 @@ public enum NativeCaptureFormatValidationService {
             operation: NativeCaptureFormatValidationRequest.operation,
             expectedSessionID: request.expectedSessionID,
             expectedDeviceID: request.expectedDeviceID, plan: plan,
-            trials: trials, phase: "completed", completed: true,
+            trials: trials, phase: "completed",
+            completed: metrics.count == request.caseIDs.count,
             passed: failures.isEmpty && metrics.count == request.caseIDs.count,
             verifiedCaseCount: verified,
             expectedFailureCount: expectedFailures,
             failureCode: aggregateFailure,
             cameraImagesStored: imagesStored,
-            automaticFallback: fallback)
+            automaticFallback: fallback, restoration: nil)
     }
 
     private static func failureCode(
@@ -577,7 +812,8 @@ public enum NativeCaptureFormatValidationService {
         metrics: NativeCaptureFormatValidationMetrics,
         request: NativeCaptureFormatValidationRequest
     ) -> String? {
-        guard metrics.sessionID == request.expectedSessionID else {
+        guard (metrics.initialSessionID ?? request.expectedSessionID) ==
+                request.expectedSessionID else {
             return "capture_format_session_changed"
         }
         guard metrics.deviceID == request.expectedDeviceID else {
@@ -585,6 +821,9 @@ public enum NativeCaptureFormatValidationService {
         }
         guard metrics.samples.count <= request.maximumSamplesPerCase else {
             return "capture_format_sample_limit_exceeded"
+        }
+        if let executionFailureCode = metrics.executionFailureCode {
+            return executionFailureCode
         }
         guard metrics.cleanup.isClean else { return "capture_format_cleanup_failed" }
         guard !metrics.fallbackUsed, !metrics.cleanup.automaticFallback else {
@@ -613,7 +852,7 @@ public enum NativeCaptureFormatValidationService {
             return "capture_format_no_video_sample"
         }
         guard metrics.samples.allSatisfy({ sample in
-            sample.sessionID == request.expectedSessionID &&
+            sample.sessionID == metrics.sessionID &&
                 sample.deviceID == request.expectedDeviceID &&
                 sample.width == definition.mode.width &&
                 sample.height == definition.mode.height &&
@@ -654,14 +893,48 @@ public enum NativeCaptureFormatValidationService {
         }
         return nil
     }
+
+    private static func executionFailureCode(_ error: Error) -> String {
+        if let failure = error as? BridgeFailure {
+            return String(failure.code.prefix(128))
+        }
+        if error is CancellationError { return "capture_format_cancelled" }
+        return String("capture_format_executor_failed_\(error)".prefix(128))
+    }
+}
+
+private extension NativeCaptureFormatValidationReport {
+    func withExecutionPhase(
+        _ phase: String,
+        restoration: NativeCaptureFormatRestoreEvidence?
+    ) -> Self {
+        let restorationFailure = restoration.flatMap {
+            $0.attempted && !$0.succeeded ? $0.failureCode : nil
+        }
+        return Self(operation: operation, expectedSessionID: expectedSessionID,
+             expectedDeviceID: expectedDeviceID, plan: plan, trials: trials,
+             phase: phase, completed: completed,
+             passed: passed && restorationFailure == nil,
+             verifiedCaseCount: verifiedCaseCount,
+             expectedFailureCount: expectedFailureCount,
+             failureCode: failureCode ?? restorationFailure,
+             cameraImagesStored: cameraImagesStored,
+             automaticFallback: automaticFallback, restoration: restoration)
+    }
 }
 
 private extension NativeCaptureFormatValidationMetrics {
     static func empty(caseID: String, sessionID: String,
-                      deviceID: String) -> Self {
+                      deviceID: String,
+                      cleanup: NativeCaptureFormatCleanupEvidence = .init(
+                          stopRequested: true, finalPhase: "paused",
+                          finalFrameCount: 0),
+                      initialSessionID: String? = nil,
+                      executionFailureCode: String? = nil) -> Self {
         .init(caseID: caseID, sessionID: sessionID, deviceID: deviceID,
-              samples: [], cleanup: .init(stopRequested: true,
-                  finalPhase: "paused", finalFrameCount: 0))
+              samples: [], cleanup: cleanup,
+              initialSessionID: initialSessionID,
+              executionFailureCode: executionFailureCode)
     }
 }
 
