@@ -69,6 +69,14 @@ public struct Pocket3NativeActionEvidenceReport: Codable, Sendable,
         return acknowledged
     }
 
+    /// Stable IPC failure code for one validation family. A nil result means
+    /// the evidence is not a failure (for example, physical evidence was
+    /// observed) or that the operation was never attempted and its caller's
+    /// setup error should remain primary.
+    public func stableFailureCode(prefix: String) -> String? {
+        level.stableFailureCode(prefix: prefix)
+    }
+
     /// `true` means the response reached the expected command envelope; it is
     /// intentionally independent from physical completion.
     public var transportReached: Bool? {
@@ -144,6 +152,32 @@ public struct Pocket3NativeActionEvidenceReport: Codable, Sendable,
             return .acknowledgedNoPhysicalEvidence
         }
         return .notAttempted
+    }
+}
+
+public extension Pocket3NativeActionEvidenceLevel {
+    /// Stable, transport-oriented suffixes shared by the tap-AF and native
+    /// shortcut IPC results. These names deliberately avoid claiming why a
+    /// missing reply happened; `no_reply` is the observable fact.
+    func stableFailureCode(prefix: String) -> String? {
+        switch self {
+        case .noCorrelatedReply:
+            return "\(prefix)_no_reply"
+        case .commandRejected:
+            return "\(prefix)_nack"
+        case .acknowledgedNoPhysicalEvidence:
+            return "\(prefix)_ack_no_physical"
+        case .physicalEvidenceWithoutReply:
+            return "\(prefix)_no_reply_physical_observed"
+        case .invalidReply:
+            return "\(prefix)_invalid_reply"
+        case .connectionChanged:
+            return "\(prefix)_connection_changed"
+        case .cancelled:
+            return "\(prefix)_cancelled"
+        case .notAttempted, .physicalEvidence:
+            return nil
+        }
     }
 }
 

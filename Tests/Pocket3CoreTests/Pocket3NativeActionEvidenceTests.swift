@@ -67,6 +67,21 @@ struct Pocket3NativeActionEvidenceTests {
             responseStatusRaw: nil, acknowledged: false,
             physicalEvidence: false, connectionChanged: true)
                 == .connectionChanged)
+
+        #expect(Pocket3NativeActionEvidenceLevel.noCorrelatedReply
+            .stableFailureCode(prefix: "native_tap_focus")
+                == "native_tap_focus_no_reply")
+        #expect(Pocket3NativeActionEvidenceLevel.commandRejected
+            .stableFailureCode(prefix: "bluetooth_recenter")
+                == "bluetooth_recenter_nack")
+        #expect(Pocket3NativeActionEvidenceLevel.acknowledgedNoPhysicalEvidence
+            .stableFailureCode(prefix: "bluetooth_recenter")
+                == "bluetooth_recenter_ack_no_physical")
+        #expect(Pocket3NativeActionEvidenceLevel.connectionChanged
+            .stableFailureCode(prefix: "native_tap_focus")
+                == "native_tap_focus_connection_changed")
+        #expect(Pocket3NativeActionEvidenceLevel.physicalEvidence
+            .stableFailureCode(prefix: "bluetooth_recenter") == nil)
     }
 
     @Test func recenterProbeRetainsUnknownReplyStatusAndSeparatesMovement()
@@ -87,6 +102,17 @@ struct Pocket3NativeActionEvidenceTests {
                 .acknowledgedNoPhysicalEvidence)
         result.movementObserved = true
         #expect(result.actionEvidence.level == .physicalEvidence)
+
+        let report = Pocket3NativeActionEvidenceReport(
+            commandSet: 0x04, commandID: 0x4c, requestPayload: Data([0xfe, 0x08]),
+            submitted: true)
+        var finished = BluetoothNativeRecenterResult(sequence: 0x1234,
+                                                      startedUptime: 0)
+        finished.evidence = report
+        finished.evidenceFailureCode = report.stableFailureCode(
+            prefix: "bluetooth_recenter")
+        #expect(finished.evidenceFailureCode ==
+                "bluetooth_recenter_no_reply")
     }
 
     @Test func tapFocusStepEvidenceUsesCorrelatedTransactionOnly() throws {
@@ -121,5 +147,51 @@ struct Pocket3NativeActionEvidenceTests {
             observed: false, failureCode: "native_command_nack")
         #expect(nackStep.actionEvidence.level == .commandRejected)
         #expect(nackStep.actionEvidence.responseStatusRaw == 0xFE)
+    }
+
+    @Test func tapFocusValidationSerializesStableAggregateFailureCode()
+        async throws {
+        let sessionID = UUID()
+        let peerID = UUID()
+        let session = NativeCameraSessionStatus(state: .commandReady,
+            generation: 3, sessionID: sessionID, peerID: peerID)
+        let request = try NativeTapFocusValidationRequest(
+            expectedSessionID: sessionID, peripheralID: peerID, generation: 3,
+            x: 0.3, y: 0.7, execute: true)
+        let binding = ContinuousGimbalBinding(
+            sessionID: "ble:\(sessionID.uuidString)", generation: 0)
+        let observations = [
+            CameraSettingsObservation(property: .lensState,
+                value: .focus(.continuous), exposureMode: nil,
+                transactionID: 1, binding: binding, receivedUptime: 10),
+            CameraSettingsObservation(property: .exposure,
+                value: .autoEV(thirdStops: 0), exposureMode: .automatic,
+                transactionID: 2, binding: binding, receivedUptime: 10.1)
+        ]
+        let adapter = NativeTapFocusValidationExecutorAdapter {
+            nativeRequest, _ in
+            var transaction = NativeCommandTransactionResult(
+                id: nativeRequest.id, command: .focusMode,
+                generation: nativeRequest.generation,
+                sessionID: nativeRequest.sessionID, end: .rejected)
+            transaction.submitted = true
+            transaction.responseReceived = true
+            transaction.responseStatus = 0xFE
+            transaction.finishedUptime = 11.1
+            return transaction
+        }
+        let result = try await NativeTapFocusValidationService(adapter: adapter)
+            .run(request, snapshot: NativeTapFocusValidationSnapshot(
+                session: session, observations: observations,
+                coordinateCalibration: .init(orientation: .landscape,
+                    verified: true), nowUptime: 11))
+
+        #expect(result.evidenceFailureCode == "native_tap_focus_nack")
+        #expect(result.transportEvidence.first?.level == .commandRejected)
+        let encoded = try JSONEncoder().encode(result)
+        let decoded = try JSONDecoder().decode(
+            NativeTapFocusValidationResult.self, from: encoded)
+        #expect(decoded.evidenceFailureCode == "native_tap_focus_nack")
+        #expect(decoded.transportEvidence.first?.responseStatusRaw == 0xFE)
     }
 }

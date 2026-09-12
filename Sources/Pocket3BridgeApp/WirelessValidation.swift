@@ -349,10 +349,15 @@ extension AppModel {
             let result = try await bluetooth.probeNativeRecenter(permit: permit)
             let afterNative = await service.status()
             let cleanup = try await service.stopNativeControlAndHold(binding: binding)
-            return ServiceReply(id: request.id, result: .object([
+            var output: [String: JSONValue] = [
                 "probe": try .encode(result), "usbBefore": try .encode(before.gimbal),
                 "usbAfterNative": try .encode(afterNative.gimbal), "cleanup": try .encode(cleanup),
-                "nativeCapabilityConfirmed": .bool(false)]))
+                "nativeCapabilityConfirmed": .bool(false),
+                "nativeActionEvidence": try .encode(result.actionEvidence)]
+            if let failureCode = result.evidenceFailureCode {
+                output["evidenceFailureCode"] = .string(failureCode)
+            }
+            return ServiceReply(id: request.id, result: .object(output))
         } catch {
             permit.invalidate(); bluetooth.cancelNativeRecenter()
             _ = try? await service.stopNativeControlAndHold(binding: binding)

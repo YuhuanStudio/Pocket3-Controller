@@ -42,6 +42,9 @@ public struct BluetoothNativeRecenterResult: Codable, Sendable {
     /// Serialized evidence is populated when the probe is finished. Older
     /// reports may omit this optional field and still decode.
     public var evidence: Pocket3NativeActionEvidenceReport?
+    /// Stable IPC-facing classification derived from `evidence`; the raw
+    /// `failure` field remains available for the probe's transport error.
+    public var evidenceFailureCode: String?
 
     /// Compact evidence classification; this never claims physical support.
     public var actionEvidence: Pocket3NativeActionEvidenceReport {
@@ -168,6 +171,8 @@ struct BluetoothNativePresetProbe {
         result.timedOut = result.observationWindowCompleted && !result.responseReceived
         result.movementObserved = max(result.maximumPitchDelta, result.maximumRollDelta, result.maximumYawDelta) >= 0.5
         result.evidence = result.derivedActionEvidence
+        result.evidenceFailureCode = result.evidence?.stableFailureCode(
+            prefix: "bluetooth_recenter")
         return result
     }
 }

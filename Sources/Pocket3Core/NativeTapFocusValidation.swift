@@ -320,6 +320,10 @@ public struct NativeTapFocusValidationResult: Codable, Sendable,
     /// Per-step serialized evidence. It remains optional when decoding a
     /// report produced before this classification layer existed.
     public let evidence: [Pocket3NativeActionEvidenceReport]?
+    /// Stable IPC-facing aggregate code. The older `failureCode` continues to
+    /// describe coordinator/setup failure; this value describes transport
+    /// evidence for the four steps.
+    public let evidenceFailureCode: String?
 
     public var partialSequence: Bool {
         submittedCount > 0 && !completed
@@ -551,6 +555,7 @@ public struct NativeTapFocusValidationCoordinator: Sendable {
             stepResult.evidence = stepResult.actionEvidence
             return stepResult
         }
+        let evidence = steps.map(\.actionEvidence)
         return NativeTapFocusValidationResult(
             request: request, baseline: baseline,
             coordinateCalibration: coordinateCalibration, phase: phase,
@@ -558,7 +563,10 @@ public struct NativeTapFocusValidationCoordinator: Sendable {
             submittedCount: steps.filter(\.submitted).count,
             acknowledgedCount: steps.filter(\.acknowledged).count,
             completed: phase == .completed, failureCode: failureCode,
-            evidence: steps.map(\.actionEvidence))
+            evidence: evidence,
+            evidenceFailureCode: Pocket3NativeActionEvidenceReport
+                .summarize(evidence)
+                .stableFailureCode(prefix: "native_tap_focus"))
     }
 }
 
