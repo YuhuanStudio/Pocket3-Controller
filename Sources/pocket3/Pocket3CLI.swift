@@ -64,6 +64,21 @@ import MCP
                 print(reply.result?.pretty ?? "{}")
                 return
             }
+            if command == BluetoothReadbackSessionDiagnosticRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "Readback diagnostics require --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request = try BluetoothReadbackSessionDiagnosticRequest(
+                    cliArguments: requestArguments)
+                let reply = try await IPCClient.call(
+                    command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == "devices" { print(try JSONValue.encode(CaptureEngine.devices()).pretty); return }
             if command == "formats" {
                 let id = args.count > 1 ? args[1] : CaptureEngine.devices().first?.id ?? ""
@@ -531,6 +546,8 @@ import MCP
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-read-settings
           Developer only: sequentially reads allowlisted paired-camera properties; never writes a setting or joins Wi-Fi.
+        pocket3 validation-wireless-readback-diagnostic --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID [--path settings|paired_tap_focus|native_tap_focus|all] --hardware-validation
+          Developer only, read-only: correlates cached paired BLE/native requests and notifications by exact session, sequence and property; classifies no-route, no-reply, wrong-envelope and readback without starting a query.
         pocket3 validation-wireless-body --action start|stop|format [--resolution NAME --fps FPS] [--execute] [--hardware-validation]
           Developer only: dry-run by default; validates exact command-ready session, fresh 02/80/readback and legal capability evidence. An executor must be injected before any command can be submitted.
         pocket3 validation-wireless-audio-dsp --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N [--wind off|on] [--direction all|front|frontAndBack] [--timeout SECONDS] [--execute] --hardware-validation

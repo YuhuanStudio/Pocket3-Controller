@@ -34,6 +34,11 @@ final class WirelessGimbalModel {
     private(set) var nativeBodyValidationBusy = false
     var issue: String?
     private(set) var readingCameraSettings = false
+    /// Last bounded property-query outcomes from the explicit paired BLE
+    /// read-settings pass. This is diagnostic state only; it never drives a
+    /// setter or is published as a capability claim.
+    private(set) var lastCameraSettingsQueryResults: [BluetoothCameraPropertyQueryResult] = []
+    private(set) var lastPairedTapFocusResult: BluetoothTapFocusResult?
     @ObservationIgnored private var settingsReadTask: Task<Void, Never>?
     @ObservationIgnored private var settingsReadID: UUID?
     private(set) var networkName: String?
@@ -430,6 +435,7 @@ final class WirelessGimbalModel {
         guard settingsReadTask == nil, discovery.phase == .gattPaired, pairingStatus?.peerReportedPaired == true else { return }
         let id = UUID(), session = discovery.sessionID, peer = discovery.selectedPeripheralID
         settingsReadID = id; readingCameraSettings = true; issue = nil
+        lastCameraSettingsQueryResults = []
         settingsReadTask = Task { @MainActor [weak self] in
             guard let self else { return }
             defer {
@@ -446,8 +452,10 @@ final class WirelessGimbalModel {
                     guard !result.cancelled, !result.connectionChanged,
                           self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
                     guard result.failure == nil, result.propertyReceived else {
+                        self.lastCameraSettingsQueryResults.append(result)
                         throw BridgeFailure("camera_settings_unavailable", "The camera property was not received")
                     }
+                    self.lastCameraSettingsQueryResults.append(result)
                     await self.refresh()
                 }
             } catch {
@@ -455,6 +463,10 @@ final class WirelessGimbalModel {
                 self.issue = AppErrorPresentation.message(error, fallback: .cameraSettingsUnavailable)
             }
         }
+    }
+
+    func recordPairedTapFocusResult(_ result: BluetoothTapFocusResult) {
+        lastPairedTapFocusResult = result
     }
 
     func invalidatePendingOperations() {
@@ -506,6 +518,7 @@ final class WirelessGimbalModel {
         await disconnectNative()
         guard selectionOperationID == selection else { return }
         bluetooth.disconnect(); credentials = nil; networkName = nil; hasCredentials = false; selectedPeripheral = ""
+        lastCameraSettingsQueryResults = []; lastPairedTapFocusResult = nil
         invalidateNativeSession()
     }
     func preset(flip: Bool) async {

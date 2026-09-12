@@ -261,6 +261,7 @@ extension AppModel {
                 try await bluetooth.probeTapFocus(request: arguments, permit: context.permit,
                     validateCapture: context.validateCapture, validateCaptureSynchronously: context.validateCaptureSynchronously)
             }
+        wireless.recordPairedTapFocusResult(execution.output)
         var output: [String: JSONValue] = ["probe": try .encode(execution.output), "beforeFrame": try .encode(execution.before),
             "cameraImagesIncluded": .bool(false), "usbBluetoothIdentityAssociated": .bool(false)]
         if let after = execution.after { output["afterFrame"] = try .encode(after) }

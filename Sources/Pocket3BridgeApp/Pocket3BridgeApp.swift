@@ -86,6 +86,9 @@ final class AppModel {
     /// Last developer-only exposure validation evidence. The body capability
     /// Disclosure shows this only when developer mode is explicitly enabled.
     var developerExposureValidationResult: NativeExposureValidationResult?
+    /// Last native tap-AF transport result, retained only for the developer
+    /// readback diagnostic. It does not enable the uncalibrated writer.
+    var developerNativeTapFocusValidationResult: NativeTapFocusValidationResult?
     /// Compact result of the most recent developer-only USB manual acceptance.
     /// It contains verification counters and session-fence identity only; no
     /// frame pixels or replayable command payloads are retained.
@@ -208,6 +211,8 @@ final class AppModel {
                     return try await AppModel.shared.handleUSBManualAcceptance(request)
                 case NativeCaptureFormatValidationRequest.operation:
                     return try await AppModel.shared.handleNativeCaptureFormatValidation(request)
+                case BluetoothReadbackSessionDiagnosticRequest.operation:
+                    return try await AppModel.shared.handleReadbackDiagnostic(request)
                 case "validation-manual-control": return try await AppModel.shared.handleManualControlValidation(request)
                 case "focus-status":
                     // Read the exact active AVFoundation input capability. This

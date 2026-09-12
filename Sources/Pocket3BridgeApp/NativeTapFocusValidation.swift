@@ -21,6 +21,7 @@ extension AppModel {
             let adapter = input.execute ? wireless.nativeTapFocusValidationAdapter() : nil
             let service = NativeTapFocusValidationService(adapter: adapter)
             let result = try await service.run(input, snapshot: snapshot)
+            developerNativeTapFocusValidationResult = result
             return ServiceReply(id: request.id, result: try .encode(result))
         } catch let error as NativeTapFocusValidationError {
             throw nativeTapFocusValidationFailure(error)

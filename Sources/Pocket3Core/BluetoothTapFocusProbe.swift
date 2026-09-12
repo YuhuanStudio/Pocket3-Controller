@@ -109,6 +109,13 @@ public struct BluetoothTapFocusResult: Codable, Sendable {
     public var partialSequence = false
     public var possibleAEsideEffects = false
     public var sequenceAcknowledged = false
+    /// Bounded rejection evidence for the readback-session diagnostic. The
+    /// probe still keeps packet bytes private and never retries a rejected
+    /// envelope.
+    public var wrongEnvelopeCount: Int? = 0
+    public var wrongSequenceCount: Int? = 0
+    public var foreignSessionNotificationCount: Int? = 0
+    public var lastRejectedHeader: BluetoothDUMLHeader?
 }
 
 /// Independent implementation of the four fixed OpenPocketCine commands at
@@ -210,16 +217,41 @@ struct BluetoothTapFocusProbe {
 
     mutating func receive(_ packet: ValidatedDUMLPacket, characteristic: String,
         sessionID: UUID, peripheralID: UUID, hostReceivedAt: Date, uptime: TimeInterval) {
-        guard result.end == nil, sessionID == result.request.expectedSessionID,
-              peripheralID == result.request.peripheralID, ["FFF4", "FFF5"].contains(characteristic) else { return }
+        guard result.end == nil else { return }
+        guard sessionID == result.request.expectedSessionID,
+              peripheralID == result.request.peripheralID else {
+            result.foreignSessionNotificationCount =
+                (result.foreignSessionNotificationCount ?? 0) + 1
+            return
+        }
+        guard ["FFF4", "FFF5"].contains(characteristic) else {
+            result.wrongEnvelopeCount = (result.wrongEnvelopeCount ?? 0) + 1
+            return
+        }
         tick(at: uptime)
         guard result.end == nil else { return }
         let frame = packet.frame
-        if frame.source == 1, frame.destination == 2, frame.commandSet == 2,
-           frame.flags == 0x80 || frame.flags == 0xc0,
-           let index = result.steps.firstIndex(where: { $0.sequence == frame.sequence && $0.commandID == frame.commandID }),
-           let sent = result.steps[index].submittedUptime, uptime >= sent,
-           result.steps[index].ackUptime == nil {
+        let header = BluetoothDUMLHeader(direction: "received", characteristic: characteristic,
+            source: frame.source, destination: frame.destination, sequence: frame.sequence,
+            flags: frame.flags, commandSet: frame.commandSet, commandID: frame.commandID)
+        let isExpectedACKCommand = result.steps.contains {
+            $0.commandID == frame.commandID
+        }
+        if isExpectedACKCommand, frame.commandSet == 2,
+           frame.flags == 0x80 || frame.flags == 0xc0 {
+            guard frame.source == 1, frame.destination == 2 else {
+                result.wrongEnvelopeCount = (result.wrongEnvelopeCount ?? 0) + 1
+                result.lastRejectedHeader = header
+                return
+            }
+            guard let index = result.steps.firstIndex(where: {
+                $0.sequence == frame.sequence && $0.commandID == frame.commandID
+            }), let sent = result.steps[index].submittedUptime,
+                  uptime >= sent, result.steps[index].ackUptime == nil else {
+                result.wrongSequenceCount = (result.wrongSequenceCount ?? 0) + 1
+                result.lastRejectedHeader = header
+                return
+            }
             result.steps[index].ackHeader = BluetoothDUMLHeader(direction: "received", characteristic: characteristic,
                 source: frame.source, destination: frame.destination, sequence: frame.sequence,
                 flags: frame.flags, commandSet: frame.commandSet, commandID: frame.commandID)
@@ -235,17 +267,31 @@ struct BluetoothTapFocusProbe {
             if index == 3, result.steps[index].acknowledged { observationDeadline = uptime + Self.readbackDuration }
             return
         }
+        guard frame.commandSet == 0, frame.commandID == 0x99 else { return }
         guard frame.source == 0x28, frame.destination == 2, frame.flags == 0,
               frame.commandSet == 0, frame.commandID == 0x99,
               let pointSubmitted = result.steps[1].submittedUptime, uptime > pointSubmitted,
               hostReceivedAt.timeIntervalSinceReferenceDate.isFinite,
               result.lensPoints.count + result.invalidLensCandidates < Self.maximumLensPoints,
-              let push = try? CameraPropertyCodec.decodePush(from: frame), push.property == .lensState else { return }
+              let push = try? CameraPropertyCodec.decodePush(from: frame) else {
+            result.wrongEnvelopeCount = (result.wrongEnvelopeCount ?? 0) + 1
+            result.lastRejectedHeader = header
+            return
+        }
+        guard push.property == .lensState else {
+            result.wrongEnvelopeCount = (result.wrongEnvelopeCount ?? 0) + 1
+            result.lastRejectedHeader = header
+            return
+        }
         let fingerprint = Data(SHA256.hash(data: packet.frameData))
         guard !lensFingerprints.contains(fingerprint) else { return }
         if let lastLensSequence {
             let distance = frame.sequence &- lastLensSequence
-            guard distance > 0, distance < 0x8000 else { return }
+            guard distance > 0, distance < 0x8000 else {
+                result.wrongSequenceCount = (result.wrongSequenceCount ?? 0) + 1
+                result.lastRejectedHeader = header
+                return
+            }
         }
         lensFingerprints.insert(fingerprint); lastLensSequence = frame.sequence; lastEvent = uptime
         guard let candidate = LensPointCandidate.decode(push.value) else { result.invalidLensCandidates += 1; return }
