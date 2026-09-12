@@ -128,6 +128,31 @@ Push 的 payload `[0…3]` 必須為 `02 06 00 00`；transaction在 `[4…7]`；
 
 Timelapse、Hyperlapse、Motionlapse、Panorama 的額外欄位存在於同一 decoder，但不屬於首批設定 UI。[Android readback 對照][android-readback]
 
+### Phase25：ACK 後的單一 video-parameter reader
+
+固定 Kaze revision `341a35de18493ff61f97c93b8b10161a7512aa36` 的 ready 流程只
+逐項送出上述 `00/99` subscription，接收端在 `00/99` operation `0x06`
+notification 發布目前值；來源程式沒有在 subscription ACK 後追加 `00/01`
+GET。協定文件中的 `GET = 00 01 <pid:u16-LE>` 屬於另一個 `02/8E`
+keyed-parameter store，不能套用到 named-property bus。`00/81` 則是 APP
+device-info registration（receiver type `08`／id `2`），也不是 camera
+property readback。
+
+本批新增 developer-only `validation-wireless-video-parameters-readback`，只
+讀 `cam_video_param_v2`：一次現有 subscription → bounded 等待 matching
+`00/99/06` notification。notification 的 DUML sequence 不必等於
+subscription sequence，但 session、peripheral、source/destination、flags、
+property name 與長度都必須通過既有 parser；ACK 只保留為 transport evidence，
+不當作設定讀回。完整 bounded raw value（含未知 enum／保留 bytes）與
+subscription、ACK、notification sequence 會一起回報，沒有 GET、setter 或
+opcode fallback。
+
+2026-09-12 的本機結果曾在 `camcap_video_codec` subscription 收到相同
+sequence `51779` 的 ACK，卻沒有 notification；這證明 BLE route 與 ACK，不能
+證明 capability value 或任何 codec。該情況由 reader 回報
+`ack_without_named_property_notification`，再停止，不改成 GET 猜測。[固定來源與
+hash](../research/2026-09-08/camera-settings/PROVENANCE.md)、[本機診斷](../artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)
+
 每個 property 要獨立帶接收時間與 connection generation。收到未改變的有效值仍須更新 freshness；上游 session 只在 value change 時 publish，不能用那個 UI publish 時間取代接收時間。`hasCoreReadback` 只代表「曾收到至少一種 property」，不足以啟用全部設定。未知 enum 值、斷線或某 property 停止推送時，保留 unknown/stale，而不是沿用 `lastSent*` 當真實相機值。[session push handling][session]、[上游 UI fallback][screen]
 
 ## 尚未納入的項目

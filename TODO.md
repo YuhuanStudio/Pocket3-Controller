@@ -252,7 +252,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 ## 其他本輪功能與外部發布條件
 
 - [x] DUML CRC／fragment／ACK／session 邊界、BLE 配對及原生 UDP codec 已實作；Wi-Fi join／datalink 保留研究，不是主流程或可用控制的前提。
-- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第24批同session診斷確認第一個`camcap_video_codec` subscription已送出並收到相同sequence 51779 ACK，但無property readback；reader安全停止，其餘十項未送。BLE route存在，缺的是ACK後notification／GET readback，不再籠統記為no-route；沒有Wi-Fi或setter。[診斷](artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
+- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第24批同session診斷確認第一個`camcap_video_codec` subscription已送出並收到相同sequence 51779 ACK，但無property readback；reader安全停止，其餘十項未送。Phase25 依固定 Kaze source 確認 named-property ACK 後只等待 `00/99/06` notification，沒有可套用的 GET；新增單一 `cam_video_param_v2` developer reader，仍不宣稱 capability codec。[診斷](artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
 - [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
 - [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。

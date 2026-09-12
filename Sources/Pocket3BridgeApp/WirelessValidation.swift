@@ -69,6 +69,21 @@ extension AppModel {
                 throw BridgeFailure("invalid_camera_property", "Choose cam_lens_state, cam_image_effect or cam_expo_param")
             }
             return ServiceReply(id: request.id, result: try .encode(try await wireless.bluetooth.queryCameraProperty(property: property)))
+        case BluetoothVideoParametersReadbackRequest.operation:
+            let arguments = try BluetoothVideoParametersReadbackRequest(arguments: request.arguments)
+            let status = wireless.bluetooth.status
+            guard status.sessionID == arguments.expectedSessionID,
+                  status.selectedPeripheralID == arguments.peripheralID else {
+                throw BridgeFailure("bluetooth_property_query_connection_changed",
+                    "The requested BLE session or peer is no longer current.")
+            }
+            let query = try await wireless.bluetooth.queryCameraProperty(
+                property: BluetoothVideoParametersReadbackProbe.property,
+                expectedSessionID: arguments.expectedSessionID,
+                expectedPeripheralID: arguments.peripheralID)
+            return ServiceReply(id: request.id, result: try .encode(
+                BluetoothVideoParametersReadbackProbe.report(
+                    request: arguments, query: query)))
         case "validation-wireless-readiness":
             let result = try await wireless.bluetooth.queryNativeReadiness()
             return ServiceReply(id: request.id, result: try .encode(result))

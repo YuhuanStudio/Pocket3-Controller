@@ -530,7 +530,10 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             && pairer?.paired == true && registrationAcknowledgmentSession == operation.session
     }
 
-    public func queryCameraProperty(property: CameraSettingsProperty, permit: OperationPermit = OperationPermit()) async throws -> BluetoothCameraPropertyQueryResult {
+    public func queryCameraProperty(property: CameraSettingsProperty,
+                                    expectedSessionID: UUID? = nil,
+                                    expectedPeripheralID: UUID? = nil,
+                                    permit: OperationPermit = OperationPermit()) async throws -> BluetoothCameraPropertyQueryResult {
         try Task.checkCancellation()
         try permit.perform {}
         guard settingWriteOperation == nil, tapFocusOperation == nil, lensPointOperation == nil, cameraPropertyOperation == nil, cameraPropertyTask == nil, lensStateOperation == nil, lensStateTask == nil, nativePresetOperation == nil,
@@ -547,6 +550,11 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
               fff5.properties.contains(.writeWithoutResponse), peripheral.canSendWriteWithoutResponse,
               writeQueue.isEmpty, let sequence = pairer?.reserveReadinessSequence() else {
             throw BridgeFailure("bluetooth_property_query_not_ready", "Pair and register the current BLE peer before reading a camera property.")
+        }
+        guard expectedSessionID.map({ $0 == state.generation }) ?? true,
+              expectedPeripheralID.map({ $0 == peripheral.identifier }) ?? true else {
+            throw BridgeFailure("bluetooth_property_query_connection_changed",
+                "The requested BLE session or peer is no longer current.")
         }
         let operation = try BluetoothCameraPropertyOperation(property: property, session: state.generation, central: central,
             peripheral: peripheral, characteristic: fff5, sequence: sequence, permit: permit)

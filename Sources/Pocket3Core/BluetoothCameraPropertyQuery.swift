@@ -19,6 +19,10 @@ public struct BluetoothCameraPropertyQueryResult: Codable, Sendable {
     public var propertyUptime: TimeInterval?
     /// Complete value when <=64 bytes; otherwise only the first 64 bytes.
     /// Truncated values are never passed to a typed settings decoder.
+    /// The bounded byte prefix is retained independently of typed decoding so
+    /// an unknown enum or reserved byte remains inspectable by a developer
+    /// readback report.
+    public var valueRaw: Data?
     public var valueHex: String?
     public var valueLength: Int?
     public var valueTruncated = false
@@ -54,6 +58,7 @@ public struct BluetoothCameraPropertyQueryResult: Codable, Sendable {
          sequence: UInt16, transactionID: UInt32, startedUptime: TimeInterval) {
         self.property = property; self.binding = binding; querySequence = sequence
         subscriptionTransactionID = transactionID; self.startedUptime = startedUptime
+        valueRaw = nil
     }
 }
 
@@ -156,7 +161,8 @@ struct BluetoothCameraPropertyQuery {
         result.propertyReceived = true; result.propertyHeader = header; result.propertyUptime = uptime
         result.propertyTransactionID = push.transactionID; result.valueLength = push.value.count
         result.valueTruncated = push.value.count > Self.maximumValueBytes
-        result.valueHex = push.value.prefix(Self.maximumValueBytes).map { String(format: "%02x", $0) }.joined()
+        result.valueRaw = Data(push.value.prefix(Self.maximumValueBytes))
+        result.valueHex = result.valueRaw?.map { String(format: "%02x", $0) }.joined()
         if !result.valueTruncated {
             result.observed = CameraSettingsObservation.decode(push, binding: binding, receivedUptime: uptime)
         }
