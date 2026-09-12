@@ -20,6 +20,10 @@ final class WirelessGimbalModel {
     }
     var selectedPeripheral = ""
     var nativeStatus: Pocket3DatalinkStatus?
+    /// Credential-free readiness projection shared by native command gates and
+    /// UI. `commandReady` is reached only after the existing datalink's
+    /// handshake has completed; BLE pairing alone remains `paired`.
+    private(set) var nativeSessionStatus: NativeCameraSessionStatus
     var connecting = false
     var joiningNetwork = false
     private(set) var presetBusy = false
@@ -29,7 +33,7 @@ final class WirelessGimbalModel {
     @ObservationIgnored private var settingsReadID: UUID?
     private(set) var networkName: String?
     private(set) var hasCredentials = false
-    var nativeConnected: Bool { nativeStatus?.phase == .ready }
+    var nativeConnected: Bool { nativeSessionStatus.commandReady }
     /// BLE discovery/telemetry alone never owns the shared manual controls.
     var ownsContinuousControls: Bool { datalink != nil || binding != nil || scheduler != nil || disconnectTask != nil }
     var pairingStatus: BluetoothPairingStatus? { discovery.pairing }
@@ -48,6 +52,8 @@ final class WirelessGimbalModel {
         return nil
     }
     @ObservationIgnored private var credentials: BluetoothWiFiCredentials?
+    @ObservationIgnored private var nativeSession = NativeCameraSession()
+    @ObservationIgnored private var nativeSessionBluetoothID: UUID?
     @ObservationIgnored private var datalink: Pocket3Datalink?
     @ObservationIgnored private var scheduler: ContinuousGimbalScheduler?
     @ObservationIgnored private var binding: ContinuousGimbalBinding?
@@ -69,6 +75,7 @@ final class WirelessGimbalModel {
          prepareManual: @escaping @MainActor () async throws -> Void) {
         self.service = service; self.controls = controls; self.prepareManual = prepareManual
         discovery = bluetooth.status
+        nativeSessionStatus = nativeSession.status
         if let saved = UserDefaults.standard.string(forKey: "Pocket3WirelessClientIdentifier"),
            saved.count == 32, saved.allSatisfy(\.isHexDigit) { clientIdentifier = saved }
         else {
@@ -81,6 +88,7 @@ final class WirelessGimbalModel {
             guard let self, value.sessionID == self.bluetooth.status.sessionID else { return }
             self.credentials = value
             self.networkName = value.ssid; self.hasCredentials = true
+            self.promoteCredentialsIfCurrent()
         }
     }
 
@@ -89,6 +97,7 @@ final class WirelessGimbalModel {
         await disconnectNative()
         guard selectionOperationID == selection, !Task.isCancelled else { return }
         credentials = nil; networkName = nil; hasCredentials = false; selectedPeripheral = ""; issue = nil
+        invalidateNativeSession()
         do { try bluetooth.startScan() } catch { issue = AppErrorPresentation.message(error) }
     }
     func connectBluetooth() throws {
@@ -96,6 +105,7 @@ final class WirelessGimbalModel {
         guard let id = UUID(uuidString: selectedPeripheral) else {
             throw BridgeFailure("bluetooth_selection_required", loc("Select a wireless camera"))
         }
+        invalidateNativeSession()
         try bluetooth.connect(peripheralID: id)
         selectionOperationID = UUID()
         credentials = nil; networkName = nil; hasCredentials = false; issue = nil
@@ -140,7 +150,9 @@ final class WirelessGimbalModel {
         }
     }
     func connectNative() async {
-        guard !joiningNetwork, joinTask == nil, !connecting, disconnectTask == nil, let credentials else { return }
+        applyDiscoveryStatus(bluetooth.status)
+        guard !joiningNetwork, joinTask == nil, !connecting, disconnectTask == nil, let credentials,
+              nativeSessionStatus.isReady(for: .credentials) else { return }
         let selection = UUID(); selectionOperationID = selection
         if datalink != nil {
             // Explicit reconnect is also the recovery path for a disarmed or
@@ -154,13 +166,23 @@ final class WirelessGimbalModel {
               selectionOperationID == selection, !Task.isCancelled else { return }
         connecting = true; issue = nil
         let attempt = UUID(); generation = attempt
+        let readinessGeneration = nativeSessionStatus.generation
+        guard nativeSession.beginDatalinkHandshake(generation: readinessGeneration) else {
+            connecting = false
+            return
+        }
+        publishNativeSessionStatus()
         let link = Pocket3Datalink(clientIdentifier: clientIdentifier, pairedDeviceID: credentials.peripheralID.uuidString)
         datalink = link
         var reservedBinding: ContinuousGimbalBinding?
         do {
             let newBinding = try await link.connect()
             try Task.checkCancellation()
-            guard generation == attempt else { throw CancellationError() }
+            guard generation == attempt, nativeSession.generation == readinessGeneration,
+                  nativeSession.markCommandReady(generation: readinessGeneration) else {
+                throw CancellationError()
+            }
+            publishNativeSessionStatus()
             let scheduler = ContinuousGimbalScheduler(transport: link)
             self.scheduler = scheduler
             try await service.reserveNativeControl(binding: newBinding, readStatus: { [weak self] in
@@ -193,6 +215,9 @@ final class WirelessGimbalModel {
             _ = await link.disconnect()
             if let reservedBinding { await service.releaseNativeControl(binding: reservedBinding) }
             if generation == attempt {
+                if nativeSession.generation == readinessGeneration {
+                    resetNativeSessionToPairingEvidence()
+                }
                 datalink = nil; scheduler = nil; binding = nil
                 nativeStatus = failureStatus
                 issue = AppErrorPresentation.message(error)
@@ -209,15 +234,98 @@ final class WirelessGimbalModel {
         let status = await datalink.status()
         guard generation == currentGeneration else { return }
         nativeStatus = status
+        updateNativeSessionFromDatalink(status)
         configureControls()
     }
 
     func applyDiscoveryStatus(_ status: BluetoothDiscoveryStatus, now: Date = Date()) {
         discovery = status
+        updateNativeSessionFromDiscovery(status)
         let paired = status.pairing?.peerReportedPaired == true
         batteryAssessment = batteryMonitor.update(observation: paired ? status.battery : nil,
             sessionID: status.sessionID, peripheralID: status.selectedPeripheralID, now: now)
     }
+
+    private func publishNativeSessionStatus() {
+        nativeSessionStatus = nativeSession.status
+    }
+
+    private func invalidateNativeSession() {
+        _ = nativeSession.invalidate()
+        nativeSessionBluetoothID = nil
+        publishNativeSessionStatus()
+    }
+
+    /// Fences the readiness state to the exact Bluetooth discovery session.
+    /// A status callback from a finished scan or old peripheral can therefore
+    /// never restore pairing/command readiness for the current session.
+    private func updateNativeSessionFromDiscovery(_ status: BluetoothDiscoveryStatus) {
+        let active: Bool
+        switch status.phase {
+        case .connecting, .discoveringServices, .discoveringCharacteristics, .subscribing,
+             .gattConnectedUnauthenticated, .pairing, .awaitingPairingApproval,
+             .retrievingCredentials, .gattPaired:
+            active = status.selectedPeripheralID != nil
+        default:
+            active = false
+        }
+        guard active else {
+            if nativeSession.state != .disconnected { invalidateNativeSession() }
+            else { nativeSessionBluetoothID = nil; publishNativeSessionStatus() }
+            return
+        }
+
+        if nativeSessionBluetoothID != status.sessionID {
+            _ = nativeSession.begin(sessionID: status.sessionID, peerID: status.selectedPeripheralID)
+            nativeSessionBluetoothID = status.sessionID
+        }
+        let currentGeneration = nativeSession.generation
+        if status.pairing?.peerReportedPaired == true {
+            _ = nativeSession.markPaired(generation: currentGeneration)
+        }
+        if status.pairing?.credentialsAvailable == true || credentials != nil {
+            _ = nativeSession.markCredentialsAvailable(generation: currentGeneration)
+        }
+        publishNativeSessionStatus()
+    }
+
+    private func promoteCredentialsIfCurrent() {
+        applyDiscoveryStatus(bluetooth.status)
+        guard nativeSession.state == .paired || nativeSession.state == .credentialsAvailable else { return }
+        _ = nativeSession.markCredentialsAvailable(generation: nativeSession.generation)
+        publishNativeSessionStatus()
+    }
+
+    /// Maps the existing transport lifecycle into the higher-level session.
+    /// `Pocket3DatalinkPhase.ready` is accepted only after this exact session
+    /// entered `datalinkHandshaking`; it never promotes BLE pairing directly.
+    private func updateNativeSessionFromDatalink(_ status: Pocket3DatalinkStatus) {
+        guard nativeSessionBluetoothID == discovery.sessionID,
+              nativeSession.sessionID == discovery.sessionID else { return }
+        let currentGeneration = nativeSession.generation
+        _ = nativeSession.observeDatalink(status.phase, generation: currentGeneration)
+        publishNativeSessionStatus()
+    }
+
+    /// Starts a fresh native-attempt generation while retaining only pairing
+    /// evidence that still belongs to the selected BLE session.
+    private func resetNativeSessionToPairingEvidence() {
+        guard let sessionID = nativeSessionBluetoothID,
+              sessionID == discovery.sessionID else {
+            invalidateNativeSession()
+            return
+        }
+        _ = nativeSession.begin(sessionID: sessionID, peerID: discovery.selectedPeripheralID)
+        let currentGeneration = nativeSession.generation
+        if discovery.pairing?.peerReportedPaired == true {
+            _ = nativeSession.markPaired(generation: currentGeneration)
+        }
+        if discovery.pairing?.credentialsAvailable == true || credentials != nil {
+            _ = nativeSession.markCredentialsAvailable(generation: currentGeneration)
+        }
+        publishNativeSessionStatus()
+    }
+
     /// Read-only callback for the reserved native control owner. It does not
     /// configure controls, open sockets, reconnect, or associate with USB.
     func controlStatus() async -> NativeControlStatus {
@@ -240,7 +348,7 @@ final class WirelessGimbalModel {
     private func configureControls() {
         guard datalink != nil, let scheduler, let binding else { return }
         controls.configure(scheduler: scheduler, binding: binding,
-                           availability: presetBusy ? .blocked(loc("Finishing camera action…")) : nativeStatus?.phase == .ready ? .ready : .blocked(loc("Control connection is not ready.")),
+                           availability: presetBusy ? .blocked(loc("Finishing camera action…")) : nativeSessionStatus.isReady(for: .gimbal) ? .ready : .blocked(loc("Control connection is not ready.")),
                            prepare: { [weak self] in
                                guard let self else { throw CancellationError() }
                                self.cancelPreset()
@@ -303,11 +411,15 @@ final class WirelessGimbalModel {
         generation = UUID()
         guard oldLink != nil || oldBinding != nil || oldScheduler != nil else {
             nativeStatus = nil; connecting = false
+            if nativeSession.state == .datalinkHandshaking || nativeSession.state == .commandReady || nativeSession.state == .liveReady {
+                resetNativeSessionToPairingEvidence()
+            }
             return // No native owner: leave the USB scheduler/gesture intact.
         }
         connecting = true
         let attempt = generation
         datalink = nil; binding = nil; nativeStatus = nil; scheduler = nil
+        resetNativeSessionToPairingEvidence()
         controls.configure(scheduler: nil, binding: nil, availability: .disconnected, prepare: prepareManual)
         let cleanup = Task { [controls, service] in
             await controls.stop(reason: .cancelled)
@@ -324,9 +436,11 @@ final class WirelessGimbalModel {
         await disconnectNative()
         guard selectionOperationID == selection else { return }
         bluetooth.disconnect(); credentials = nil; networkName = nil; hasCredentials = false; selectedPeripheral = ""
+        invalidateNativeSession()
     }
     func preset(flip: Bool) async {
-        guard !presetBusy, !joiningNetwork, !connecting, let datalink, let binding, nativeConnected else { return }
+        guard !presetBusy, !joiningNetwork, !connecting, let datalink, let binding,
+              nativeSessionStatus.isReady(for: .gimbalPreset) else { return }
         let id = UUID(), permit = OperationPermit(), connection = generation
         presetID = id; presetPermit = permit; presetBusy = true
         configureControls()
@@ -364,6 +478,7 @@ final class WirelessGimbalModel {
     func validationStatus() throws -> JSONValue {
         .object(["bluetooth": try .encode(discovery),
                  "native": try nativeStatus.map(JSONValue.encode) ?? .null,
+                 "nativeReadiness": try .encode(nativeSessionStatus),
                  "credentialsAvailable": .bool(credentials != nil)])
     }
 }
