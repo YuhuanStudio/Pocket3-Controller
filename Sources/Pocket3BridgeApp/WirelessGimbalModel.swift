@@ -570,6 +570,25 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Returns the same single-owner transaction boundary for native zoom and
+    /// gimbal validation. The adapter never creates a datalink or obtains a
+    /// second connection; the motion service owns the one-request/readback
+    /// policy.
+    func nativeMotionValidationAdapter() -> NativeMotionValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeMotionValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection, expectedLink: expectedLink)
+        }
+    }
+
     /// Executes exactly one already-prepared transaction through the current
     /// Pocket3Datalink owner.  The surrounding service owns command-specific
     /// readback rules; this method owns model-level identity and busy fences.

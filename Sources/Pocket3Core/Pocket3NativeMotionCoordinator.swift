@@ -399,6 +399,18 @@ public struct Pocket3NativeZoomCoordinator: Sendable {
         return true
     }
 
+    /// Leaves a dry-run or unavailable-executor attempt with explicit partial
+    /// evidence. It never creates a request or submits a frame.
+    @discardableResult
+    public mutating func blockExecution(reason: String) -> Bool {
+        guard phase == .awaitingAcknowledgment || phase == .awaitingReadback else {
+            return false
+        }
+        phase = .failed
+        failureCode = String(reason.prefix(128))
+        return true
+    }
+
     public var result: Pocket3NativeZoomResult? {
         guard let action, let format, let baseline else { return nil }
         return Pocket3NativeZoomResult(action: action, format: format,
@@ -821,6 +833,18 @@ public struct Pocket3NativeGimbalCoordinator: Sendable {
         }
         phase = .cancelled
         failureCode = "cancelled"
+        return true
+    }
+
+    /// Marks an explicit execute gate as unavailable without submitting a
+    /// command. The caller retains the prepared request as dry-run evidence.
+    @discardableResult
+    public mutating func blockExecution(reason: String) -> Bool {
+        guard phase == .awaitingAcknowledgment || phase == .awaitingReadback else {
+            return false
+        }
+        phase = .failed
+        failureCode = String(reason.prefix(128))
         return true
     }
 

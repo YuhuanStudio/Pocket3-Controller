@@ -108,7 +108,7 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == NativeTapFocusValidationRequest.operation {
                     guard args.contains("--hardware-validation") else {
@@ -128,6 +128,17 @@ import MCP
                     }
                     let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
                     let request = try NativeActiveTrackValidationRequest(cliArguments: requestArguments)
+                    let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                    print(reply.result?.pretty ?? "{}")
+                    return
+                }
+                if command == NativeMotionValidationRequest.operation {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled",
+                            "Native motion validation requires --hardware-validation")
+                    }
+                    let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
+                    let request = try NativeMotionValidationRequest(cliArguments: requestArguments)
                     let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                     print(reply.result?.pretty ?? "{}")
                     return
@@ -378,6 +389,8 @@ import MCP
           Developer only: dry-run by default. A6 set/clear requires fresh A5 and A89 readbacks; execute stays disabled until native rotation/mirror coordinates are calibrated.
         pocket3 validation-wireless-native-tap-focus --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N --x X --y Y [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Reuses the ordered 22/30/68/32 sequence; execute stays disabled until landscape/portrait rotation and mirror calibration is verified.
+        pocket3 validation-wireless-native-motion --action zoom-absolute|zoom-relative|zoom-stop|gimbal-mode|gimbal-speed --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--format fourK|twoPointSevenK|fullHD --raw RAW | --mode follow|tiltLocked | --speed fast|default|slow] [--execute] --hardware-validation
+          Developer only: dry-run by default. Native zoom/gimbal writes use the existing single command-ready datalink owner and require fresh matching readback; no retry or fallback transport.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON
