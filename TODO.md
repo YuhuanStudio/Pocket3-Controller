@@ -9,6 +9,9 @@
 - [x] Phase 0 Pocket 3 typed protocol：機身格式／FPS（含 9:16、1:1、3K）、原生 zoom、`FE08/FE09`、`04/50`、tracking `A5/A6/89` 與四步 tap AF 的純 encoder／decoder／validator 已實作。整合 Release gate 共 667 項通過（Core 540、Intelligence 44、Evaluation 1、App 76、XCTest 6）；尚未宣稱真機 writer 成功。
 - [x] Phase 1 readback／transaction 基礎：`camcap_video_format` 已接入 observation/query/store，`02/80` 已分清 starting／recording／stopping／idle；native command transaction 由既有 datalink 單一 sequence owner 執行，一次送出、ACK correlation、timeout、取消、generation 與連續雲台 ownership 均有界。
 - [x] Capability graph 已進入 App Diagnostics、CLI、MCP `camera_status`／`camera_body_status`；完整內容不塞入底部狀態列，保留既有 Yun footer 結構。第二批整合 Release gate 共 684 項通過（Core 554、Intelligence 44、Evaluation 1、App 79、XCTest 6），三語449字串、7個Yun共用設計檔未變。
+- [x] Phase 1 body coordinator：機身 `02/02` start／stop 只以同 session/generation 的新鮮 `02/80` terminal state 完成；transition與ACK都不冒稱完成。`02/18`格式設定需 matching `cam_video_param_v2`，合法 capability table 只證明可選，不證明已套用。
+- [x] Phase 1進階設定資料層：audio DSP `02/A0`／`02/9F`保留variable-length完整blob，只從同session新鮮baseline修改已確認欄位；Product Showcase與color candidate亦已型別化，未送真機。
+- [x] Camera／Diagnostics新增唯讀機身能力區塊，呈現錄影狀態、3K直拍／方形與合法FPS、native/live readiness、A–E evidence及不可用原因；一般UI沒有candidate writer，footer未變。第三批Release gate共698項通過（Core567、Intelligence44、Evaluation1、App80、XCTest6）；三語469字串、62張UI parity與7個Yun共用設計檔通過。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
