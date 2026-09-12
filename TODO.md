@@ -21,6 +21,9 @@
 - [x] Route-safe native datalink foundation：explicit interface name/index、camera host、join policy=`never`、interface/route evidence與Darwin `IP_BOUND_IF`已型別化；指定介面未經allowed plan會在開socket前拒絕。測試沒有操作網路或加入Pocket Wi-Fi，legacy explicit-only路徑相容。
 - [x] Native setting coordinators：WB `02/2C`、focus `02/24`、color `02/42`、Product Showcase PID003B `02/8E`皆要求exact session/generation、新鮮baseline、no-op、single request、ACK＋matching readback；unknown raw保留，ACK-only不完成。
 - [x] ActiveTrack A6 developer validation：box finite/normalized/minimum size/bounds、identity/generation、command-ready與新鮮A5/A89 baseline皆有gate；set/clear單次且需目標readback。rotation/mirror尚未校準時execute明確拒絕，不碰硬體；一般UI無writer。第六批Release gate共738項通過（Core603、Intelligence44、Evaluation1、App84、XCTest6）。
+- [x] macOS唯讀route observation：`getifaddrs`、SystemConfiguration primary baseline/current、UDP connect＋getsockname route interface已接developer CLI；不送payload、不join或改route，失敗保持unknown。
+- [x] Native zoom／gimbal params coordinator：`02/B8` absolute/relative/stop依機身格式限制2×/3×/4×並要求新鮮lens readback；`04/50` Follow／Tilt Locked／speed要求新鮮baseline與matching readback。兩者皆exact session/generation、single request、no-op、ACK不等於完成。
+- [x] Native四步tap AF developer validation：重用22/30/68/32、有序單次transaction、partial evidence/cancel、同session lens＋auto exposure baseline；landscape/portrait/rotation/mirror calibration未驗證時execute拒絕。第七批Release gate共757項通過（Core622、Intelligence44、Evaluation1、App84、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
