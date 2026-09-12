@@ -396,6 +396,8 @@ recorder後續已擴充為只接受Camera01/set02與Gimbal04/set04的**payload�
 
 這是相機端 BLE 充電旗標的正向證據，與先前 `raw=0/notCharging` 明確不同；結論不是由 USB 500 mA allocation 推算。此輪沒有啟動預覽、保存畫面、送雲台／設定／錄影命令，也沒有讀取 Wi-Fi credentials 或切換 Mac 網路。
 
+2026-09-12 再以最新 build 25 連接同一台 Pocket 3。BLE session `AC72778D-3F32-40E3-A2A7-7E194BB15629` 完成 pairing，機身回報電量 100%、`chargingStateRaw=0`／`notCharging`；同時 IORegistry 唯讀確認 `DJIPocket3@01100000`、`UsbPowerSinkAllocation=500`、480 Mb/s。啟動 UVC 後擷取維持 1920×1080／約 30 fps，USB power status 為 present。這組證據應分類為 `full_not_charging`：USB 外部供電存在，而滿電機身目前沒有充入；不得顯示為供電失敗，也不得把 500 mA 當成實測充電電流。沒有保存影像或送出相機控制命令。
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

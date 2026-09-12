@@ -180,6 +180,8 @@ final class AppModel {
             do {
                 switch request.operation {
                 case "bridge-ping": return try LocalBridgeProbe.reply(to: request)
+                case "status", "doctor":
+                    return try await AppModel.shared.statusReply(id: request.id)
                 case "stop":
                     await MainActor.run {
                         let model = AppModel.shared
@@ -423,6 +425,20 @@ final class AppModel {
             sessionID: sessionID, peripheralID: peripheralID,
             battery: battery, nowUptime: nowUptime)
         powerChargingDiagnosis = powerChargingReducer.reduce(input)
+    }
+
+    /// Keeps the local API on the same USB/BLE power projection as the app.
+    /// Reading status never starts a capture, pairs Bluetooth, or writes to the
+    /// camera; it only refreshes the already available service snapshot.
+    func statusReply(id: String) async throws -> ServiceReply {
+        status = await service.status()
+        updatePowerChargingDiagnosis()
+        var payload = try JSONValue.encode(status)
+        if case .object(var fields) = payload {
+            fields["powerChargingDiagnosis"] = try powerChargingDiagnosis.map(JSONValue.encode) ?? .null
+            payload = .object(fields)
+        }
+        return ServiceReply(id: id, result: payload)
     }
     private func configureUSBContinuousControls() async {
         guard !wireless.ownsContinuousControls else { return }
