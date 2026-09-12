@@ -9,7 +9,7 @@ public enum NativeCaptureFormatExpectation: String, Codable, Sendable,
     case zeroCallbacks = "zero_callbacks"
 }
 
-/// Four representative current-device paths. These are validation fixtures,
+/// Six representative current-device paths. These are validation fixtures,
 /// not an availability claim and not a request to start capture.
 public struct NativeCaptureFormatValidationCase: Codable, Sendable,
     Equatable, Identifiable {
@@ -63,6 +63,20 @@ public struct NativeCaptureFormatValidationCase: Codable, Sendable,
         expectation: .framesRequired, expectedInputFourCC: "420v",
         expectedOutputFourCC: "avc1")
 
+    public static let nv12H264Portrait1080p30 = Self(
+        id: "nv12-h264-portrait-1080p30",
+        mode: CaptureMode(width: 1080, height: 1920, frameRate: 30),
+        inputPixelFormat: .nv12, outputPolicy: .h264,
+        expectation: .framesRequired, expectedInputFourCC: "420v",
+        expectedOutputFourCC: "avc1")
+
+    public static let nv12H264Portrait720p30 = Self(
+        id: "nv12-h264-portrait-720p30",
+        mode: CaptureMode(width: 720, height: 1280, frameRate: 30),
+        inputPixelFormat: .nv12, outputPolicy: .h264,
+        expectation: .framesRequired, expectedInputFourCC: "420v",
+        expectedOutputFourCC: "avc1")
+
     public static let uyvyH2644K60NoCallback = Self(
         id: "uyvy-h264-4k60-zero-callback",
         mode: CaptureMode(width: 3840, height: 2160, frameRate: 60),
@@ -72,6 +86,7 @@ public struct NativeCaptureFormatValidationCase: Codable, Sendable,
 
     public static let representative: [Self] = [
         .nv12BGRA1080p30, .nv12BGRAPortrait1080p30, .nv12H2644K30,
+        .nv12H264Portrait1080p30, .nv12H264Portrait720p30,
         .uyvyH2644K60NoCallback
     ]
 
@@ -96,7 +111,7 @@ public enum NativeCaptureFormatValidationError: Error, Codable, Sendable,
 public struct NativeCaptureFormatValidationRequest: Codable, Sendable,
     Equatable {
     public static let operation = "validation-capture-format-matrix"
-    public static let maximumCases = 4
+    public static let maximumCases = 6
     public static let maximumSamples = 20
     public static let maximumExecutionWindow: TimeInterval = 90
 

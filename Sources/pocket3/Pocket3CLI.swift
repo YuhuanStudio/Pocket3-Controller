@@ -505,7 +505,7 @@ import MCP
         pocket3 validation-usb-manual-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--hold-seconds SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute collects bounded pan/tilt holds, zoom progress, fresh-frame evidence, verified Stop/restore and reconnect session fencing through the existing USB owner; it never stores images.
         pocket3 validation-capture-format-matrix --session CAPTURE-SESSION-ID --device DEVICE-ID [--case CASE-ID] [--max-samples N] [--warmup-seconds N] [--sample-interval N] [--execute] --hardware-validation
-          Developer only: dry-run by default. Execute runs four bounded NV12/BGRA, NV12/H.264 and UYVY/4K60 scalar trials sequentially, pauses between cases, never falls back or stores images, and restores the initial mode when safe.
+          Developer only: dry-run by default. Execute runs six bounded NV12/BGRA, portrait H.264, 4K30 H.264 and UYVY/4K60 scalar trials sequentially, pauses between cases, never falls back or stores images, and restores the initial mode when safe.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation

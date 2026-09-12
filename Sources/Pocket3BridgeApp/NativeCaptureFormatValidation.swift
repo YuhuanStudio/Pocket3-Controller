@@ -243,7 +243,7 @@ private func nativeCaptureFormatValidationFailure(
             "Each capture format case may appear only once")
     case .tooManyCases:
         BridgeFailure("capture_format_case_limit",
-            "The capture format matrix is limited to four cases")
+            "The capture format matrix is limited to six cases")
     case .invalidSampleLimit:
         BridgeFailure("capture_format_sample_limit",
             "Each capture format case accepts at most twenty scalar samples")

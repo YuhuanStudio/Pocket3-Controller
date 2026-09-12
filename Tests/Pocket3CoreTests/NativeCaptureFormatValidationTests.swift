@@ -76,7 +76,7 @@ struct NativeCaptureFormatValidationTests {
 
     @Test func representativePlanKeepsExactCurrentFormatBoundaries() throws {
         let cases = NativeCaptureFormatValidationCase.representative
-        #expect(cases.count == 4)
+        #expect(cases.count == 6)
         #expect(cases[0].mode == CaptureMode(width: 1920, height: 1080,
                                               frameRate: 30))
         #expect(cases[0].inputPixelFormat == .nv12 &&
@@ -86,9 +86,19 @@ struct NativeCaptureFormatValidationTests {
         #expect(cases[2].mode.width == 3840 && cases[2].mode.height == 2160 &&
                 cases[2].mode.frameRate == 30 &&
                 cases[2].outputPolicy == .h264)
-        #expect(cases[3].expectsZeroCallbacks &&
-                cases[3].inputPixelFormat == .uyvy &&
-                cases[3].mode.frameRate == 60)
+        #expect(cases[3].isPortrait && cases[3].mode.width == 1080 &&
+                cases[3].mode.height == 1920 &&
+                cases[3].outputPolicy == .h264)
+        #expect(cases[4].isPortrait && cases[4].mode.width == 720 &&
+                cases[4].mode.height == 1280 &&
+                cases[4].outputPolicy == .h264)
+        #expect(cases[3].expectedInputFourCC == "420v" &&
+                cases[3].expectedOutputFourCC == "avc1" &&
+                cases[4].expectedInputFourCC == "420v" &&
+                cases[4].expectedOutputFourCC == "avc1")
+        #expect(cases[5].expectsZeroCallbacks &&
+                cases[5].inputPixelFormat == .uyvy &&
+                cases[5].mode.frameRate == 60)
 
         let request = try request()
         let plan = NativeCaptureFormatValidationService.dryRun(request)
@@ -122,6 +132,12 @@ struct NativeCaptureFormatValidationTests {
                 expectedSessionID: sessionID, expectedDeviceID: deviceID,
                 caseIDs: [first.id, first.id])
         }
+        #expect(throws: NativeCaptureFormatValidationError.tooManyCases) {
+            try NativeCaptureFormatValidationRequest(
+                expectedSessionID: sessionID, expectedDeviceID: deviceID,
+                caseIDs: NativeCaptureFormatValidationCase.representative.map(\.id)
+                    + ["unreviewed-case"])
+        }
 
         let execute = try NativeCaptureFormatValidationRequest(cliArguments: [
             "--session", sessionID, "--device", deviceID,
@@ -136,7 +152,7 @@ struct NativeCaptureFormatValidationTests {
     @Test func evaluatorSeparatesVerifiedPositiveModesFromExpectedZeroCallback()
         throws {
         let cases = NativeCaptureFormatValidationCase.representative
-        let zero = cases[3]
+        let zero = cases[5]
         let zeroMetrics = NativeCaptureFormatValidationMetrics(
             caseID: zero.id, sessionID: sessionID, deviceID: deviceID,
             samples: [], cleanup: cleanup(), videoSampleCount: 0,
@@ -144,12 +160,12 @@ struct NativeCaptureFormatValidationTests {
             nonImageVideoBlockBufferCount: 0, decodedH264FrameCount: 0,
             h264DecodeFailureCount: 0, runtimeErrorCount: 0,
             interruptionCount: 0, requestedOutputPolicy: "h264")
-        let metrics = cases.prefix(3).map { positiveMetrics($0) } + [zeroMetrics]
+        let metrics = cases.prefix(5).map { positiveMetrics($0) } + [zeroMetrics]
         let report = NativeCaptureFormatValidationService.evaluate(
             try request(), metrics: metrics)
 
         #expect(report.completed && report.passed)
-        #expect(report.verifiedCaseCount == 3 &&
+        #expect(report.verifiedCaseCount == 5 &&
                 report.expectedFailureCount == 1)
         #expect(report.failureCode == nil)
         #expect(report.trials.first(where: { $0.caseID == zero.id })?.outcome ==
@@ -234,10 +250,10 @@ struct NativeCaptureFormatValidationTests {
             maximumSamplesPerCase: 3, execute: true, warmupSeconds: 1,
             sampleInterval: 0.1)
         let definitions = NativeCaptureFormatValidationCase.representative
-        let positive = Dictionary(uniqueKeysWithValues: definitions.prefix(3).map {
+        let positive = Dictionary(uniqueKeysWithValues: definitions.prefix(5).map {
             ($0.id, positiveMetrics($0))
         })
-        let zero = definitions[3]
+        let zero = definitions[5]
         let zeroMetrics = NativeCaptureFormatValidationMetrics(
             caseID: zero.id, sessionID: "zero-trial-session", deviceID: deviceID,
             samples: [], cleanup: cleanup(), initialSessionID: sessionID,
@@ -270,15 +286,15 @@ struct NativeCaptureFormatValidationTests {
         let report = await NativeCaptureFormatValidationService.execute(
             request, adapter: adapter)
         #expect(report.completed && report.passed)
-        #expect(report.verifiedCaseCount == 3 &&
+        #expect(report.verifiedCaseCount == 5 &&
                 report.expectedFailureCount == 1)
         #expect(report.restoration?.succeeded == true)
-        #expect(events.values.filter { $0 == "cleanup" }.count == 4)
+        #expect(events.values.filter { $0 == "cleanup" }.count == 6)
         #expect(events.values.last == "restore")
         let expectedPrefix = definitions.flatMap {
             ["run:\($0.id)", "cleanup"]
         }
-        #expect(Array(events.values.prefix(8)) == expectedPrefix)
+        #expect(Array(events.values.prefix(12)) == expectedPrefix)
     }
 
     @Test func cancellationPreservesPartialMetricsAndStillRestoresWhenClean()
