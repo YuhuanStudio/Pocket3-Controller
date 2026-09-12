@@ -1,0 +1,281 @@
+{
+  "bluetooth" : {
+    "activeTrackHistory" : [
+
+    ],
+    "authentication" : "protocol_pair_confirmed",
+    "authorization" : "authorized",
+    "battery" : {
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "sessionID" : "2378D4DC-AA8D-4961-814F-C911DD53E520",
+      "telemetry" : {
+        "chargingState" : "notCharging",
+        "chargingStateRaw" : 0,
+        "percent" : 100,
+        "receivedAt" : "2026-09-12T16:19:29Z",
+        "source" : "bluetooth"
+      }
+    },
+    "cameraSettingsObservations" : [
+
+    ],
+    "cameraStatus" : {
+      "elapsedRecordSeconds" : 0,
+      "mediaSessionState" : {
+        "unknown" : {
+          "raw" : 3
+        }
+      },
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "playbackBit" : false,
+      "receivedAt" : "2026-09-12T16:19:29Z",
+      "receivedUptime" : 188191.32105895833,
+      "recording" : false,
+      "remainingRecordSeconds" : 36630,
+      "sessionID" : "2378D4DC-AA8D-4961-814F-C911DD53E520",
+      "shootingModeRaw" : 35,
+      "statusByte" : 3,
+      "statusFlagsRaw" : 8389123,
+      "storageFreeMiB" : 176032,
+      "storageTotalMiB" : 488015,
+      "transitioning" : false,
+      "videoLike" : true
+    },
+    "candidates" : [
+      {
+        "connectable" : true,
+        "id" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+        "name" : "OsmoPocket3-7CF5",
+        "rssi" : -48
+      }
+    ],
+    "fff4NotificationEnabled" : true,
+    "fff4Properties" : 58,
+    "fff5NotificationEnabled" : true,
+    "fff5Properties" : 54,
+    "fragments" : {
+      "FFF4" : {
+        "discardedBytes" : 0,
+        "expiredFragments" : 0,
+        "invalidFrames" : 0,
+        "invalidHeaders" : 0,
+        "overflows" : 0,
+        "validFrames" : 1100
+      },
+      "FFF5" : {
+        "discardedBytes" : 0,
+        "expiredFragments" : 0,
+        "invalidFrames" : 0,
+        "invalidHeaders" : 0,
+        "overflows" : 0,
+        "validFrames" : 0
+      }
+    },
+    "identityVerification" : "unverified_candidate",
+    "nativeProbeActive" : false,
+    "pairing" : {
+      "credentialAccessFailed" : false,
+      "credentialsAvailable" : false,
+      "peerReportedPaired" : true,
+      "phase" : "paired"
+    },
+    "phase" : "gattPaired",
+    "pose" : {
+      "calibration" : "not_calibrated_to_usb",
+      "limitStatusRaw" : 0,
+      "modeStatusRaw" : 128,
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "pitchRaw" : 1789,
+      "receivedAt" : "2026-09-12T16:19:29Z",
+      "receivedUptime" : 188191.32235170834,
+      "rollRaw" : 0,
+      "sequence" : 44446,
+      "sessionID" : "2378D4DC-AA8D-4961-814F-C911DD53E520",
+      "unit" : "device_reported_deci_degrees",
+      "yawRaw" : -30
+    },
+    "receivedFrames" : 1100,
+    "recentHeaders" : [
+      {
+        "characteristic" : "FFF5",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 72,
+        "direction" : "submitted_tx",
+        "flags" : 192,
+        "sequence" : 52623,
+        "source" : 2
+      },
+      {
+        "characteristic" : "FFF5",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 72,
+        "direction" : "submitted_tx",
+        "flags" : 192,
+        "sequence" : 52621,
+        "source" : 2
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 2,
+        "commandSet" : 13,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 27676,
+        "source" : 5
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44454,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44446,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 220,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 19681,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 128,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 19680,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44433,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 28,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44428,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44426,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 128,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 19679,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44413,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44406,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 128,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 19678,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44388,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 44382,
+        "source" : 4
+      }
+    ],
+    "registrationAcknowledgmentSubmitted" : true,
+    "selectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+    "sessionID" : "2378D4DC-AA8D-4961-814F-C911DD53E520",
+    "storageStatus" : {
+      "freeMiB" : 176032,
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "receivedAt" : "2026-09-12T16:19:29Z",
+      "receivedUptime" : 188191.3211776667,
+      "sessionID" : "2378D4DC-AA8D-4961-814F-C911DD53E520",
+      "storeCount" : 1,
+      "totalMiB" : 488015
+    },
+    "trackingCandidates" : [
+
+    ]
+  },
+  "completed" : false,
+  "issue" : "無法讀取相機設定，請確認已配對的相機後再試一次。",
+  "observations" : [
+
+  ]
+}

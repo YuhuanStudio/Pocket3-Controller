@@ -410,6 +410,8 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 同輪host HEVC validation由1080p30 BGRA capture source取得六個時間上遞增且sequence1–6的distinct frames，透過Mac VideoToolbox產生六個不同hvc1 access-unit hashes；首筆為keyframe，parameter sets共68 bytes，capability verified且stop cleanup完成。這證明Mac端host HEVC編碼，不代表Pocket 3 USB wire輸出HEVC；只保存scalar與hash，沒有保存影像或encoded payload。[結果](../artifacts/hardware-complete-2026-09-13/host-hevc-live.json)
 
+同一已配對BLE session `2378D4DC-AA8D-4961-814F-C911DD53E520`執行一次allowlisted read-settings。第一個`camcap_video_codec` request已submitted，transaction `3600540990`收到相同sequence `51779`的response／ACK，但沒有matching property readback；reader回completed=false並未送其餘十項。新的readback diagnostic將它分類為`ack_without_property_readback`／`bluetooth_readback_no_reply`，而不是no-route或unsupported。沒有送setter、tap-focus、Wi-Fi或媒體命令。[原結果](../artifacts/hardware-complete-2026-09-13/read-settings-ack-no-readback.json)、[診斷](../artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
