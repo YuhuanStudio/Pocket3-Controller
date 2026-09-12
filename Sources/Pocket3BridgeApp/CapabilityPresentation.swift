@@ -20,6 +20,8 @@ enum CapabilityPresentation {
     static func reason(_ value: String?) -> String? {
         guard let value, !value.isEmpty else { return nil }
         switch value {
+        case "No current body readback":
+            return loc("No current body readback")
         case "Known camera resolution; current legal FPS/codec pair is not read back":
             return loc("Known camera resolution; current legal FPS/codec pair is not read back")
         case "Unknown body-format flags":

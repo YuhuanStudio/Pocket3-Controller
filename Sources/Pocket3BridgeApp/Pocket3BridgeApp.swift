@@ -1177,7 +1177,6 @@ struct RootView: View {
                         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }.measuredForLayout("perceptionDiagnostics")
                 }.fixedSize(horizontal: false, vertical: true)
-                BodyCapabilitySection(model: model).measuredForLayout("mainDiagnosticsBodyCapability")
                 YunCard {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text(loc("USB audio")).font(Yun.Text.title); Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary) }; Spacer(); Button(loc("Test for 3 seconds")) { Task { await model.audioTest() } }.buttonStyle(YunButtonStyle(.secondary, small: true)).disabled(!model.cameraActionReady) }
                 }

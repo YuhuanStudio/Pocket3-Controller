@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import SwiftUI
 import Testing
 import Pocket3Core
@@ -36,6 +37,7 @@ import Pocket3Core
         let graph = Pocket3CapabilityGraph()
         #expect(CapabilityPresentation.bodyRecording(graph).contains("Readback pending"))
         #expect(CapabilityPresentation.bodyRecordingDetail(graph).contains("No current body readback"))
+        #expect(CapabilityPresentation.reason("No current body readback") != nil)
         #expect(graph.bodyRecordingFormats.contains { $0.format.resolution == .square3K })
     }
 
@@ -48,5 +50,22 @@ import Pocket3Core
         #expect(image.size.width <= 560)
         #expect(image.size.height > 300 && image.size.height < 1_200)
         #expect(!model.wireless.bluetooth.isBluetoothInitialized)
+        if ProcessInfo.processInfo.environment["POCKET3_RENDER_ARTIFACT"] == "1",
+           let data = image.tiffRepresentation {
+            try data.write(to: URL(fileURLWithPath: "/tmp/Pocket3BodyCapabilitySection.tiff"), options: .atomic)
+        }
+    }
+
+    @MainActor @Test func diagnosticsBodySummaryStaysCompactWhenDisclosureIsCollapsed() async throws {
+        let model = AppModel()
+        model.status = await model.service.status()
+        let full = ImageRenderer(content: BodyCapabilitySection(model: model).frame(width: 560))
+        full.proposedSize = ProposedViewSize(width: 560, height: nil)
+        let summary = ImageRenderer(content: BodyCapabilitySummary(model: model).frame(width: 560))
+        summary.proposedSize = ProposedViewSize(width: 560, height: nil)
+        let fullImage = try #require(full.nsImage)
+        let summaryImage = try #require(summary.nsImage)
+        #expect(summaryImage.size.height < fullImage.size.height)
+        #expect(summaryImage.size.height < 360)
     }
 }

@@ -203,7 +203,7 @@ struct PreferencesWindow: View {
                 Button(loc("Export diagnostics")) { Task { await model.exportDiagnostics() } }.buttonStyle(YunButtonStyle(.secondary, small: true))
                 caption("Exports omit camera images and device identifiers by default.")
             } }
-            BodyCapabilitySection(model: model).measuredForLayout("diagnosticsBodyCapability")
+            BodyCapabilitySummary(model: model)
             settingsCard { VStack(alignment: .leading, spacing: Yun.Space.md) {
                 Text(loc("USB audio test")).font(Yun.Text.title)
                 Text(model.audioMessage).font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)

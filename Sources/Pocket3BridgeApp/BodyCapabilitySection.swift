@@ -2,51 +2,103 @@ import SwiftUI
 import Pocket3Core
 import YunDesign
 
-/// Read-only body capability inventory used in Camera settings and
-/// Diagnostics. It never presents a setter: the native command path remains
-/// developer-gated until matching readback and hardware evidence exist.
+/// Full, read-only body capability inventory for Settings > Camera. The
+/// native command path remains developer-gated; this view never offers a
+/// candidate writer to a normal user.
 struct BodyCapabilitySection: View {
     @Bindable var model: AppModel
 
     var body: some View {
+        YunCard { BodyCapabilityDetails(model: model, showsHeader: true) }
+            .accessibilityIdentifier("Pocket3BodyCapabilitySection")
+            .measuredForLayout("bodyCapabilitySection")
+    }
+}
+
+/// Compact Diagnostics entry. Legal formats stay behind YunDisclosure so the
+/// regular Diagnostics page does not repeat the full Camera settings card.
+struct BodyCapabilitySummary: View {
+    @Bindable var model: AppModel
+    @State private var formatsExpanded = false
+
+    var body: some View {
         let graph = model.status?.capabilities ?? Pocket3CapabilityGraph()
-        YunCard {
-            VStack(alignment: .leading, spacing: Yun.Space.md) {
+        YunDisclosure(loc("Camera body capabilities"),
+                      subtitle: summary(graph),
+                      isExpanded: $formatsExpanded) {
+            BodyCapabilityDetails(model: model, showsHeader: false)
+        }
+        .accessibilityIdentifier("Pocket3BodyCapabilitySummary")
+        .measuredForLayout("bodyCapabilitySummary")
+    }
+
+    private func summary(_ graph: Pocket3CapabilityGraph) -> String {
+        if let current = graph.bodyRecordingFormats.first(where: {
+            $0.availability.read && $0.format.frameRate != nil && $0.format.compression != nil
+        }) {
+            return CapabilityPresentation.bodyFormat(current)
+        }
+        return CapabilityPresentation.bodyRecording(graph)
+    }
+}
+
+private struct BodyCapabilityDetails: View {
+    @Bindable var model: AppModel
+    let showsHeader: Bool
+
+    var body: some View {
+        let graph = model.status?.capabilities ?? Pocket3CapabilityGraph()
+        VStack(alignment: .leading, spacing: Yun.Space.md) {
+            if showsHeader {
                 Text(loc("Camera body capabilities")).font(Yun.Text.title)
                 Text(loc("Body recording is separate from USB Webcam capture."))
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Text(loc("Current body recording")).font(Yun.Text.label)
-                bodyLifecycle(graph: graph)
-
-                YunDivider()
-                Text(loc("Legal body formats")).font(Yun.Text.label)
-                Text(loc("Known camera resolutions are listed even when this session has not read back a legal FPS or codec pair."))
-                    .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                VStack(alignment: .leading, spacing: Yun.Space.sm) {
-                    ForEach(CameraVideoResolution.allCases, id: \.rawValue) { resolution in
-                        formatRow(resolution, graph: graph)
-                    }
-                }
-
-                YunDivider()
-                Text(loc("Native session readiness")).font(Yun.Text.label)
-                capabilityRow(loc("Native command"), CapabilityPresentation.nativeSession(graph),
-                              availability: graph.nativeSession.availability,
-                              evidence: graph.nativeSession.evidence)
-                capabilityRow(loc("Live view"), CapabilityPresentation.liveSession(graph),
-                              availability: graph.liveSession.availability,
-                              evidence: graph.liveSession.evidence)
-                Text(loc("Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass."))
-                    .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(loc("Current body recording")).font(Yun.Text.label)
+            bodyLifecycle(graph: graph)
+
+            YunDivider()
+            Text(loc("Legal body formats")).font(Yun.Text.label)
+            Text(loc("Known camera resolutions are listed even when this session has not read back a legal FPS or codec pair."))
+                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                ForEach(BodyFormatFamily.allCases) { family in
+                    formatRow(family, graph: graph)
+                }
+            }
+
+            YunDivider()
+            Text(loc("Native session readiness")).font(Yun.Text.label)
+            capabilityRow(loc("Native command"), CapabilityPresentation.nativeSession(graph),
+                          availability: graph.nativeSession.availability,
+                          evidence: graph.nativeSession.evidence)
+            capabilityRow(loc("Live view"), CapabilityPresentation.liveSession(graph),
+                          availability: graph.liveSession.availability,
+                          evidence: graph.liveSession.evidence)
+            Text(loc("Read/write/verified and evidence level are reported for each capability. Candidate writers stay unavailable until the session and readback gates pass."))
+                .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .accessibilityIdentifier("Pocket3BodyCapabilitySection")
-        .measuredForLayout("bodyCapabilitySection")
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private enum BodyFormatFamily: String, CaseIterable, Identifiable {
+        case landscape = "16:9"
+        case square = "1:1"
+        case portrait = "9:16"
+
+        var id: String { rawValue }
+        var title: String { rawValue }
+        var resolutions: [CameraVideoResolution] {
+            switch self {
+            case .landscape: [.p1080, .p2_7K, .p4K]
+            case .square: [.square1080, .square2160, .square3K]
+            case .portrait: [.portrait1080, .portrait2_7K, .portrait3K]
+            }
+        }
     }
 
     @ViewBuilder private func bodyLifecycle(graph: Pocket3CapabilityGraph) -> some View {
@@ -71,32 +123,42 @@ struct BodyCapabilitySection: View {
         } else {
             capabilityRow(loc("Recording state"), loc("No current body status"),
                           availability: .unavailable(reason: "No current body readback"), evidence: .softwareFixture)
-            capabilityRow(loc("Current format"), CapabilityPresentation.bodyRecording(graph),
-                          availability: currentBodyFormat?.availability ?? .unavailable(reason: "No current body readback"),
-                          evidence: currentBodyFormat?.evidence ?? .officialSpecification)
+            capabilityRow(loc("Current format"), loc("Unavailable"),
+                          availability: .unavailable(reason: "No current body readback"), evidence: .officialSpecification)
         }
     }
 
-    private func formatRow(_ resolution: CameraVideoResolution,
+    private func formatRow(_ family: BodyFormatFamily,
                            graph: Pocket3CapabilityGraph) -> some View {
-        let entries = graph.bodyRecordingFormats.filter { $0.format.resolution == resolution }
-        let observed = entries.filter { $0.availability.read && $0.format.frameRate != nil }
-        let name = CapabilityPresentation.resolutionName(resolution)
+        let allEntries = graph.bodyRecordingFormats.filter {
+            guard let resolution = $0.format.resolution else { return false }
+            return family.resolutions.contains(resolution)
+        }
+        let observed = allEntries.filter { $0.availability.read && $0.format.frameRate != nil }
         let value: String
-        let capability: BodyRecordingFormatCapability
+        let representative: BodyRecordingFormatCapability
         if observed.isEmpty {
-            value = loc("Readback pending")
-            capability = entries.first ?? BodyRecordingFormatCapability(
-                format: BodyRecordingFormat(resolution: resolution),
+            value = family.resolutions.map(CapabilityPresentation.resolutionName).joined(separator: " · ")
+                + " · " + loc("Readback pending")
+            representative = allEntries.first ?? BodyRecordingFormatCapability(
+                format: BodyRecordingFormat(resolution: family.resolutions[0]),
                 availability: .unavailable(reason: "Known camera resolution; current legal FPS/codec pair is not read back"),
                 evidence: .officialSpecification)
         } else {
-            let rates = observed.compactMap { $0.format.frameRate.map(CapabilityPresentation.frameRateName) }
-            value = "\(rates.joined(separator: ", ")) fps"
-            capability = observed[0]
+            var pairs: [String] = []
+            for resolution in family.resolutions {
+                let rates = observed.filter { $0.format.resolution == resolution }
+                    .compactMap { $0.format.frameRate.map(CapabilityPresentation.frameRateName) }
+                let uniqueRates = Array(Set(rates)).sorted { Int($0) ?? 0 < Int($1) ?? 0 }
+                let label = CapabilityPresentation.resolutionName(resolution)
+                pairs.append(uniqueRates.isEmpty ? "\(label): \(loc("Readback pending"))" : "\(label): \(uniqueRates.joined(separator: "/")) fps")
+            }
+            value = pairs.joined(separator: " · ")
+            representative = observed[0]
         }
-        return capabilityRow(name, value.isEmpty ? loc("Unknown") : value,
-                            availability: capability.availability, evidence: capability.evidence)
+        return capabilityRow(family.title, value,
+                             availability: representative.availability,
+                             evidence: representative.evidence)
     }
 
     private func capabilityRow(_ label: String, _ value: String,
@@ -122,8 +184,7 @@ struct BodyCapabilitySection: View {
     }
 
     private var currentBodyStatus: Pocket3CameraStatusObservation? {
-        let wireless = model.wireless
-        let discovery = wireless.discovery
+        let discovery = model.wireless.discovery
         guard let observation = discovery.cameraStatus,
               observation.sessionID == discovery.sessionID,
               observation.peripheralID == discovery.selectedPeripheralID,
