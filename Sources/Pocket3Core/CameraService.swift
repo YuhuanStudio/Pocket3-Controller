@@ -183,6 +183,7 @@ public actor CameraService {
     private var validationRunID: UUID?
     private var validationReport: HardwareValidationReport?
     private var validationError: String?
+    private var hostHEVCValidationService: HostHEVCValidationService?
     private var nativeControl: NativeControlReservation?
     /// Context supplied by the App's already-running wireless observer. It is
     /// a scalar projection only; updating it never starts Bluetooth or Wi-Fi.
@@ -1447,6 +1448,23 @@ public actor CameraService {
                 guard validationEnabled else { throw BridgeFailure("validation_disabled", "串流驗證只供開發工作階段使用") }
                 streamValidationTask?.cancel()
                 return ServiceReply(id: request.id, result: .object(["cancelRequested": .bool(true)]))
+            case HostHEVCValidationRequest.operation:
+                guard validationEnabled else {
+                    throw BridgeFailure("validation_disabled",
+                        "Host HEVC validation requires developer validation mode")
+                }
+                let validationRequest = try HostHEVCValidationRequest(
+                    arguments: request.arguments)
+                let service: HostHEVCValidationService
+                if let hostHEVCValidationService {
+                    service = hostHEVCValidationService
+                } else {
+                    service = HostHEVCValidationService(
+                        source: CaptureEngineHostHEVCFrameSource(capture: capture))
+                    hostHEVCValidationService = service
+                }
+                let result = await service.run(validationRequest)
+                return ServiceReply(id: request.id, result: try .encode(result))
             case "validation-connect":
                 guard validationEnabled else { throw BridgeFailure("validation_disabled", "此操作只供開發驗證") }
                 let skipUVC: Bool?

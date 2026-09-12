@@ -22,7 +22,7 @@ public enum HostVideoInputPixelFormat: String, Codable, Sendable, Equatable {
         }
     }
 
-    fileprivate init?(pixelBuffer: CVPixelBuffer) {
+    init?(pixelBuffer: CVPixelBuffer) {
         switch CVPixelBufferGetPixelFormatType(pixelBuffer) {
         case kCVPixelFormatType_32BGRA: self = .bgra
         case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange: self = .nv12VideoRange

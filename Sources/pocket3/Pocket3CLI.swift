@@ -49,6 +49,21 @@ import MCP
                 print(reply.result?.pretty ?? "{}")
                 return
             }
+            if command == HostHEVCValidationRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "Host HEVC validation requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request = try HostHEVCValidationRequest(
+                    cliArguments: requestArguments)
+                let reply = try await IPCClient.call(
+                    command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == "devices" { print(try JSONValue.encode(CaptureEngine.devices()).pretty); return }
             if command == "formats" {
                 let id = args.count > 1 ? args[1] : CaptureEngine.devices().first?.id ?? ""
@@ -506,6 +521,8 @@ import MCP
           Developer only: dry-run by default. Execute collects bounded pan/tilt holds, zoom progress, fresh-frame evidence, verified Stop/restore and reconnect session fencing through the existing USB owner; it never stores images.
         pocket3 validation-capture-format-matrix --session CAPTURE-SESSION-ID --device DEVICE-ID [--case CASE-ID] [--max-samples N] [--warmup-seconds N] [--sample-interval N] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute runs six bounded NV12/BGRA, portrait H.264, 4K30 H.264 and UYVY/4K60 scalar trials sequentially, pauses between cases, never falls back or stores images, and restores the initial mode when safe.
+        pocket3 validation-host-hevc --device DEVICE-ID --session CAPTURE-SESSION-ID [--generation N] [--max-frames N] [--max-age-seconds N] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute consumes fresh BGRA/NV12 frames and returns bounded copied hvc1 hashes; it reports macVideoToolboxHost provenance, never stores images and never claims USB wire HEVC.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
