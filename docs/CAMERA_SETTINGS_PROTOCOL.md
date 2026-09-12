@@ -2,7 +2,9 @@
 
 > 本文件的 `artifacts/` 與 `research/` 連結指向本機證據目錄，不隨公開原始碼發布；版本摘要與公開下載驗證見 Release 說明。
 
-初次研究日期：2026-09-08；進度更新：2026-09-11。固定設定來源為 Kaze for DJI `341a35de18493ff61f97c93b8b10161a7512aa36`。初次研究沒有操作相機；後續已實作首批 command encoder／純狀態管理與 BLE 只讀面板，並在本機取得 AF-C、WB Auto、曝光 Auto／EV0。**WB／EV／AF 模式 setter 仍未通過本機寫入驗收。** 來源全文、MIT 授權及16份檔案的 SHA-256 見 [PROVENANCE](../research/2026-09-08/camera-settings/PROVENANCE.md)，逐批結果見[硬體驗收](HARDWARE_ACCEPTANCE.md)。
+初次研究日期：2026-09-08；進度更新：2026-09-12。最初固定設定來源為 Kaze for DJI `341a35de18493ff61f97c93b8b10161a7512aa36`；2026-09-12 再以 OpenPocketCine 的 Pocket 3 實機 command catalog 交叉核對原生格式、縮放、點選對焦、追蹤、雲台快捷與音訊。初次研究沒有操作相機；後續已實作首批 command encoder／純狀態管理與 BLE 只讀面板，並在本機取得 AF-C、WB Auto、曝光 Auto／EV0。**WB／EV／AF 模式 setter 仍未通過本機寫入驗收。** Kaze 來源全文、MIT 授權及16份檔案的 SHA-256 見 [PROVENANCE](../research/2026-09-08/camera-settings/PROVENANCE.md)，逐批結果見[硬體驗收](HARDWARE_ACCEPTANCE.md)。新增資料仍屬上游實機協議證據，不會自動升格成本專案真機寫入成功。[OpenPocketCine command catalog][opc-commands]
+
+> 2026-09-12 更正：本文件後段「尚未納入」描述的是 2026-09-08 固定 Kaze 樣本的缺口。原生 zoom、四步 tap AF、Product Showcase、tracking、gimbal shortcut／params 與 audio DSP 現在已有可核對的公開協議證據；它們仍須在本專案完成 typed implementation 和 matching readback／物理驗證。
 
 ## 2026-09-09：點選對焦的新增證據
 
@@ -132,14 +134,16 @@ Timelapse、Hyperlapse、Motionlapse、Panorama 的額外欄位存在於同一 d
 
 | 項目 | 本次來源能支持的結論 |
 |---|---|
-| Zoom | 下載的固定版 settings、domain、readback、session、UI、Swift/Android實作及文件中沒有找到原生zoom setter／倍率schema／readback。這是此範圍的證據缺口，不是宣稱Pocket 3沒有變焦。既有UVC `zoom-abs` 也不能拿來假裝已驗證DUML zoom。 |
-| 對焦點／MF距離 | 只有S-AF/C-AF writer與mode readback；不能自行添加tap-to-focus、distance或focus-success bit。 |
-| Product Showcase | 孤立setter為 `02/8E 01 01 3B 00 02 01 XX`，off/on=`00/01`；沒有本次可直接核對的selected-state parser，首批暫緩。 |
+| Zoom | 新來源確認 `02/B8` 的 absolute slider、relative slew 與 stop，並以 lens state offset 14 顯示倍率；上限依機身格式為 4K 2×、2.7K 3×、1080p 4×。本專案現有 UVC `zoom-abs` 仍是另一條 transport，不能當作原生 zoom 驗證。[命令][opc-commands] |
+| 對焦點／MF距離 | 新來源確認 Mimo 的四步 burst：`02/22` spot、`02/30` focus region、`02/68` AE hint、`02/32` AE region。現有 probe 已採四步，但 BLE 實測停在 Point 無 ACK；在 command-ready datalink 與橫／直幅座標校準完成前不開放。[命令][opc-commands] |
+| Product Showcase | `02/8E` pid `003B` 已有 Default／Showcase／Lock／Priority 的公開 schema；仍缺本專案實機 selected-state 與寫入驗證。[命令][opc-commands] |
 | Photo格式／倒數 | `02/12 00 01/03`（16:9/1:1）、`02/16 01/02`（JPEG/JPEG+RAW）、`02/4A 00 01 SS 00 00 00`（SS=00/03/05/07），有property readback；可在Photo模式的後續工作加入。 |
 | 自動Motionlapse／Panorama | 有部分isolated commands及上游H，但會移動雲台或觸發拍攝；Preview沒有觀察到獨立stop command。不得混入本輪設定操作。 |
-| Beauty／Wind Noise／Directional Audio | 上游列為複合或未充分隔離的寫入結構；不重播整塊capture。 |
+| Tracking | 新來源列出 `02/A6` box SET／clear、`02/A5` lock poll、`02/89` live subject box。先完成 off/on 被動差異與 typed parser，再做 box write；舊的 off baseline 不是 ActiveTrack 成功。[命令][opc-commands] |
+| Gimbal shortcuts／params | `04/4C FE08` 是回中心、`FE09` 是 180°；`04/50` 提供 Follow／Tilt Locked 與速度 preset。它們是機身搖桿語義，不能再用慢速 UVC absolute movement 模擬。[命令][opc-commands] |
+| Beauty／Wind Noise／Directional Audio | App Glamour 是 keyed blob；audio DSP 使用 `02/A0` GET 與 `02/9F` SET 同一 blob。實作必須保留所有未知 byte，只改已確認欄位，不能重播別次 session 的整塊 capture。[命令][opc-commands] |
 
-範圍界線由 [settings API][settings]、[domain API][domain] 及 [刻意未公開項目][settings-doc] 交叉核對；zoom 的缺席只對本次已下載並列入 manifest 的來源成立。
+原始範圍界線由 [settings API][settings]、[domain API][domain] 及 [刻意未公開項目][settings-doc] 交叉核對；2026-09-12 新增項目則以 [OpenPocketCine command catalog][opc-commands] 為協議證據，兩者都不取代本專案實機驗收。
 
 ## 原生配對後的首輪實機驗證安排
 
@@ -163,3 +167,4 @@ Timelapse、Hyperlapse、Motionlapse、Panorama 的額外欄位存在於同一 d
 [android-settings]: https://github.com/brianmerchant/Kaze-for-DJI/blob/341a35de18493ff61f97c93b8b10161a7512aa36/android/app/src/main/java/com/pocket3/gimbaltest/Pocket3CameraSettings.kt
 [android-readback]: https://github.com/brianmerchant/Kaze-for-DJI/blob/341a35de18493ff61f97c93b8b10161a7512aa36/android/app/src/main/java/com/pocket3/gimbaltest/Pocket3CameraReadback.kt
 [protocol-recording]: https://github.com/brianmerchant/Kaze-for-DJI/blob/341a35de18493ff61f97c93b8b10161a7512aa36/docs/POCKET3_DUML_PROTOCOL.md#8-camera-recording-and-0280-state
+[opc-commands]: https://openpocketcine.app/docs/protocol/commands/
