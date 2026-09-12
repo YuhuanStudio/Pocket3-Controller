@@ -646,6 +646,26 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Reuses the single command-ready datalink owner for advanced-setting
+    /// validation. The service supplies the exact request and owns the
+    /// ACK/readback policy; this adapter never creates another transport.
+    func nativeAdvancedSettingValidationAdapter()
+        -> NativeAdvancedSettingValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeAdvancedSettingValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection,
+                expectedLink: expectedLink)
+        }
+    }
+
     /// Executes exactly one already-prepared transaction through the current
     /// Pocket3Datalink owner.  The surrounding service owns command-specific
     /// readback rules; this method owns model-level identity and busy fences.
