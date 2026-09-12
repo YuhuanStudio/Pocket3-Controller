@@ -67,6 +67,8 @@ extension AppModel {
             return ServiceReply(id: request.id, result: try .encode(result))
         case "validation-wireless-body":
             return try await performNativeBodyValidation(request)
+        case "validation-wireless-route":
+            return try handleNativeNetworkRouteValidation(request)
         case "validation-wireless-join", "validation-wireless-datalink":
             throw BridgeFailure("wifi_control_disabled", "This project keeps the Mac on its current network. Camera Wi-Fi control is not an active connection path.")
         case "validation-wireless-disconnect": await wireless.disconnect()

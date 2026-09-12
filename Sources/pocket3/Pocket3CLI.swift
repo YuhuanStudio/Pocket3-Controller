@@ -108,7 +108,7 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == NativeActiveTrackValidationRequest.operation {
                     guard args.contains("--hardware-validation") else {
@@ -147,6 +147,24 @@ import MCP
                             throw BridgeFailure("invalid_body_validation_timeout", "Use --timeout between 0 and 5 seconds")
                         }
                         arguments["timeout"] = .number(timeout)
+                    }
+                }
+                if command == "validation-wireless-route" {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled", "Network route validation requires --hardware-validation")
+                    }
+                    if let name = option("--interface-name") {
+                        arguments["interfaceName"] = .string(name)
+                    }
+                    if let rawIndex = option("--interface-index") {
+                        guard let value = UInt64(rawIndex), value > 0,
+                              value <= UInt64(UInt32.max) else {
+                            throw BridgeFailure("invalid_network_interface", "Use a positive UInt32 for --interface-index")
+                        }
+                        arguments["interfaceIndex"] = .number(Double(value))
+                    }
+                    if let host = option("--camera-host") {
+                        arguments["cameraHost"] = .string(host)
                     }
                 }
                 if command == "validation-wireless-pair", args.contains("--read-connection-details") {
@@ -308,6 +326,8 @@ import MCP
         Pocket 3 Controller.app --background-bridge
           Starts the logged-in user's local bridge without a Dock icon or visible main window.
         pocket3 doctor
+        pocket3 validation-wireless-route [--interface-name BSD-NAME] [--interface-index INDEX] [--camera-host IPv4] --hardware-validation
+          Developer only, read-only: observes local interfaces, the current route to the camera host and the primary-interface baseline. It never joins Wi-Fi or changes the default route.
         pocket3 devices
         pocket3 formats [device-id]
         pocket3 validation-connect --mode MODE-ID [--pixel-format automatic|nv12|uyvy] [--skip-uvc]
