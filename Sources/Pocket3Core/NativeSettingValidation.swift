@@ -312,7 +312,12 @@ public struct NativeSettingValidationRequest: Codable, Sendable, Equatable {
         if let raw = value.string {
             switch raw.lowercased() {
             case "auto", "automatic": return .automatic
-            default: throw NativeSettingValidationError.invalidValue
+            default:
+                guard let kelvin = Int(raw), (2_000...10_000).contains(kelvin),
+                      kelvin.isMultiple(of: 100) else {
+                    throw NativeSettingValidationError.invalidValue
+                }
+                return .customKelvin(kelvin)
             }
         }
         guard let number = value.number, number.isFinite,
