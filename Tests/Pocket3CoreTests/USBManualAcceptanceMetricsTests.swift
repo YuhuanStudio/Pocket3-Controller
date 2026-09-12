@@ -9,7 +9,7 @@ struct USBManualAcceptanceMetricsTests {
         registryID: "registry-1", bootSessionID: "boot-1")
     private let newBinding = USBManualAcceptanceBinding(
         deviceID: "device-1", captureSessionID: "capture-2",
-        registryID: "registry-2", bootSessionID: "boot-2")
+        registryID: "registry-1", bootSessionID: "boot-1")
 
     private func frame(_ index: Int, age: TimeInterval = 0.1,
                        sessionID: String = "capture-1") -> USBManualFrameEvidence {
@@ -87,7 +87,7 @@ struct USBManualAcceptanceMetricsTests {
             restore: USBManualZoomRestoreEvidence(
                 requestedRaw: 100, observedRaw: 100, submitted: true,
                 verified: true, stableSampleCount: 3,
-                stableDurationSeconds: 0.8))
+                stableDurationSeconds: 0.25))
         return USBManualAcceptanceReport(
             initialBinding: oldBinding,
             baselineFrames: [frame(100), frame(101), frame(102)],
@@ -185,5 +185,13 @@ struct USBManualAcceptanceMetricsTests {
             USBManualAcceptanceEvaluation.self,
             from: JSONEncoder().encode(evaluation))
         #expect(decodedEvaluation == evaluation)
+    }
+
+    @Test func captureReconnectKeepsAttachmentIdentityWhileChangingSession() {
+        let value = report()
+        #expect(USBManualAcceptanceExecutor.evaluate(value)
+            .checks["reconnect_session_fence"] == true)
+        #expect(USBManualAcceptanceExecutor.evaluate(value)
+            .checks["zoom_progress_stop"] == true)
     }
 }

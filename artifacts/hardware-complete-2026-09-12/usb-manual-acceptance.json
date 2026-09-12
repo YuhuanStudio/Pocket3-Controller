@@ -1,0 +1,3543 @@
+{
+  "bounded" : true,
+  "cameraImagesStored" : false,
+  "evaluation" : {
+    "cameraImagesStored" : false,
+    "checks" : {
+      "distance_based_speed" : true,
+      "final_binding" : true,
+      "fresh_baseline_frames" : true,
+      "gimbal_hold_matrix" : true,
+      "initial_binding" : true,
+      "metrics_only" : true,
+      "reconnect_session_fence" : true,
+      "restore" : true,
+      "schema" : true,
+      "zoom_progress_stop" : true
+    },
+    "metricsPassed" : true,
+    "physicalMotionVerified" : false,
+    "profile" : "usb_manual_gimbal_zoom_metrics_v1",
+    "remainingPhysicalSteps" : [
+      "Confirm pan and tilt directions and physical angle mapping on the camera.",
+      "Measure mechanical stop latency and verify release/Stop on the real unit.",
+      "Confirm zoom progress changes the intended optical framing; raw UVC values are not optical magnification.",
+      "Repeat reconnect during an active hold and verify the old session cannot move the new attachment.",
+      "Confirm final gimbal and zoom restoration on the real unit."
+    ],
+    "version" : 1
+  },
+  "executeRequested" : true,
+  "failure" : null,
+  "hardwareValidation" : true,
+  "operation" : "validation-usb-manual-acceptance",
+  "partialEvidence" : {
+    "baselineFrames" : [
+      {
+        "age" : 0.023855999985244125,
+        "deviceID" : "0x11000002ca30023",
+        "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:354",
+        "height" : 1080,
+        "receivedUptime" : 178130.30427808335,
+        "sampledUptime" : 178130.32813408333,
+        "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "width" : 1920
+      },
+      {
+        "age" : 0.013121041673002765,
+        "deviceID" : "0x11000002ca30023",
+        "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:356",
+        "height" : 1080,
+        "receivedUptime" : 178130.368463625,
+        "sampledUptime" : 178130.38158466667,
+        "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "width" : 1920
+      },
+      {
+        "age" : 0.00013150001177564263,
+        "deviceID" : "0x11000002ca30023",
+        "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:358",
+        "height" : 1080,
+        "receivedUptime" : 178130.43520979167,
+        "sampledUptime" : 178130.43534129168,
+        "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "width" : 1920
+      }
+    ],
+    "cameraImagesStored" : false,
+    "gimbalHolds" : [
+      {
+        "axis" : "pan",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "24DCBEE1-035B-4687-8587-977B1CB37ECE",
+        "inputMagnitude" : 0.25,
+        "origin" : {
+          "pan" : 0,
+          "tilt" : -360
+        },
+        "profile" : "near",
+        "restore" : {
+          "observed" : {
+            "pan" : -360,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : 0,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.25028879166347906,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.2844888333347626,
+            "frame" : {
+              "age" : 0.023112083319574594,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:366",
+              "height" : 1080,
+              "receivedUptime" : 178130.70174216668,
+              "sampledUptime" : 178130.72485425,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.3639066250179894,
+            "frame" : {
+              "age" : 0.00198958333930932,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:369",
+              "height" : 1080,
+              "receivedUptime" : 178130.80228245835,
+              "sampledUptime" : 178130.80427204169,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4179709166637622,
+            "frame" : {
+              "age" : 0.02337433330831118,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:370",
+              "height" : 1080,
+              "receivedUptime" : 178130.83496200002,
+              "sampledUptime" : 178130.85833633333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4692346666706726,
+            "frame" : {
+              "age" : 0.006844749994343147,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:372",
+              "height" : 1080,
+              "receivedUptime" : 178130.90275533334,
+              "sampledUptime" : 178130.90960008334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5200937083573081,
+            "frame" : {
+              "age" : 0.022102041693869978,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:373",
+              "height" : 1080,
+              "receivedUptime" : 178130.93835708333,
+              "sampledUptime" : 178130.96045912502,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5717751666670665,
+            "frame" : {
+              "age" : 0.010075833328301087,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:375",
+              "height" : 1080,
+              "receivedUptime" : 178131.00206475,
+              "sampledUptime" : 178131.01214058333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6237461249984335,
+            "frame" : {
+              "age" : 0.02969224998378195,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:376",
+              "height" : 1080,
+              "receivedUptime" : 178131.03441929168,
+              "sampledUptime" : 178131.06411154167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6772925000113901,
+            "frame" : {
+              "age" : 0.016107708332128823,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:378",
+              "height" : 1080,
+              "receivedUptime" : 178131.10155020835,
+              "sampledUptime" : 178131.11765791668,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7305207083409186,
+            "frame" : {
+              "age" : 0.0033490000059828162,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:380",
+              "height" : 1080,
+              "receivedUptime" : 178131.167537125,
+              "sampledUptime" : 178131.170886125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1440,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7823620416747872,
+            "frame" : {
+              "age" : 0.020893208333291113,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:381",
+              "height" : 1080,
+              "receivedUptime" : 178131.20183425,
+              "sampledUptime" : 178131.22272745834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1440,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8347975000215229,
+            "frame" : {
+              "age" : 0.007556500000646338,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:383",
+              "height" : 1080,
+              "receivedUptime" : 178131.2676064167,
+              "sampledUptime" : 178131.2751629167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2160,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8883393750002142,
+            "frame" : {
+              "age" : 0.027040958317229524,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:384",
+              "height" : 1080,
+              "receivedUptime" : 178131.30166383335,
+              "sampledUptime" : 178131.32870479167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.9415562083304394,
+            "frame" : {
+              "age" : 0.012452124996343628,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:386",
+              "height" : 1080,
+              "receivedUptime" : 178131.3694695,
+              "sampledUptime" : 178131.381921625,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.9950405416893773,
+            "frame" : {
+              "age" : 0.03269954168354161,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:387",
+              "height" : 1080,
+              "receivedUptime" : 178131.40270641667,
+              "sampledUptime" : 178131.43540595836,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 3960,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.0470773333508987,
+            "frame" : {
+              "age" : 0.018932291684905067,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:389",
+              "height" : 1080,
+              "receivedUptime" : 178131.46851045833,
+              "sampledUptime" : 178131.48744275002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 3960,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.101155958342133,
+            "frame" : {
+              "age" : 0.0069402083463501185,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:391",
+              "height" : 1080,
+              "receivedUptime" : 178131.53458116666,
+              "sampledUptime" : 178131.541521375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 4680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.1548400000028778,
+            "frame" : {
+              "age" : 0.02396608333219774,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:392",
+              "height" : 1080,
+              "receivedUptime" : 178131.57123933334,
+              "sampledUptime" : 178131.59520541667,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 4680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.208871958340751,
+            "frame" : {
+              "age" : 0.011487249983474612,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:394",
+              "height" : 1080,
+              "receivedUptime" : 178131.63775012502,
+              "sampledUptime" : 178131.649237375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 5400,
+              "tilt" : -360
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : 5400,
+            "tilt" : -360
+          },
+          "held" : {
+            "pan" : 5400,
+            "tilt" : -360
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.21730474999640137,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      },
+      {
+        "axis" : "pan",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "DEB100FE-6C40-441C-A15B-A86D08CCE5DC",
+        "inputMagnitude" : 0.8,
+        "origin" : {
+          "pan" : -360,
+          "tilt" : -360
+        },
+        "profile" : "far",
+        "restore" : {
+          "observed" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : -360,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.22326845832867548,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.2924150416802149,
+            "frame" : {
+              "age" : 0.01567154168151319,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:444",
+              "height" : 1080,
+              "receivedUptime" : 178133.30417391667,
+              "sampledUptime" : 178133.31984545835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.343548708333401,
+            "frame" : {
+              "age" : 0.030254874989623204,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:445",
+              "height" : 1080,
+              "receivedUptime" : 178133.34072425,
+              "sampledUptime" : 178133.370979125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.397371541679604,
+            "frame" : {
+              "age" : 0.020604874996934086,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:447",
+              "height" : 1080,
+              "receivedUptime" : 178133.40419708335,
+              "sampledUptime" : 178133.42480195835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4512714583543129,
+            "frame" : {
+              "age" : 0.006817750021582469,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:449",
+              "height" : 1080,
+              "receivedUptime" : 178133.471884125,
+              "sampledUptime" : 178133.47870187502,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5035989166644868,
+            "frame" : {
+              "age" : 0.026202874985756353,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:450",
+              "height" : 1080,
+              "receivedUptime" : 178133.50482645835,
+              "sampledUptime" : 178133.53102933333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5566941249999218,
+            "frame" : {
+              "age" : 0.012177333323052153,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:452",
+              "height" : 1080,
+              "receivedUptime" : 178133.57194720834,
+              "sampledUptime" : 178133.58412454167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6087667916726787,
+            "frame" : {
+              "age" : 0.032738291658461094,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:453",
+              "height" : 1080,
+              "receivedUptime" : 178133.60345891668,
+              "sampledUptime" : 178133.63619720834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1080,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6619922500103712,
+            "frame" : {
+              "age" : 0.019507833319948986,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:455",
+              "height" : 1080,
+              "receivedUptime" : 178133.66991483336,
+              "sampledUptime" : 178133.68942266668,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1080,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7140601666760631,
+            "frame" : {
+              "age" : 0.004570499993860722,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:457",
+              "height" : 1080,
+              "receivedUptime" : 178133.73692008335,
+              "sampledUptime" : 178133.74149058334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7681880833406467,
+            "frame" : {
+              "age" : 0.019640874990727752,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:458",
+              "height" : 1080,
+              "receivedUptime" : 178133.77597762502,
+              "sampledUptime" : 178133.7956185,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8225825416739099,
+            "frame" : {
+              "age" : 0.012744999985443428,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:460",
+              "height" : 1080,
+              "receivedUptime" : 178133.83726795836,
+              "sampledUptime" : 178133.85001295834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 5400,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8761575000244193,
+            "frame" : {
+              "age" : 0.03250787500292063,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:461",
+              "height" : 1080,
+              "receivedUptime" : 178133.8710800417,
+              "sampledUptime" : 178133.9035879167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 5400,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.9514529166917782,
+            "frame" : {
+              "age" : 0.007916333357570693,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:464",
+              "height" : 1080,
+              "receivedUptime" : 178133.970967,
+              "sampledUptime" : 178133.97888333336,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 8280,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.0054810833535157,
+            "frame" : {
+              "age" : 0.026730083336587995,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:465",
+              "height" : 1080,
+              "receivedUptime" : 178134.00618141668,
+              "sampledUptime" : 178134.03291150002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 8280,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.0569255416630767,
+            "frame" : {
+              "age" : 0.012892458325950429,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:467",
+              "height" : 1080,
+              "receivedUptime" : 178134.0714635,
+              "sampledUptime" : 178134.08435595833,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 10800,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.110490541672334,
+            "frame" : {
+              "age" : 0.031943874986609444,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:468",
+              "height" : 1080,
+              "receivedUptime" : 178134.10597708335,
+              "sampledUptime" : 178134.13792095834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 13680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.1619060000230093,
+            "frame" : {
+              "age" : 0.015572625008644536,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:470",
+              "height" : 1080,
+              "receivedUptime" : 178134.17376379168,
+              "sampledUptime" : 178134.1893364167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 13680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.2130696666717995,
+            "frame" : {
+              "age" : 0.030241791653679684,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:471",
+              "height" : 1080,
+              "receivedUptime" : 178134.21025829169,
+              "sampledUptime" : 178134.24050008334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 16560,
+              "tilt" : -360
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : 16920,
+            "tilt" : -360
+          },
+          "held" : {
+            "pan" : 16920,
+            "tilt" : -360
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.22122616667184047,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      },
+      {
+        "axis" : "tilt",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "FF2AA0B1-57AE-4FCC-ACAA-F3323ADB9FCA",
+        "inputMagnitude" : 0.25,
+        "origin" : {
+          "pan" : -720,
+          "tilt" : -360
+        },
+        "profile" : "near",
+        "restore" : {
+          "observed" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.21784291666699573,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.30089220832451247,
+            "frame" : {
+              "age" : 0.02462183331954293,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:524",
+              "height" : 1080,
+              "receivedUptime" : 178135.97319508335,
+              "sampledUptime" : 178135.99781691667,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.37157187500270084,
+            "frame" : {
+              "age" : 0.02692733332514763,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:526",
+              "height" : 1080,
+              "receivedUptime" : 178136.04156925002,
+              "sampledUptime" : 178136.06849658335,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4236129999917466,
+            "frame" : {
+              "age" : 0.008984124986454844,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:528",
+              "height" : 1080,
+              "receivedUptime" : 178136.11155358335,
+              "sampledUptime" : 178136.12053770834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.47520729165989906,
+            "frame" : {
+              "age" : 0.029710458329645917,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:529",
+              "height" : 1080,
+              "receivedUptime" : 178136.14242154168,
+              "sampledUptime" : 178136.172132,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5276344166777562,
+            "frame" : {
+              "age" : 0.015188083343673497,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:531",
+              "height" : 1080,
+              "receivedUptime" : 178136.20937104168,
+              "sampledUptime" : 178136.22455912502,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.5811796666530427,
+            "frame" : {
+              "age" : 0.004208250000374392,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:533",
+              "height" : 1080,
+              "receivedUptime" : 178136.273896125,
+              "sampledUptime" : 178136.278104375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.6343240833375603,
+            "frame" : {
+              "age" : 0.023210958344861865,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:534",
+              "height" : 1080,
+              "receivedUptime" : 178136.30803783334,
+              "sampledUptime" : 178136.33124879168,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.686574749997817,
+            "frame" : {
+              "age" : 0.00882300001103431,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:536",
+              "height" : 1080,
+              "receivedUptime" : 178136.37467645833,
+              "sampledUptime" : 178136.38349945834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.7401334583410062,
+            "frame" : {
+              "age" : 0.028282791667152196,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:537",
+              "height" : 1080,
+              "receivedUptime" : 178136.40877537502,
+              "sampledUptime" : 178136.4370581667,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 1440
+            }
+          },
+          {
+            "elapsed" : 0.7932832916558255,
+            "frame" : {
+              "age" : 0.016503458318766207,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:539",
+              "height" : 1080,
+              "receivedUptime" : 178136.47370454168,
+              "sampledUptime" : 178136.490208,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 1440
+            }
+          },
+          {
+            "elapsed" : 0.8466277916741092,
+            "frame" : {
+              "age" : 0.036232958344044164,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:540",
+              "height" : 1080,
+              "receivedUptime" : 178136.50731954168,
+              "sampledUptime" : 178136.54355250002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2160
+            }
+          },
+          {
+            "elapsed" : 0.8999219166580588,
+            "frame" : {
+              "age" : 0.020947083336068317,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:542",
+              "height" : 1080,
+              "receivedUptime" : 178136.57589954167,
+              "sampledUptime" : 178136.596846625,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2160
+            }
+          },
+          {
+            "elapsed" : 0.9539930000028107,
+            "frame" : {
+              "age" : 0.01062620832817629,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:544",
+              "height" : 1080,
+              "receivedUptime" : 178136.64029150002,
+              "sampledUptime" : 178136.65091770835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2880
+            }
+          },
+          {
+            "elapsed" : 1.0070407500024885,
+            "frame" : {
+              "age" : 0.030634374998044223,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:545",
+              "height" : 1080,
+              "receivedUptime" : 178136.67333108335,
+              "sampledUptime" : 178136.70396545835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2880
+            }
+          },
+          {
+            "elapsed" : 1.0599139999831095,
+            "frame" : {
+              "age" : 0.011892749986145645,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:547",
+              "height" : 1080,
+              "receivedUptime" : 178136.74494595834,
+              "sampledUptime" : 178136.75683870833,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 3600
+            }
+          },
+          {
+            "elapsed" : 1.1123369999986608,
+            "frame" : {
+              "age" : 0.03405437499168329,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:548",
+              "height" : 1080,
+              "receivedUptime" : 178136.77520733335,
+              "sampledUptime" : 178136.80926170835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 3600
+            }
+          },
+          {
+            "elapsed" : 1.1638370000000577,
+            "frame" : {
+              "age" : 0.019761958334129304,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:550",
+              "height" : 1080,
+              "receivedUptime" : 178136.84099975,
+              "sampledUptime" : 178136.86076170835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          },
+          {
+            "elapsed" : 1.21739416665514,
+            "frame" : {
+              "age" : 0.00466399997822009,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:552",
+              "height" : 1080,
+              "receivedUptime" : 178136.90965487502,
+              "sampledUptime" : 178136.914318875,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : -720,
+            "tilt" : 5040
+          },
+          "held" : {
+            "pan" : -720,
+            "tilt" : 5040
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.21792479167925194,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      },
+      {
+        "axis" : "tilt",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "3EF86224-8948-40A8-9017-4F7EAF522585",
+        "inputMagnitude" : 0.8,
+        "origin" : {
+          "pan" : -720,
+          "tilt" : -360
+        },
+        "profile" : "far",
+        "restore" : {
+          "observed" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.24573937500827014,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.28665066667599604,
+            "frame" : {
+              "age" : 0.035893458349164575,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:600",
+              "height" : 1080,
+              "receivedUptime" : 178138.50960295834,
+              "sampledUptime" : 178138.5454964167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.3387221249868162,
+            "frame" : {
+              "age" : 0.020909124985337257,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:602",
+              "height" : 1080,
+              "receivedUptime" : 178138.57665875,
+              "sampledUptime" : 178138.597567875,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.38930608332157135,
+            "frame" : {
+              "age" : 0.004232541657984257,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:604",
+              "height" : 1080,
+              "receivedUptime" : 178138.64391929167,
+              "sampledUptime" : 178138.64815183333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.44143504166277125,
+            "frame" : {
+              "age" : 0.02322516666026786,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:605",
+              "height" : 1080,
+              "receivedUptime" : 178138.677055625,
+              "sampledUptime" : 178138.70028079167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.49341862500295974,
+            "frame" : {
+              "age" : 0.008615583326900378,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:607",
+              "height" : 1080,
+              "receivedUptime" : 178138.7436487917,
+              "sampledUptime" : 178138.752264375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.5447085833293386,
+            "frame" : {
+              "age" : 0.02326379166333936,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:608",
+              "height" : 1080,
+              "receivedUptime" : 178138.78029054168,
+              "sampledUptime" : 178138.80355433334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.5981941249920055,
+            "frame" : {
+              "age" : 0.013283583335578442,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:610",
+              "height" : 1080,
+              "receivedUptime" : 178138.84375629167,
+              "sampledUptime" : 178138.857039875,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.6509057083458174,
+            "frame" : {
+              "age" : 0.03327345833531581,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:611",
+              "height" : 1080,
+              "receivedUptime" : 178138.87647800002,
+              "sampledUptime" : 178138.90975145836,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2520
+            }
+          },
+          {
+            "elapsed" : 0.7032145416596904,
+            "frame" : {
+              "age" : 0.018929499987279996,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:613",
+              "height" : 1080,
+              "receivedUptime" : 178138.94313079168,
+              "sampledUptime" : 178138.96206029167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2520
+            }
+          },
+          {
+            "elapsed" : 0.7563327083480544,
+            "frame" : {
+              "age" : 0.004327333357650787,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:615",
+              "height" : 1080,
+              "receivedUptime" : 178139.010851125,
+              "sampledUptime" : 178139.01517845836,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          },
+          {
+            "elapsed" : 0.8104694166686386,
+            "frame" : {
+              "age" : 0.024711041653063148,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:616",
+              "height" : 1080,
+              "receivedUptime" : 178139.04460412503,
+              "sampledUptime" : 178139.06931516668,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          },
+          {
+            "elapsed" : 0.8637346249888651,
+            "frame" : {
+              "age" : 0.011905499995918944,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:618",
+              "height" : 1080,
+              "receivedUptime" : 178139.110674875,
+              "sampledUptime" : 178139.122580375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 7200
+            }
+          },
+          {
+            "elapsed" : 0.9344642499927431,
+            "frame" : {
+              "age" : 0.015185916650807485,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:620",
+              "height" : 1080,
+              "receivedUptime" : 178139.17812408335,
+              "sampledUptime" : 178139.19331,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 7200
+            }
+          },
+          {
+            "elapsed" : 0.9851463749946561,
+            "frame" : {
+              "age" : 0.030320458317874,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:621",
+              "height" : 1080,
+              "receivedUptime" : 178139.2136716667,
+              "sampledUptime" : 178139.243992125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 10080
+            }
+          },
+          {
+            "elapsed" : 1.0376143750036135,
+            "frame" : {
+              "age" : 0.017797458334825933,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:623",
+              "height" : 1080,
+              "receivedUptime" : 178139.27866266668,
+              "sampledUptime" : 178139.296460125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 10080
+            }
+          },
+          {
+            "elapsed" : 1.0912350416765548,
+            "frame" : {
+              "age" : 0.003710375021910295,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:625",
+              "height" : 1080,
+              "receivedUptime" : 178139.34637041666,
+              "sampledUptime" : 178139.3500807917,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 12960
+            }
+          },
+          {
+            "elapsed" : 1.1438471666770056,
+            "frame" : {
+              "age" : 0.023083333333488554,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:626",
+              "height" : 1080,
+              "receivedUptime" : 178139.37960958335,
+              "sampledUptime" : 178139.4026929167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 12960
+            }
+          },
+          {
+            "elapsed" : 1.1967742916604038,
+            "frame" : {
+              "age" : 0.009139125002548099,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:628",
+              "height" : 1080,
+              "receivedUptime" : 178139.44648091667,
+              "sampledUptime" : 178139.45562004167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 15480
+            }
+          },
+          {
+            "elapsed" : 1.250073750008596,
+            "frame" : {
+              "age" : 0.02967200000421144,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:629",
+              "height" : 1080,
+              "receivedUptime" : 178139.4792475,
+              "sampledUptime" : 178139.50891950002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 15480
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : -720,
+            "tilt" : 18720
+          },
+          "held" : {
+            "pan" : -720,
+            "tilt" : 18720
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.21656291667022742,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      }
+    ],
+    "physicalMotionVerified" : false,
+    "reconnect" : {
+      "newBinding" : {
+        "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+        "captureSessionID" : "E625D633-1F50-43BB-8C76-9C3C4FE5EDDC",
+        "deviceID" : "0x11000002ca30023",
+        "registryID" : "000000010004d545"
+      },
+      "newSessionReady" : true,
+      "oldBinding" : {
+        "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+        "captureSessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "deviceID" : "0x11000002ca30023",
+        "registryID" : "000000010004d545"
+      },
+      "oldOperationStopped" : true,
+      "oldOperationSuppressed" : true
+    },
+    "zoom" : {
+      "maximum" : 400,
+      "minimum" : 100,
+      "origin" : 100,
+      "progress" : [
+        {
+          "current" : 100,
+          "elapsed" : 0.05525220834533684,
+          "frame" : {
+            "age" : 0.024175916681997478,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:689",
+            "height" : 1080,
+            "receivedUptime" : 178141.485889625,
+            "sampledUptime" : 178141.5100655417,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.10685479166568257,
+          "frame" : {
+            "age" : 0.012206833343952894,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:691",
+            "height" : 1080,
+            "receivedUptime" : 178141.54946129167,
+            "sampledUptime" : 178141.561668125,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.16382666665595025,
+          "frame" : {
+            "age" : 0.0034518750035203993,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:693",
+            "height" : 1080,
+            "receivedUptime" : 178141.615188125,
+            "sampledUptime" : 178141.61864,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.21768170833820477,
+          "frame" : {
+            "age" : 0.02111183333909139,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:694",
+            "height" : 1080,
+            "receivedUptime" : 178141.65138320834,
+            "sampledUptime" : 178141.67249504168,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.2717117916618008,
+          "frame" : {
+            "age" : 0.01290491665713489,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:696",
+            "height" : 1080,
+            "receivedUptime" : 178141.71362020835,
+            "sampledUptime" : 178141.726525125,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 111,
+          "elapsed" : 0.3275045416667126,
+          "frame" : {
+            "age" : 0.034774416679283604,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:697",
+            "height" : 1080,
+            "receivedUptime" : 178141.74754345833,
+            "sampledUptime" : 178141.782317875,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        }
+      ],
+      "restore" : {
+        "observedRaw" : 100,
+        "requestedRaw" : 100,
+        "stableDurationSeconds" : 0.25325345832970925,
+        "stableSampleCount" : 6,
+        "submitted" : true,
+        "verified" : true
+      },
+      "step" : 1,
+      "stop" : {
+        "finalRaw" : 110,
+        "heldRaw" : 111,
+        "motionStopped" : true,
+        "stableDurationSeconds" : 0.8529343333211727,
+        "stableSampleCount" : 11,
+        "submitted" : true,
+        "verified" : true
+      },
+      "target" : 112
+    }
+  },
+  "physicalMotionVerified" : false,
+  "remainingPhysicalSteps" : [
+    "Confirm pan and tilt directions and physical angle mapping on the camera.",
+    "Measure mechanical stop latency and verify release/Stop on the real unit.",
+    "Confirm zoom progress changes the intended optical framing; raw UVC values are not optical magnification.",
+    "Repeat reconnect during an active hold and verify the old session cannot move the new attachment.",
+    "Confirm final gimbal and zoom restoration on the real unit."
+  ],
+  "report" : {
+    "baselineFrames" : [
+      {
+        "age" : 0.023855999985244125,
+        "deviceID" : "0x11000002ca30023",
+        "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:354",
+        "height" : 1080,
+        "receivedUptime" : 178130.30427808335,
+        "sampledUptime" : 178130.32813408333,
+        "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "width" : 1920
+      },
+      {
+        "age" : 0.013121041673002765,
+        "deviceID" : "0x11000002ca30023",
+        "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:356",
+        "height" : 1080,
+        "receivedUptime" : 178130.368463625,
+        "sampledUptime" : 178130.38158466667,
+        "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "width" : 1920
+      },
+      {
+        "age" : 0.00013150001177564263,
+        "deviceID" : "0x11000002ca30023",
+        "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:358",
+        "height" : 1080,
+        "receivedUptime" : 178130.43520979167,
+        "sampledUptime" : 178130.43534129168,
+        "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "width" : 1920
+      }
+    ],
+    "cameraImagesStored" : false,
+    "createdAt" : "2026-09-12T13:32:02Z",
+    "finalBinding" : {
+      "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+      "captureSessionID" : "E625D633-1F50-43BB-8C76-9C3C4FE5EDDC",
+      "deviceID" : "0x11000002ca30023",
+      "registryID" : "000000010004d545"
+    },
+    "finalGimbalPosition" : {
+      "pan" : -720,
+      "tilt" : -360
+    },
+    "finalZoomRaw" : 100,
+    "gimbalHolds" : [
+      {
+        "axis" : "pan",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "24DCBEE1-035B-4687-8587-977B1CB37ECE",
+        "inputMagnitude" : 0.25,
+        "origin" : {
+          "pan" : 0,
+          "tilt" : -360
+        },
+        "profile" : "near",
+        "restore" : {
+          "observed" : {
+            "pan" : -360,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : 0,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.25028879166347906,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.2844888333347626,
+            "frame" : {
+              "age" : 0.023112083319574594,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:366",
+              "height" : 1080,
+              "receivedUptime" : 178130.70174216668,
+              "sampledUptime" : 178130.72485425,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.3639066250179894,
+            "frame" : {
+              "age" : 0.00198958333930932,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:369",
+              "height" : 1080,
+              "receivedUptime" : 178130.80228245835,
+              "sampledUptime" : 178130.80427204169,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4179709166637622,
+            "frame" : {
+              "age" : 0.02337433330831118,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:370",
+              "height" : 1080,
+              "receivedUptime" : 178130.83496200002,
+              "sampledUptime" : 178130.85833633333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4692346666706726,
+            "frame" : {
+              "age" : 0.006844749994343147,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:372",
+              "height" : 1080,
+              "receivedUptime" : 178130.90275533334,
+              "sampledUptime" : 178130.90960008334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5200937083573081,
+            "frame" : {
+              "age" : 0.022102041693869978,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:373",
+              "height" : 1080,
+              "receivedUptime" : 178130.93835708333,
+              "sampledUptime" : 178130.96045912502,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5717751666670665,
+            "frame" : {
+              "age" : 0.010075833328301087,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:375",
+              "height" : 1080,
+              "receivedUptime" : 178131.00206475,
+              "sampledUptime" : 178131.01214058333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6237461249984335,
+            "frame" : {
+              "age" : 0.02969224998378195,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:376",
+              "height" : 1080,
+              "receivedUptime" : 178131.03441929168,
+              "sampledUptime" : 178131.06411154167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6772925000113901,
+            "frame" : {
+              "age" : 0.016107708332128823,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:378",
+              "height" : 1080,
+              "receivedUptime" : 178131.10155020835,
+              "sampledUptime" : 178131.11765791668,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7305207083409186,
+            "frame" : {
+              "age" : 0.0033490000059828162,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:380",
+              "height" : 1080,
+              "receivedUptime" : 178131.167537125,
+              "sampledUptime" : 178131.170886125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1440,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7823620416747872,
+            "frame" : {
+              "age" : 0.020893208333291113,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:381",
+              "height" : 1080,
+              "receivedUptime" : 178131.20183425,
+              "sampledUptime" : 178131.22272745834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1440,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8347975000215229,
+            "frame" : {
+              "age" : 0.007556500000646338,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:383",
+              "height" : 1080,
+              "receivedUptime" : 178131.2676064167,
+              "sampledUptime" : 178131.2751629167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2160,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8883393750002142,
+            "frame" : {
+              "age" : 0.027040958317229524,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:384",
+              "height" : 1080,
+              "receivedUptime" : 178131.30166383335,
+              "sampledUptime" : 178131.32870479167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.9415562083304394,
+            "frame" : {
+              "age" : 0.012452124996343628,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:386",
+              "height" : 1080,
+              "receivedUptime" : 178131.3694695,
+              "sampledUptime" : 178131.381921625,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.9950405416893773,
+            "frame" : {
+              "age" : 0.03269954168354161,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:387",
+              "height" : 1080,
+              "receivedUptime" : 178131.40270641667,
+              "sampledUptime" : 178131.43540595836,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 3960,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.0470773333508987,
+            "frame" : {
+              "age" : 0.018932291684905067,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:389",
+              "height" : 1080,
+              "receivedUptime" : 178131.46851045833,
+              "sampledUptime" : 178131.48744275002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 3960,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.101155958342133,
+            "frame" : {
+              "age" : 0.0069402083463501185,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:391",
+              "height" : 1080,
+              "receivedUptime" : 178131.53458116666,
+              "sampledUptime" : 178131.541521375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 4680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.1548400000028778,
+            "frame" : {
+              "age" : 0.02396608333219774,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:392",
+              "height" : 1080,
+              "receivedUptime" : 178131.57123933334,
+              "sampledUptime" : 178131.59520541667,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 4680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.208871958340751,
+            "frame" : {
+              "age" : 0.011487249983474612,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:394",
+              "height" : 1080,
+              "receivedUptime" : 178131.63775012502,
+              "sampledUptime" : 178131.649237375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 5400,
+              "tilt" : -360
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : 5400,
+            "tilt" : -360
+          },
+          "held" : {
+            "pan" : 5400,
+            "tilt" : -360
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.21730474999640137,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      },
+      {
+        "axis" : "pan",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "DEB100FE-6C40-441C-A15B-A86D08CCE5DC",
+        "inputMagnitude" : 0.8,
+        "origin" : {
+          "pan" : -360,
+          "tilt" : -360
+        },
+        "profile" : "far",
+        "restore" : {
+          "observed" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : -360,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.22326845832867548,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.2924150416802149,
+            "frame" : {
+              "age" : 0.01567154168151319,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:444",
+              "height" : 1080,
+              "receivedUptime" : 178133.30417391667,
+              "sampledUptime" : 178133.31984545835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.343548708333401,
+            "frame" : {
+              "age" : 0.030254874989623204,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:445",
+              "height" : 1080,
+              "receivedUptime" : 178133.34072425,
+              "sampledUptime" : 178133.370979125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.397371541679604,
+            "frame" : {
+              "age" : 0.020604874996934086,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:447",
+              "height" : 1080,
+              "receivedUptime" : 178133.40419708335,
+              "sampledUptime" : 178133.42480195835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4512714583543129,
+            "frame" : {
+              "age" : 0.006817750021582469,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:449",
+              "height" : 1080,
+              "receivedUptime" : 178133.471884125,
+              "sampledUptime" : 178133.47870187502,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -360,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5035989166644868,
+            "frame" : {
+              "age" : 0.026202874985756353,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:450",
+              "height" : 1080,
+              "receivedUptime" : 178133.50482645835,
+              "sampledUptime" : 178133.53102933333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5566941249999218,
+            "frame" : {
+              "age" : 0.012177333323052153,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:452",
+              "height" : 1080,
+              "receivedUptime" : 178133.57194720834,
+              "sampledUptime" : 178133.58412454167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 0,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6087667916726787,
+            "frame" : {
+              "age" : 0.032738291658461094,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:453",
+              "height" : 1080,
+              "receivedUptime" : 178133.60345891668,
+              "sampledUptime" : 178133.63619720834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1080,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.6619922500103712,
+            "frame" : {
+              "age" : 0.019507833319948986,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:455",
+              "height" : 1080,
+              "receivedUptime" : 178133.66991483336,
+              "sampledUptime" : 178133.68942266668,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 1080,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7140601666760631,
+            "frame" : {
+              "age" : 0.004570499993860722,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:457",
+              "height" : 1080,
+              "receivedUptime" : 178133.73692008335,
+              "sampledUptime" : 178133.74149058334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.7681880833406467,
+            "frame" : {
+              "age" : 0.019640874990727752,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:458",
+              "height" : 1080,
+              "receivedUptime" : 178133.77597762502,
+              "sampledUptime" : 178133.7956185,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 2880,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8225825416739099,
+            "frame" : {
+              "age" : 0.012744999985443428,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:460",
+              "height" : 1080,
+              "receivedUptime" : 178133.83726795836,
+              "sampledUptime" : 178133.85001295834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 5400,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.8761575000244193,
+            "frame" : {
+              "age" : 0.03250787500292063,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:461",
+              "height" : 1080,
+              "receivedUptime" : 178133.8710800417,
+              "sampledUptime" : 178133.9035879167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 5400,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.9514529166917782,
+            "frame" : {
+              "age" : 0.007916333357570693,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:464",
+              "height" : 1080,
+              "receivedUptime" : 178133.970967,
+              "sampledUptime" : 178133.97888333336,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 8280,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.0054810833535157,
+            "frame" : {
+              "age" : 0.026730083336587995,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:465",
+              "height" : 1080,
+              "receivedUptime" : 178134.00618141668,
+              "sampledUptime" : 178134.03291150002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 8280,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.0569255416630767,
+            "frame" : {
+              "age" : 0.012892458325950429,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:467",
+              "height" : 1080,
+              "receivedUptime" : 178134.0714635,
+              "sampledUptime" : 178134.08435595833,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 10800,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.110490541672334,
+            "frame" : {
+              "age" : 0.031943874986609444,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:468",
+              "height" : 1080,
+              "receivedUptime" : 178134.10597708335,
+              "sampledUptime" : 178134.13792095834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 13680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.1619060000230093,
+            "frame" : {
+              "age" : 0.015572625008644536,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:470",
+              "height" : 1080,
+              "receivedUptime" : 178134.17376379168,
+              "sampledUptime" : 178134.1893364167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 13680,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 1.2130696666717995,
+            "frame" : {
+              "age" : 0.030241791653679684,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:471",
+              "height" : 1080,
+              "receivedUptime" : 178134.21025829169,
+              "sampledUptime" : 178134.24050008334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : 16560,
+              "tilt" : -360
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : 16920,
+            "tilt" : -360
+          },
+          "held" : {
+            "pan" : 16920,
+            "tilt" : -360
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.22122616667184047,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      },
+      {
+        "axis" : "tilt",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "FF2AA0B1-57AE-4FCC-ACAA-F3323ADB9FCA",
+        "inputMagnitude" : 0.25,
+        "origin" : {
+          "pan" : -720,
+          "tilt" : -360
+        },
+        "profile" : "near",
+        "restore" : {
+          "observed" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.21784291666699573,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.30089220832451247,
+            "frame" : {
+              "age" : 0.02462183331954293,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:524",
+              "height" : 1080,
+              "receivedUptime" : 178135.97319508335,
+              "sampledUptime" : 178135.99781691667,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.37157187500270084,
+            "frame" : {
+              "age" : 0.02692733332514763,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:526",
+              "height" : 1080,
+              "receivedUptime" : 178136.04156925002,
+              "sampledUptime" : 178136.06849658335,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.4236129999917466,
+            "frame" : {
+              "age" : 0.008984124986454844,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:528",
+              "height" : 1080,
+              "receivedUptime" : 178136.11155358335,
+              "sampledUptime" : 178136.12053770834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.47520729165989906,
+            "frame" : {
+              "age" : 0.029710458329645917,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:529",
+              "height" : 1080,
+              "receivedUptime" : 178136.14242154168,
+              "sampledUptime" : 178136.172132,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.5276344166777562,
+            "frame" : {
+              "age" : 0.015188083343673497,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:531",
+              "height" : 1080,
+              "receivedUptime" : 178136.20937104168,
+              "sampledUptime" : 178136.22455912502,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.5811796666530427,
+            "frame" : {
+              "age" : 0.004208250000374392,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:533",
+              "height" : 1080,
+              "receivedUptime" : 178136.273896125,
+              "sampledUptime" : 178136.278104375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.6343240833375603,
+            "frame" : {
+              "age" : 0.023210958344861865,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:534",
+              "height" : 1080,
+              "receivedUptime" : 178136.30803783334,
+              "sampledUptime" : 178136.33124879168,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.686574749997817,
+            "frame" : {
+              "age" : 0.00882300001103431,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:536",
+              "height" : 1080,
+              "receivedUptime" : 178136.37467645833,
+              "sampledUptime" : 178136.38349945834,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.7401334583410062,
+            "frame" : {
+              "age" : 0.028282791667152196,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:537",
+              "height" : 1080,
+              "receivedUptime" : 178136.40877537502,
+              "sampledUptime" : 178136.4370581667,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 1440
+            }
+          },
+          {
+            "elapsed" : 0.7932832916558255,
+            "frame" : {
+              "age" : 0.016503458318766207,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:539",
+              "height" : 1080,
+              "receivedUptime" : 178136.47370454168,
+              "sampledUptime" : 178136.490208,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 1440
+            }
+          },
+          {
+            "elapsed" : 0.8466277916741092,
+            "frame" : {
+              "age" : 0.036232958344044164,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:540",
+              "height" : 1080,
+              "receivedUptime" : 178136.50731954168,
+              "sampledUptime" : 178136.54355250002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2160
+            }
+          },
+          {
+            "elapsed" : 0.8999219166580588,
+            "frame" : {
+              "age" : 0.020947083336068317,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:542",
+              "height" : 1080,
+              "receivedUptime" : 178136.57589954167,
+              "sampledUptime" : 178136.596846625,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2160
+            }
+          },
+          {
+            "elapsed" : 0.9539930000028107,
+            "frame" : {
+              "age" : 0.01062620832817629,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:544",
+              "height" : 1080,
+              "receivedUptime" : 178136.64029150002,
+              "sampledUptime" : 178136.65091770835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2880
+            }
+          },
+          {
+            "elapsed" : 1.0070407500024885,
+            "frame" : {
+              "age" : 0.030634374998044223,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:545",
+              "height" : 1080,
+              "receivedUptime" : 178136.67333108335,
+              "sampledUptime" : 178136.70396545835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2880
+            }
+          },
+          {
+            "elapsed" : 1.0599139999831095,
+            "frame" : {
+              "age" : 0.011892749986145645,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:547",
+              "height" : 1080,
+              "receivedUptime" : 178136.74494595834,
+              "sampledUptime" : 178136.75683870833,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 3600
+            }
+          },
+          {
+            "elapsed" : 1.1123369999986608,
+            "frame" : {
+              "age" : 0.03405437499168329,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:548",
+              "height" : 1080,
+              "receivedUptime" : 178136.77520733335,
+              "sampledUptime" : 178136.80926170835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 3600
+            }
+          },
+          {
+            "elapsed" : 1.1638370000000577,
+            "frame" : {
+              "age" : 0.019761958334129304,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:550",
+              "height" : 1080,
+              "receivedUptime" : 178136.84099975,
+              "sampledUptime" : 178136.86076170835,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          },
+          {
+            "elapsed" : 1.21739416665514,
+            "frame" : {
+              "age" : 0.00466399997822009,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:552",
+              "height" : 1080,
+              "receivedUptime" : 178136.90965487502,
+              "sampledUptime" : 178136.914318875,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : -720,
+            "tilt" : 5040
+          },
+          "held" : {
+            "pan" : -720,
+            "tilt" : 5040
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.21792479167925194,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      },
+      {
+        "axis" : "tilt",
+        "direction" : 1,
+        "holdDurationSeconds" : 1.2,
+        "id" : "3EF86224-8948-40A8-9017-4F7EAF522585",
+        "inputMagnitude" : 0.8,
+        "origin" : {
+          "pan" : -720,
+          "tilt" : -360
+        },
+        "profile" : "far",
+        "restore" : {
+          "observed" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "requested" : {
+            "pan" : -720,
+            "tilt" : -360
+          },
+          "stableDurationSeconds" : 0.24573937500827014,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        },
+        "samples" : [
+          {
+            "elapsed" : 0.28665066667599604,
+            "frame" : {
+              "age" : 0.035893458349164575,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:600",
+              "height" : 1080,
+              "receivedUptime" : 178138.50960295834,
+              "sampledUptime" : 178138.5454964167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.3387221249868162,
+            "frame" : {
+              "age" : 0.020909124985337257,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:602",
+              "height" : 1080,
+              "receivedUptime" : 178138.57665875,
+              "sampledUptime" : 178138.597567875,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.38930608332157135,
+            "frame" : {
+              "age" : 0.004232541657984257,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:604",
+              "height" : 1080,
+              "receivedUptime" : 178138.64391929167,
+              "sampledUptime" : 178138.64815183333,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : -360
+            }
+          },
+          {
+            "elapsed" : 0.44143504166277125,
+            "frame" : {
+              "age" : 0.02322516666026786,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:605",
+              "height" : 1080,
+              "receivedUptime" : 178138.677055625,
+              "sampledUptime" : 178138.70028079167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.49341862500295974,
+            "frame" : {
+              "age" : 0.008615583326900378,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:607",
+              "height" : 1080,
+              "receivedUptime" : 178138.7436487917,
+              "sampledUptime" : 178138.752264375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 0
+            }
+          },
+          {
+            "elapsed" : 0.5447085833293386,
+            "frame" : {
+              "age" : 0.02326379166333936,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:608",
+              "height" : 1080,
+              "receivedUptime" : 178138.78029054168,
+              "sampledUptime" : 178138.80355433334,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.5981941249920055,
+            "frame" : {
+              "age" : 0.013283583335578442,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:610",
+              "height" : 1080,
+              "receivedUptime" : 178138.84375629167,
+              "sampledUptime" : 178138.857039875,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 720
+            }
+          },
+          {
+            "elapsed" : 0.6509057083458174,
+            "frame" : {
+              "age" : 0.03327345833531581,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:611",
+              "height" : 1080,
+              "receivedUptime" : 178138.87647800002,
+              "sampledUptime" : 178138.90975145836,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2520
+            }
+          },
+          {
+            "elapsed" : 0.7032145416596904,
+            "frame" : {
+              "age" : 0.018929499987279996,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:613",
+              "height" : 1080,
+              "receivedUptime" : 178138.94313079168,
+              "sampledUptime" : 178138.96206029167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 2520
+            }
+          },
+          {
+            "elapsed" : 0.7563327083480544,
+            "frame" : {
+              "age" : 0.004327333357650787,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:615",
+              "height" : 1080,
+              "receivedUptime" : 178139.010851125,
+              "sampledUptime" : 178139.01517845836,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          },
+          {
+            "elapsed" : 0.8104694166686386,
+            "frame" : {
+              "age" : 0.024711041653063148,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:616",
+              "height" : 1080,
+              "receivedUptime" : 178139.04460412503,
+              "sampledUptime" : 178139.06931516668,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 4320
+            }
+          },
+          {
+            "elapsed" : 0.8637346249888651,
+            "frame" : {
+              "age" : 0.011905499995918944,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:618",
+              "height" : 1080,
+              "receivedUptime" : 178139.110674875,
+              "sampledUptime" : 178139.122580375,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 7200
+            }
+          },
+          {
+            "elapsed" : 0.9344642499927431,
+            "frame" : {
+              "age" : 0.015185916650807485,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:620",
+              "height" : 1080,
+              "receivedUptime" : 178139.17812408335,
+              "sampledUptime" : 178139.19331,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 7200
+            }
+          },
+          {
+            "elapsed" : 0.9851463749946561,
+            "frame" : {
+              "age" : 0.030320458317874,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:621",
+              "height" : 1080,
+              "receivedUptime" : 178139.2136716667,
+              "sampledUptime" : 178139.243992125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 10080
+            }
+          },
+          {
+            "elapsed" : 1.0376143750036135,
+            "frame" : {
+              "age" : 0.017797458334825933,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:623",
+              "height" : 1080,
+              "receivedUptime" : 178139.27866266668,
+              "sampledUptime" : 178139.296460125,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 10080
+            }
+          },
+          {
+            "elapsed" : 1.0912350416765548,
+            "frame" : {
+              "age" : 0.003710375021910295,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:625",
+              "height" : 1080,
+              "receivedUptime" : 178139.34637041666,
+              "sampledUptime" : 178139.3500807917,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 12960
+            }
+          },
+          {
+            "elapsed" : 1.1438471666770056,
+            "frame" : {
+              "age" : 0.023083333333488554,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:626",
+              "height" : 1080,
+              "receivedUptime" : 178139.37960958335,
+              "sampledUptime" : 178139.4026929167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 12960
+            }
+          },
+          {
+            "elapsed" : 1.1967742916604038,
+            "frame" : {
+              "age" : 0.009139125002548099,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:628",
+              "height" : 1080,
+              "receivedUptime" : 178139.44648091667,
+              "sampledUptime" : 178139.45562004167,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 15480
+            }
+          },
+          {
+            "elapsed" : 1.250073750008596,
+            "frame" : {
+              "age" : 0.02967200000421144,
+              "deviceID" : "0x11000002ca30023",
+              "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:629",
+              "height" : 1080,
+              "receivedUptime" : 178139.4792475,
+              "sampledUptime" : 178139.50891950002,
+              "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+              "width" : 1920
+            },
+            "motionActive" : true,
+            "phase" : "moving",
+            "position" : {
+              "pan" : -720,
+              "tilt" : 15480
+            }
+          }
+        ],
+        "speed" : 1,
+        "stop" : {
+          "final" : {
+            "pan" : -720,
+            "tilt" : 18720
+          },
+          "held" : {
+            "pan" : -720,
+            "tilt" : 18720
+          },
+          "motionStopped" : true,
+          "stableDurationSeconds" : 0.21656291667022742,
+          "stableSampleCount" : 5,
+          "submitted" : true,
+          "verified" : true
+        }
+      }
+    ],
+    "initialBinding" : {
+      "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+      "captureSessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+      "deviceID" : "0x11000002ca30023",
+      "registryID" : "000000010004d545"
+    },
+    "physicalMotionVerified" : false,
+    "profile" : "usb_manual_gimbal_zoom_metrics_v1",
+    "reconnect" : {
+      "newBinding" : {
+        "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+        "captureSessionID" : "E625D633-1F50-43BB-8C76-9C3C4FE5EDDC",
+        "deviceID" : "0x11000002ca30023",
+        "registryID" : "000000010004d545"
+      },
+      "newSessionReady" : true,
+      "oldBinding" : {
+        "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+        "captureSessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+        "deviceID" : "0x11000002ca30023",
+        "registryID" : "000000010004d545"
+      },
+      "oldOperationStopped" : true,
+      "oldOperationSuppressed" : true
+    },
+    "version" : 1,
+    "zoom" : {
+      "maximum" : 400,
+      "minimum" : 100,
+      "origin" : 100,
+      "progress" : [
+        {
+          "current" : 100,
+          "elapsed" : 0.05525220834533684,
+          "frame" : {
+            "age" : 0.024175916681997478,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:689",
+            "height" : 1080,
+            "receivedUptime" : 178141.485889625,
+            "sampledUptime" : 178141.5100655417,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.10685479166568257,
+          "frame" : {
+            "age" : 0.012206833343952894,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:691",
+            "height" : 1080,
+            "receivedUptime" : 178141.54946129167,
+            "sampledUptime" : 178141.561668125,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.16382666665595025,
+          "frame" : {
+            "age" : 0.0034518750035203993,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:693",
+            "height" : 1080,
+            "receivedUptime" : 178141.615188125,
+            "sampledUptime" : 178141.61864,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.21768170833820477,
+          "frame" : {
+            "age" : 0.02111183333909139,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:694",
+            "height" : 1080,
+            "receivedUptime" : 178141.65138320834,
+            "sampledUptime" : 178141.67249504168,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 100,
+          "elapsed" : 0.2717117916618008,
+          "frame" : {
+            "age" : 0.01290491665713489,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:696",
+            "height" : 1080,
+            "receivedUptime" : 178141.71362020835,
+            "sampledUptime" : 178141.726525125,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        },
+        {
+          "current" : 111,
+          "elapsed" : 0.3275045416667126,
+          "frame" : {
+            "age" : 0.034774416679283604,
+            "deviceID" : "0x11000002ca30023",
+            "frameID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2:697",
+            "height" : 1080,
+            "receivedUptime" : 178141.74754345833,
+            "sampledUptime" : 178141.782317875,
+            "sessionID" : "EAF313C1-B7D6-4507-A21A-D2107EFFBBA2",
+            "width" : 1920
+          },
+          "motionActive" : true,
+          "phase" : "moving"
+        }
+      ],
+      "restore" : {
+        "observedRaw" : 100,
+        "requestedRaw" : 100,
+        "stableDurationSeconds" : 0.25325345832970925,
+        "stableSampleCount" : 6,
+        "submitted" : true,
+        "verified" : true
+      },
+      "step" : 1,
+      "stop" : {
+        "finalRaw" : 110,
+        "heldRaw" : 111,
+        "motionStopped" : true,
+        "stableDurationSeconds" : 0.8529343333211727,
+        "stableSampleCount" : 11,
+        "submitted" : true,
+        "verified" : true
+      },
+      "target" : 112
+    }
+  },
+  "stage" : "completed"
+}

@@ -387,6 +387,7 @@ public enum USBManualAcceptanceExecutor {
     public static let minimumStopSamples = 3
     public static let minimumStopDuration: TimeInterval = 0.2
     public static let minimumZoomStopDuration: TimeInterval = 0.8
+    public static let minimumZoomRestoreDuration: TimeInterval = 0.2
     public static let maximumHoldDuration: TimeInterval = 1.2
     public static let maximumBaselineFrames = 64
     public static let maximumHoldSamples = 24
@@ -601,7 +602,7 @@ public enum USBManualAcceptanceExecutor {
               value.restore.failureCode == nil,
               value.restore.stableSampleCount >= minimumStopSamples,
               value.restore.stableDurationSeconds.isFinite,
-              value.restore.stableDurationSeconds >= minimumZoomStopDuration,
+              value.restore.stableDurationSeconds >= minimumZoomRestoreDuration,
               value.restore.stableDurationSeconds <= 1.2,
               value.restore.requestedRaw == value.origin,
               value.restore.observedRaw == value.origin else {
@@ -649,8 +650,8 @@ public enum USBManualAcceptanceExecutor {
               fence.oldBinding.isComplete, fence.newBinding.isComplete,
               fence.newBinding.deviceID == fence.oldBinding.deviceID,
               fence.newBinding.captureSessionID != fence.oldBinding.captureSessionID,
-              fence.newBinding.registryID != fence.oldBinding.registryID ||
-                fence.newBinding.bootSessionID != fence.oldBinding.bootSessionID,
+              fence.newBinding.registryID == fence.oldBinding.registryID,
+              fence.newBinding.bootSessionID == fence.oldBinding.bootSessionID,
               fence.oldOperationStopped, fence.oldOperationSuppressed,
               fence.newSessionReady else { return false }
         return report.gimbalHolds.allSatisfy { hold in

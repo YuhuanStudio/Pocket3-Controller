@@ -437,7 +437,10 @@ extension AppModel {
                 continue
             }
             values.append((position, sample.sampledUptime))
-            if values.count > USBManualAcceptanceExecutor.minimumStopSamples {
+            // Keep enough history to prove the duration requirement. At the
+            // 50 ms polling interval, retaining only the minimum three
+            // samples can span about 100 ms and can never satisfy 200 ms.
+            if values.count > 10 {
                 values.removeFirst()
             }
             if result.first == nil { result.first = position }
@@ -553,7 +556,9 @@ extension AppModel {
                         motionActive: true))
                 }
                 let elapsed = ProcessInfo.processInfo.systemUptime - started
-                if !stopIssued && (progress.count >= 2 || elapsed >= max(0.35, holdSeconds)) {
+                let observedMovement = progress.contains { $0.current != origin }
+                if !stopIssued && ((progress.count >= 2 && observedMovement) ||
+                    elapsed >= max(0.35, holdSeconds)) {
                     stopIssued = true
                     stopMotion = try? await service.stop()
                     break
