@@ -108,7 +108,7 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == NativeAudioDSPValidationRequest.operation {
                     guard args.contains("--hardware-validation") else {
@@ -174,6 +174,21 @@ import MCP
                         $0 != "--hardware-validation"
                     })
                     let request = try NativeCameraCaptureValidationRequest(
+                        cliArguments: requestArguments)
+                    let reply = try await IPCClient.call(command,
+                        arguments: request.arguments, address: bridgeAddress)
+                    print(reply.result?.pretty ?? "{}")
+                    return
+                }
+                if command == NativeMediaValidationRequest.operation {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled",
+                            "Native media validation requires --hardware-validation")
+                    }
+                    let requestArguments = Array(args.dropFirst().filter {
+                        $0 != "--hardware-validation"
+                    })
+                    let request = try NativeMediaValidationRequest(
                         cliArguments: requestArguments)
                     let reply = try await IPCClient.call(command,
                         arguments: request.arguments, address: bridgeAddress)
@@ -441,8 +456,6 @@ import MCP
           Developer only: A0 GET → one 9F byte-2 patch → matching A0 GET. Unknown bytes are preserved; dry-run is the default.
         pocket3 validation-wireless-tracking --action set|clear --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N [--id ID --x X --y Y --width W --height H] [--execute] --hardware-validation
           Developer only: dry-run by default. A6 set/clear requires fresh A5 and A89 readbacks; execute stays disabled until native rotation/mirror coordinates are calibrated.
-        pocket3 validation-wireless-native-advanced-setting --action med-tele|iso-limit|audio-channel|vocal-boost|selfie-flip-get --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--value VALUE] [--execute] --hardware-validation
-          Developer only: dry-run by default. ISO/audio/Vocal writes require a fresh typed keyed baseline; Selfie Flip is GET-only and official-only settings return unsupported_no_protocol.
         pocket3 validation-wireless-native-tap-focus --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --generation N --x X --y Y [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Reuses the ordered 22/30/68/32 sequence; execute stays disabled until landscape/portrait rotation and mirror calibration is verified.
         pocket3 validation-wireless-native-motion --action zoom-absolute|zoom-relative|zoom-stop|gimbal-mode|gimbal-speed --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--format fourK|twoPointSevenK|fullHD --raw RAW | --mode follow|tiltLocked | --speed fast|default|slow] [--execute] --hardware-validation
@@ -451,6 +464,10 @@ import MCP
           Developer only: dry-run by default. Native setting writes require a fresh matching property baseline and complete only after ACK plus readback; no retry or fallback transport.
         pocket3 validation-wireless-native-camera-capture --action mode|photo-frame|photo-format|photo-countdown|photo-shutter|panorama-type|panorama-format|panorama-shutter|timelapse-config|hyperlapse-speed|motionlapse-config|motionlapse-direction|start-timelapse|stop-timelapse|start-hyperlapse|stop-hyperlapse|start-motionlapse|stop-motionlapse --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--value VALUE] [--output video|jpeg+video|raw+video] [--interval TENTHS --duration SECONDS] [--slot N --pitch TENTHS --roll TENTHS --yaw TENTHS] [--execute] --hardware-validation
           Developer only: dry-run by default. Capture writes use the existing command-ready datalink owner, one send, fresh status/property baseline and matching readback; shutter/record actions report their possible media side effect.
+        pocket3 validation-wireless-native-media --action playback-enter|playback-exit|presence|list|range --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--counter N --cursor CURSOR --max-bytes BYTES --max-chunks N] [--interval SECONDS] [--storage 0|1 --path RELATIVE-PATH --start OFFSET --end OFFSET] [--execute] --hardware-validation
+          Developer only: media browsing is dry-run by default. Playback/presence/list use the existing single command-ready datalink owner; list collects bounded 00/27 chunks into a typed index. Range fetching is protocol-only in this batch.
+        pocket3 validation-wireless-native-advanced-setting --action med-tele|iso-limit|audio-channel|vocal-boost|selfie-flip-get --session NATIVE-SESSION-UUID --peripheral PEER-UUID --generation N [--value VALUE] [--execute] --hardware-validation
+          Developer only: dry-run by default. ISO/audio/Vocal writes require a fresh typed keyed baseline; Selfie Flip is GET-only and official-only settings return unsupported_no_protocol.
         pocket3 validation-wireless-tap-focus --session BLE-UUID --peripheral UUID --capture-session USB-UUID --x 0.3 --y 0.3
           Developer only: up to four fixed camera writes; may affect AE; no optical-focus confirmation.
         pocket3 validation-wireless-setting --session BLE-UUID --peripheral UUID --capture-session USB-UUID --property PROPERTY --value-json JSON --baseline-json JSON

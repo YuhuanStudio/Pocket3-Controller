@@ -646,8 +646,28 @@ final class WirelessGimbalModel {
         }
     }
 
-    /// Reuses the single command-ready datalink owner for advanced-setting
-    /// validation. The service supplies the exact request and owns the
+    /// Reuses the single command-ready datalink owner for read-only media
+    /// browsing validation. The list observation closure collects bounded
+    /// 00/27 chunks; this adapter only submits the one prepared 00/26 request.
+    func nativeMediaValidationAdapter()
+        -> NativeMediaValidationExecutorAdapter? {
+        guard nativeSessionStatus.commandReady else { return nil }
+        let expectedReadiness = nativeSessionStatus
+        let expectedConnection = generation
+        let expectedLink = datalink
+        return NativeMediaValidationExecutorAdapter { [weak self] request, readiness in
+            guard let self else {
+                throw NativeCommandTransactionError.datalinkUnavailable
+            }
+            return try await self.executeNativeBodyValidation(request,
+                readiness: readiness, expectedReadiness: expectedReadiness,
+                expectedConnection: expectedConnection,
+                expectedLink: expectedLink)
+        }
+    }
+
+    /// Reuses the single command-ready datalink owner for the advanced-setting
+    /// validation service. The service supplies the exact request and owns the
     /// ACK/readback policy; this adapter never creates another transport.
     func nativeAdvancedSettingValidationAdapter()
         -> NativeAdvancedSettingValidationExecutorAdapter? {
