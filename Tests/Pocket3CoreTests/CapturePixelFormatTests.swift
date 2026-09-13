@@ -123,6 +123,17 @@ import Testing
         #expect(hevc[AVVideoCodecKey] as? String == AVVideoCodecType.hevc.rawValue)
     }
 
+    @Test func productHEVCUsesPixelBufferCaptureWithoutClaimingAVFHEVC() throws {
+        #expect(CaptureOutputPolicy.hevc.usesHostHEVCProductOutput)
+        #expect(CaptureOutputPolicy.hevc.effectiveCapturePolicy == .bgra)
+        let settings = try #require(
+            CaptureOutputPolicy.hevc.effectiveCapturePolicy.settings())
+        #expect(settings[kCVPixelBufferPixelFormatTypeKey as String] as? UInt32
+            == kCVPixelFormatType_32BGRA)
+        try CaptureOutputPolicy.hevc.effectiveCapturePolicy
+            .validateAvailableCodecs([])
+    }
+
     @Test func h264OutputDiagnosticsKeepInputAndCompressedSamplesDistinct() throws {
         let store = FrameStore()
         store.reset(deviceID: "synthetic-codec-output")

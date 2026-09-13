@@ -1,4 +1,5 @@
 import CryptoKit
+import CoreMedia
 import Foundation
 
 /// Explicit product output selection for the Mac capture path.
@@ -329,12 +330,23 @@ public enum HostHEVCProductOutputPhase: String, Codable, Sendable, Equatable {
     case failed
 }
 
+/// The current product service keeps only bounded scalar/sample digest
+/// evidence. There is no file or network stream consumer attached yet.
+public enum HostHEVCProductConsumer: String, Codable, Sendable, Equatable {
+    case localSampleEvidence = "local_sample_evidence"
+}
+
 public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
     public let selection: HostHEVCProductSelection
     public let phase: HostHEVCProductOutputPhase
     public let capability: HostHEVCProductCapability
     public let session: HostHEVCOutputSessionSnapshot?
     public let sinkAttached: Bool
+    public let consumer: HostHEVCProductConsumer
+    /// Cadence of copied host-encoded samples, derived from a bounded recent
+    /// presentation-time window. It is nil until two valid output timestamps
+    /// are observed.
+    public let encodedFPS: Double?
     public let failureCode: String?
     public let samples: [HostHEVCProductSampleDigest]
 
@@ -345,6 +357,7 @@ public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
                      phase: HostHEVCProductOutputPhase,
                      session: HostHEVCOutputSessionSnapshot?,
                      sinkAttached: Bool,
+                     encodedFPS: Double? = nil,
                      failureCode: String?,
                      samples: [HostHEVCProductSampleDigest] = []) {
         self.selection = selection
@@ -354,6 +367,8 @@ public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
             session: session)
         self.session = session
         self.sinkAttached = sinkAttached
+        self.consumer = .localSampleEvidence
+        self.encodedFPS = encodedFPS
         self.failureCode = failureCode ?? session?.failureCode
         self.samples = Array(samples.prefix(16))
     }
@@ -362,7 +377,7 @@ public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
 private extension HostHEVCProductOutputStatus {
     enum CodingKeys: String, CodingKey {
         case selection, phase, capability, session, sinkAttached,
-             failureCode, samples
+             consumer, encodedFPS, failureCode, samples
     }
 }
 
@@ -378,6 +393,11 @@ extension HostHEVCProductOutputStatus {
         session = try container.decodeIfPresent(
             HostHEVCOutputSessionSnapshot.self, forKey: .session)
         sinkAttached = try container.decode(Bool.self, forKey: .sinkAttached)
+        consumer = try container.decodeIfPresent(
+            HostHEVCProductConsumer.self, forKey: .consumer)
+            ?? .localSampleEvidence
+        encodedFPS = try container.decodeIfPresent(
+            Double.self, forKey: .encodedFPS)
         failureCode = try container.decodeIfPresent(String.self,
             forKey: .failureCode)
         samples = try container.decodeIfPresent(
@@ -388,16 +408,41 @@ extension HostHEVCProductOutputStatus {
 private final class HostHEVCProductDigestStore: @unchecked Sendable {
     private let lock = NSLock()
     private var values: [HostHEVCProductSampleDigest] = []
+    private var presentationTimes: [Double] = []
 
     func append(_ sample: HostHEVCEncodedSample) {
         lock.withLock {
-            guard values.count < 16 else { return }
+            if values.count == 16 {
+                values.removeFirst()
+            }
             values.append(HostHEVCProductSampleDigest(sample: sample))
+            let time = CMTimeGetSeconds(sample.presentationTimeStamp)
+            if time.isFinite {
+                if presentationTimes.count == 16 {
+                    presentationTimes.removeFirst()
+                }
+                presentationTimes.append(time)
+            }
         }
     }
 
-    func reset() { lock.withLock { values.removeAll(keepingCapacity: true) } }
+    func reset() {
+        lock.withLock {
+            values.removeAll(keepingCapacity: true)
+            presentationTimes.removeAll(keepingCapacity: true)
+        }
+    }
     func snapshot() -> [HostHEVCProductSampleDigest] { lock.withLock { values } }
+    func encodedFPS() -> Double? {
+        lock.withLock {
+            guard presentationTimes.count >= 2,
+                  let first = presentationTimes.first,
+                  let last = presentationTimes.last,
+                  last > first else { return nil }
+            let fps = Double(presentationTimes.count - 1) / (last - first)
+            return fps.isFinite && fps > 0 && fps <= 240 ? fps : nil
+        }
+    }
 }
 
 public enum HostHEVCProductSubmissionDisposition: String, Codable, Sendable,
@@ -683,7 +728,8 @@ public actor HostHEVCProductOutputService {
                 phase = .idle
                 return HostHEVCProductOutputStatus(
                     selection: selection, phase: phase, session: nil,
-                    sinkAttached: false, failureCode: nil,
+                    sinkAttached: false, encodedFPS: digestStore.encodedFPS(),
+                    failureCode: nil,
                     samples: digestStore.snapshot())
             }
             switch snapshot.phase {
@@ -697,7 +743,8 @@ public actor HostHEVCProductOutputService {
         }
         return HostHEVCProductOutputStatus(
             selection: selection, phase: phase, session: snapshot,
-            sinkAttached: sinkAttached, failureCode: snapshot?.failureCode,
+            sinkAttached: sinkAttached, encodedFPS: digestStore.encodedFPS(),
+            failureCode: snapshot?.failureCode,
             samples: digestStore.snapshot())
     }
 

@@ -144,7 +144,7 @@ final class AppModel {
     var captureOutputPolicyOptions: [YunSelect<CaptureOutputPolicy>.Option] {
         [.init(value: .bgra, title: loc("BGRA preview"), detail: loc("Normal preview path")),
          .init(value: .h264, title: loc("H.264 host output"), detail: loc("Experimental · host encoded")),
-         .init(value: .hevc, title: loc("HEVC host output"), detail: loc("Experimental · host encoded"))]
+         .init(value: .hevc, title: loc("HEVC local encoding"), detail: loc("BGRA preview + VideoToolbox"))]
     }
     var capturePixelFormatSupported: Bool {
         captureMode != nil && (capturePixelFormat == .automatic || availableInputFormats[captureModeID]?.contains(capturePixelFormat) == true)
@@ -540,12 +540,43 @@ final class AppModel {
     var canConnect: Bool { isCameraSource && !isConnecting && capturePixelFormatSupported && status?.devices.contains(where: { $0.id == selectedID }) == true }
     var outputPolicyStatus: String? {
         guard let status, (status.requestedOutputPolicy == .h264 || status.requestedOutputPolicy == .hevc) else { return nil }
-        let codec = status.requestedOutputPolicy == .hevc ? "HEVC" : "H.264"
-        return codec + " host output · " + String(format: "%.1f fps", status.capture.recentFPS)
+        if status.requestedOutputPolicy == .hevc {
+            guard let host = status.hostHEVCOutput else {
+                if status.phase == "error" {
+                    return String(format: loc("HEVC local encoding failed: %@"),
+                                  status.lastError ?? "capture_unavailable")
+                }
+                if ["paused", "suspended", "disconnected", "idle"].contains(status.phase) {
+                    return loc("HEVC local encoding session is stopped.")
+                }
+                return loc("HEVC local encoding session is starting.")
+            }
+            if host.phase == .failed {
+                let fps = host.encodedFPS.map { String(format: "%.1f", $0) } ?? "—"
+                return String(format: loc("HEVC local encoding failed: %@ · %d samples · %@ output fps"),
+                              host.failureCode ?? "unknown",
+                              host.capability.observedSampleCount,
+                              fps)
+            }
+            let verification = host.capability.verified
+                ? loc("Verified") : loc("Waiting for first sample")
+            let fps = host.encodedFPS.map { String(format: "%.1f", $0) } ?? "—"
+            return String(format: loc("HEVC local encoding · phase %@ · %d samples · %@ output fps · %@"),
+                          host.phase.rawValue,
+                          host.capability.observedSampleCount,
+                          fps,
+                          verification)
+        }
+        return "H.264 host output · " + String(format: "%.1f fps", status.capture.recentFPS)
     }
     var outputPolicyRateLimited: Bool {
         guard let status, (status.requestedOutputPolicy == .h264 || status.requestedOutputPolicy == .hevc),
               let requested = status.requestedMode?.frameRate, requested > 0 else { return false }
+        if status.requestedOutputPolicy == .hevc {
+            guard let output = status.hostHEVCOutput?.encodedFPS,
+                  output.isFinite, output > 0 else { return false }
+            return output < requested * 0.9
+        }
         return status.capture.recentFPS > 0 && status.capture.recentFPS < requested * 0.9
     }
     var hasPossibleHorizontalBlackBars: Bool {
@@ -940,11 +971,17 @@ struct RootView: View {
                                 if let output = model.outputPolicyStatus {
                                     Label(output, systemImage: "video.badge.waveform")
                                         .font(Yun.Text.caption)
-                                        .foregroundStyle(model.outputPolicyRateLimited ? Yun.Palette.warning : Yun.Palette.textTertiary)
+                                        .foregroundStyle((model.outputPolicyRateLimited || model.status?.hostHEVCOutput?.phase == .failed)
+                                            ? Yun.Palette.warning : Yun.Palette.textTertiary)
                                         .fixedSize(horizontal: false, vertical: true)
+                                    if model.status?.requestedOutputPolicy == .hevc {
+                                        Text(loc("HEVC local encoding is a local encoding session; no file or stream consumer is attached."))
+                                            .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
                                     if model.outputPolicyRateLimited {
                                         if model.status?.requestedOutputPolicy == .hevc {
-                                            Text(loc("HEVC host output is below the requested frame rate."))
+                                            Text(loc("HEVC local encoding is below the requested frame rate."))
                                                 .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
                                                 .fixedSize(horizontal: false, vertical: true)
                                         } else {

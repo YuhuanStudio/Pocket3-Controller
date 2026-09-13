@@ -579,8 +579,10 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                              evidence: .softwareFixture))
         }
 
-        let output = Self.outputCapabilities(capture: capture, phase: phase,
-                                             requestedPolicy: requestedOutputPolicy)
+        let output = Self.outputCapabilities(
+            capture: capture, phase: phase,
+            requestedPolicy: requestedOutputPolicy,
+            hostHEVCProduct: hostHEVCProduct)
         return Self(uvcCaptureFormats: uvc, hostOutputCodecs: output,
                     hostHEVCProduct: hostHEVCProduct,
                     bodyRecordingFormats: bodyRecordingFormats.map(Pocket3BodyRecordingCatalog.merging)
@@ -600,8 +602,12 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
              deviceInventory: deviceInventory)
     }
 
-    private static func outputCapabilities(capture: CaptureStats, phase: String,
-                                           requestedPolicy: CaptureOutputPolicy?) -> [HostOutputCodecCapability] {
+    private static func outputCapabilities(
+        capture: CaptureStats,
+        phase: String,
+        requestedPolicy: CaptureOutputPolicy?,
+        hostHEVCProduct: HostHEVCProductCapability?
+    ) -> [HostOutputCodecCapability] {
         let diagnostics = capture.sampleDiagnostics
         let policy = requestedPolicy ?? diagnostics?.requestedOutputPolicy.flatMap {
             HostOutputCodec(rawValue: $0)?.mapPolicy
@@ -631,13 +637,48 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                                 reason: !active ? "Capture session is not active" : hasH264Codec() || decodedH264 > 0 ? nil : "AVFoundation did not advertise H.264 output"),
             evidence: decodedH264 > 0 ? .localReadOnly : .softwareFixture)
 
-        let hevc = HostOutputCodecCapability(codec: .hevc, requested: policy == .hevc,
-            observedSampleCount: decodedHEVC,
-            availability: .init(read: active && (hasHEVCCodec() || decodedHEVC > 0),
-                                write: active && hasHEVCCodec(),
-                                verified: active && decodedHEVC > 0,
-                                reason: !active ? "Capture session is not active" : hasHEVCCodec() || decodedHEVC > 0 ? nil : "AVFoundation did not advertise HEVC output"),
-            evidence: decodedHEVC > 0 ? .localReadOnly : .softwareFixture)
+        let hevc: HostOutputCodecCapability
+        if policy == .hevc, let hostHEVCProduct {
+            // A product HEVC selection is backed by the explicit local
+            // VideoToolbox service over BGRA/NV12 input. AVFoundation's
+            // advertised hvc1 list and decodedHEVC counters describe a
+            // different transport and must not be used for this capability.
+            let configured = hostHEVCProduct.configured
+            let verified = hostHEVCProduct.verified
+            // In this entry, write means the selected local encoder service
+            // is configured to accept frames. It does not mean that a file or
+            // network consumer is attached; that boundary is exposed by the
+            // product status consumer field.
+            hevc = HostOutputCodecCapability(
+                codec: .hevc, requested: true,
+                observedSampleCount: hostHEVCProduct.observedSampleCount,
+                availability: .init(
+                    read: active && configured,
+                    write: active && configured,
+                    verified: active && verified,
+                    reason: !active
+                        ? "Capture session is not active"
+                        : !configured
+                            ? "Host HEVC product service is not configured"
+                            : verified
+                                ? nil
+                                : "Waiting for a host HEVC sample"),
+                evidence: .localReadOnly)
+        } else {
+            hevc = HostOutputCodecCapability(
+                codec: .hevc, requested: policy == .hevc,
+                observedSampleCount: decodedHEVC,
+                availability: .init(
+                    read: active && (hasHEVCCodec() || decodedHEVC > 0),
+                    write: active && hasHEVCCodec(),
+                    verified: active && decodedHEVC > 0,
+                    reason: !active
+                        ? "Capture session is not active"
+                        : hasHEVCCodec() || decodedHEVC > 0
+                            ? nil
+                            : "AVFoundation did not advertise HEVC output"),
+                evidence: decodedHEVC > 0 ? .localReadOnly : .softwareFixture)
+        }
         return [bgra, h264, hevc]
     }
 

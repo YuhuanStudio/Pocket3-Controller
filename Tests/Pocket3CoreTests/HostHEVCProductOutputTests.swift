@@ -145,6 +145,7 @@ struct HostHEVCProductOutputTests {
             sessionID: "capture-one", generation: 1, sink: collector.append)
         #expect(started.phase == .running)
         #expect(started.sinkAttached)
+        #expect(started.consumer == .localSampleEvidence)
         #expect(!started.capability.verified)
 
         let submitted = await service.submit(
@@ -159,6 +160,7 @@ struct HostHEVCProductOutputTests {
         #expect(running.capability.transport == .macVideoToolboxHost)
         #expect(running.capability.codecIdentifier == "hvc1")
         #expect(running.capability.observedSampleCount == 1)
+        #expect(running.consumer == .localSampleEvidence)
         #expect(running.capability.usbWireCodecClaim == nil)
         #expect(collector.samples.count == 1)
         #expect(collector.samples[0].isHostEncoded)
@@ -218,6 +220,25 @@ struct HostHEVCProductOutputTests {
         #expect(fresh.disposition == .accepted)
         try await waitUntil { (await service.status()).capability.verified }
         #expect(collector.samples.map(\.sequence) == [5])
+    }
+
+    @Test func statusReportsBoundedEncodedCadenceAfterTwoSamples()
+        async throws {
+        let backend = ProductOutputBackend()
+        let service = try HostHEVCProductOutputService(
+            configuration: configuration, backendFactory: { backend })
+        _ = try await service.select(.hostHEVC)
+        _ = try await service.startHostHEVC(
+            sessionID: "capture-one", generation: 1, sink: { _ in })
+        _ = await service.submit(
+            try frame(sequence: 1), receivedUptime: 10, nowUptime: 10.01)
+        _ = await service.submit(
+            try frame(sequence: 2), receivedUptime: 10.03, nowUptime: 10.04)
+        try await waitUntil { (await service.status()).encodedFPS != nil }
+        let status = await service.status()
+        #expect(status.encodedFPS.map { abs($0 - 30) < 0.01 } == true)
+        #expect(status.capability.observedSampleCount == 2)
+        _ = await service.stop()
     }
 
     @Test func failedHostEncoderStaysFailedWithoutAutomaticBGRAFallback()

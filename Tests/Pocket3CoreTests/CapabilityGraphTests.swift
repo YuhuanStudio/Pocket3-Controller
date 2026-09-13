@@ -90,6 +90,46 @@ import Testing
         #expect(graph.liveSession.readiness == .unavailable)
     }
 
+    @Test func productHEVCGraphUsesHostServiceInsteadOfAVFCodecAdvertisement()
+        async throws {
+        let now = ProcessInfo.processInfo.systemUptime
+        let frame = FrameInfo(
+            id: "frame", sessionID: "session", deviceID: "device",
+            receivedAt: Date(), receivedUptime: now,
+            presentationTime: 1, width: 2, height: 2,
+            inputPixelFormat: .nv12, inputPixelFormatFourCC: "420v",
+            outputPixelFormat: "BGRA")
+        let capture = CaptureStats(
+            sessionID: "session", frames: 1, recentFPS: 30,
+            frame: frame, age: 0.1, audio: AudioStats(),
+            sampleDiagnostics: CaptureSampleDiagnostics())
+        let configuration = try HostVideoEncoderConfiguration(
+            width: 2, height: 2, frameRate: 30, maximumPendingFrames: 1)
+        let product = try HostHEVCProductOutputService(
+            configuration: configuration)
+        _ = try await product.select(.hostHEVC)
+        _ = try await product.startHostHEVC(
+            sessionID: "session", generation: 1, sink: { _ in })
+        let productStatus = await product.status()
+        let graph = Pocket3CapabilityGraph.from(
+            phase: "ready", capture: capture,
+            requestedMode: .default1080p30,
+            requestedPixelFormat: .automatic,
+            requestedOutputPolicy: .hevc,
+            hostHEVCProduct: productStatus.capability)
+
+        let hevc = try #require(
+            graph.hostOutputCodecs.first(where: { $0.codec == .hevc }))
+        #expect(hevc.requested)
+        #expect(hevc.observedSampleCount == 0)
+        #expect(hevc.availability.read && hevc.availability.write)
+        #expect(!hevc.availability.verified)
+        #expect(hevc.availability.reason == "Waiting for a host HEVC sample")
+        #expect(graph.hostHEVCProduct?.configured == true)
+        #expect(graph.hostHEVCProduct?.usbWireCodecClaim == nil)
+        _ = await product.stop()
+    }
+
     @Test func nativeCommandReadinessDoesNotImplyLiveReadiness() {
         let binding = ContinuousGimbalBinding(sessionID: "native", generation: 1)
         var transport = Pocket3DatalinkStatus()

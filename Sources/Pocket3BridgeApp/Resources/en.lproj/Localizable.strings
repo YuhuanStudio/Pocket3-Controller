@@ -1548,6 +1548,17 @@
 "Preview output" = "Preview output";
 "BGRA preview" = "BGRA preview";
 "Normal preview path" = "Normal preview path";
+"HEVC local encoding" = "HEVC local encoding";
+"BGRA preview + VideoToolbox" = "BGRA preview + VideoToolbox";
+"HEVC local encoding session is starting." = "HEVC local encoding session is starting.";
+"HEVC local encoding session is stopped." = "HEVC local encoding session is stopped.";
+"HEVC local encoding failed: %@" = "HEVC local encoding failed: %@";
+"HEVC local encoding failed: %@ · %d samples · %@ output fps" = "HEVC local encoding failed: %@ · %d samples · %@ output fps";
+"HEVC local encoding · phase %@ · %d samples · %@ output fps · %@" = "HEVC local encoding · phase %@ · %d samples · %@ output fps · %@";
+"HEVC local encoding is below the requested frame rate." = "HEVC local encoding is below the requested frame rate.";
+"HEVC local encoding is a local encoding session; no file or stream consumer is attached." = "HEVC local encoding is a local encoding session; no file or stream consumer is attached.";
+"Verified" = "Verified";
+"Waiting for first sample" = "Waiting for first sample";
 "HEVC host output is below the requested frame rate." = "HEVC host output is below the requested frame rate.";
 "HEVC host output" = "HEVC host output";
 "H.264 host output" = "H.264 host output";

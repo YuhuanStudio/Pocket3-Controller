@@ -1548,6 +1548,17 @@
 "Preview output" = "預覽輸出";
 "BGRA preview" = "BGRA 預覽";
 "Normal preview path" = "一般預覽路徑";
+"HEVC local encoding" = "HEVC 本機編碼";
+"BGRA preview + VideoToolbox" = "BGRA 預覽 + VideoToolbox";
+"HEVC local encoding session is starting." = "HEVC 本機編碼工作階段正在啟動。";
+"HEVC local encoding session is stopped." = "HEVC 本機編碼工作階段已停止。";
+"HEVC local encoding failed: %@" = "HEVC 本機編碼失敗：%@";
+"HEVC local encoding failed: %@ · %d samples · %@ output fps" = "HEVC 本機編碼失敗：%@ · %d 個樣本 · %@ 輸出幀率";
+"HEVC local encoding · phase %@ · %d samples · %@ output fps · %@" = "HEVC 本機編碼 · 階段 %@ · %d 個樣本 · %@ 輸出幀率 · %@";
+"HEVC local encoding is below the requested frame rate." = "HEVC 本機編碼低於要求的幀率。";
+"HEVC local encoding is a local encoding session; no file or stream consumer is attached." = "HEVC 本機編碼是本機編碼工作階段；尚未連接檔案或串流消費端。";
+"Verified" = "已驗證";
+"Waiting for first sample" = "等待第一個樣本";
 "HEVC host output is below the requested frame rate." = "HEVC 主機輸出低於要求的幀率。";
 "HEVC host output" = "HEVC 主機輸出";
 "H.264 host output" = "H.264 主機輸出";

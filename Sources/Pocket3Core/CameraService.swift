@@ -479,6 +479,17 @@ public actor CameraService {
             let first = try firstMatchingFrame ?? capture.store.latest()
             guard first.info.width == captureMode.width && first.info.height == captureMode.height else { throw BridgeFailure("format_changed", "收到的影格尺寸與要求不符，請選擇其他格式") }
             guard pixelFormat == .automatic || first.info.inputPixelFormat == pixelFormat else { throw BridgeFailure("input_format_changed", "收到的相機輸入格式與要求的 \(pixelFormat.title) 不符") }
+            if outputPolicy.usesHostHEVCProductOutput {
+                // HEVC is a product selection. CaptureEngine has already
+                // negotiated a BGRA pixel-buffer path for it; start the
+                // existing bounded host encoder against that exact source.
+                _ = try await startHostHEVCProductForCapture(
+                    expectedDeviceID: device.id,
+                    expectedCaptureSessionID: first.info.sessionID,
+                    expectedGeneration: capture.currentLifecycle(),
+                    expectedLifecycle: generation,
+                    maximumInputAge: 1)
+            }
             phase = "ready"; log("connect", "已連接 \(device.name)，\(captureMode.title) · \(first.info.inputPixelFormat?.title ?? first.info.inputPixelFormatFourCC ?? pixelFormat.title)", presentationKey: "camera.connected")
         } catch {
             if generation == lifecycleGeneration {
@@ -489,6 +500,7 @@ public actor CameraService {
                 }
                 lastCaptureAttempt = captureStarted ? capture.store.sampleDiagnostics()
                     : capture.lastFailedStartDiagnostics() ?? CaptureSampleDiagnostics()
+                await retireHostHEVCProduct()
                 await capture.stop(); phase = "error"; lastError = error.localizedDescription; log("connect", error.localizedDescription, error: true, presentationKey: "camera.connection_failed")
             }
             throw error
@@ -1495,6 +1507,46 @@ public actor CameraService {
             throw BridgeFailure("host_hevc_no_fresh_frame",
                 "Host HEVC product output requires a fresh BGRA preview frame")
         }
+        return try await startHostHEVCProductForCapture(
+            expectedDeviceID: expectedDeviceID,
+            expectedCaptureSessionID: expectedSessionID,
+            expectedGeneration: binding.generation,
+            expectedLifecycle: lifecycleGeneration,
+            maximumInputAge: request.maximumInputAge)
+    }
+
+    /// Creates the product host encoder over the existing fresh BGRA capture
+    /// source. This helper is used by the ordinary UI connect path for an
+    /// explicit HEVC selection and by the developer validation route; it
+    /// never changes CaptureEngine, opens a second transport, or joins Wi-Fi.
+    private func startHostHEVCProductForCapture(
+        expectedDeviceID: String,
+        expectedCaptureSessionID: String,
+        expectedGeneration: UInt64,
+        expectedLifecycle: Int,
+        maximumInputAge: Double
+    ) async throws -> HostHEVCProductOutputStatus {
+        guard expectedLifecycle == lifecycleGeneration,
+              !motionActiveForHostOutput,
+              selected?.id == expectedDeviceID else {
+            throw BridgeFailure("host_hevc_capture_not_ready",
+                "Host HEVC product output requires the current camera session")
+        }
+        let source = CaptureEngineHostHEVCFrameSource(capture: capture)
+        guard let binding = source.currentBinding(),
+              binding.deviceID == expectedDeviceID,
+              binding.captureSessionID == expectedCaptureSessionID,
+              binding.generation == expectedGeneration,
+              capture.currentLifecycle() == expectedGeneration,
+              binding.inputPixelFormat == .bgra else {
+            throw BridgeFailure("host_hevc_bgra_required",
+                "Host HEVC product output requires a fresh BGRA preview frame")
+        }
+        guard let age = capture.store.stats().age,
+              age.isFinite, age >= 0, age <= maximumInputAge else {
+            throw BridgeFailure("host_hevc_no_fresh_frame",
+                "Host HEVC product output requires a fresh BGRA preview frame")
+        }
         if let existing = hostHEVCProductOutputService {
             let current = await existing.status()
             guard !current.isRunning else {
@@ -1510,21 +1562,28 @@ public actor CameraService {
             maximumPendingFrames: 2)
         let product = try HostHEVCProductOutputService(
             configuration: configuration,
-            maximumInputAgeSeconds: request.maximumInputAge,
+            maximumInputAgeSeconds: maximumInputAge,
             backendFactory: { VideoToolboxHostHEVCEncoderBackend() })
         _ = try await product.select(.hostHEVC)
         _ = try await product.startHostHEVC(
             sessionID: binding.captureSessionID,
             generation: binding.generation,
+            // TODO: Attach an explicit product file/stream consumer. Until
+            // then the service retains only bounded sample digests.
             sink: { _ in })
+        guard expectedLifecycle == lifecycleGeneration,
+              capture.currentLifecycle() == binding.generation,
+              selected?.id == expectedDeviceID else {
+            _ = await product.cancel()
+            throw CancellationError()
+        }
         hostHEVCProductOutputService = product
         hostHEVCProductFeedBinding = binding
-        let expectedLifecycle = lifecycleGeneration
         hostHEVCProductFeedTask = Task { [weak self, product, source, binding] in
             await self?.feedHostHEVCProduct(
                 product: product, source: source, binding: binding,
                 lifecycle: expectedLifecycle,
-                maximumInputAge: request.maximumInputAge)
+                maximumInputAge: maximumInputAge)
         }
         return await product.status()
     }

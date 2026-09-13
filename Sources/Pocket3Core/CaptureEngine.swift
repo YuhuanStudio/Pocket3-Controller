@@ -108,6 +108,12 @@ public struct CaptureSampleDiagnostics: Codable, Sendable, Equatable {
 public enum CaptureOutputPolicy: String, Codable, CaseIterable, Sendable, Identifiable {
     case bgra, native, systemDefault = "system_default", h264, hevc
     public var id: String { rawValue }
+    /// `hevc` is a product-level Mac host encoding selection. CaptureEngine
+    /// must still ask AVFoundation for a pixel-buffer path because the Pocket
+    /// 3 UVC source does not advertise `hvc1` as an AVFoundation output
+    /// codec. The host encoder consumes the resulting BGRA frame stream.
+    public var effectiveCapturePolicy: Self { self == .hevc ? .bgra : self }
+    public var usesHostHEVCProductOutput: Bool { self == .hevc }
     /// Encoded H.264 callbacks only enqueue into our bounded decoder pipeline,
     /// so retain delivery here and let that queue report explicit drops.
     /// Pixel-buffer paths still discard late frames to bound AVFoundation
@@ -593,6 +599,7 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
         lifecycleLock.withLock { failedStartDiagnostics = nil }
         let outputPolicy = explicitOutputPolicy ?? CaptureOutputPolicy.selected(environment: ProcessInfo.processInfo.environment,
                                                                                 arguments: CommandLine.arguments)
+        let effectiveOutputPolicy = outputPolicy.effectiveCapturePolicy
         guard mode.width > 0, mode.width <= Int32.max, mode.height > 0, mode.height <= Int32.max,
               mode.frameRate.isFinite, mode.frameRate > 0 else { throw BridgeFailure("invalid_format", "無效的影像格式") }
         let generation = advanceLifecycle()
@@ -626,9 +633,9 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                     let duration = abs(range.maxFrameRate - mode.frameRate) < 0.01 ? range.minFrameDuration : CMTime(seconds: 1 / mode.frameRate, preferredTimescale: 600_000)
                     let input = try AVCaptureDeviceInput(device: device)
                     let output = AVCaptureVideoDataOutput()
-                    output.videoSettings = outputPolicy.settings()
+                    output.videoSettings = effectiveOutputPolicy.settings()
                     output.alwaysDiscardsLateVideoFrames =
-                        outputPolicy.discardsLateVideoFrames
+                        effectiveOutputPolicy.discardsLateVideoFrames
                     session.beginConfiguration()
                     guard session.canAddInput(input), session.canAddOutput(output) else { session.commitConfiguration(); throw BridgeFailure("capture_unavailable", "無法建立相機擷取，請關閉其他可能占用相機的程式後重試") }
                     session.addInput(input); session.addOutput(output)
@@ -664,8 +671,8 @@ public final class CaptureEngine: NSObject, @unchecked Sendable, AVCaptureVideoD
                         guard callbackFence.whileCurrent(generation, perform: {
                             store.recordOutputConfiguration(policy: outputPolicy.rawValue, pixelFormats: outputTypes, codecs: outputCodecs)
                         }) else { throw CancellationError() }
-                        try outputPolicy.validateAvailableCodecs(outputCodecs)
-                        output.videoSettings = outputPolicy.settings(width: Int(width), height: Int(height))
+                        try effectiveOutputPolicy.validateAvailableCodecs(outputCodecs)
+                        output.videoSettings = effectiveOutputPolicy.settings(width: Int(width), height: Int(height))
                         let videoConnection = output.connection(with: .video)
                         let portFormat = input.ports.first(where: { $0.mediaType == .video })?.formatDescription
                         store.recordNegotiation(activeFormat: device.activeFormat.formatDescription,
