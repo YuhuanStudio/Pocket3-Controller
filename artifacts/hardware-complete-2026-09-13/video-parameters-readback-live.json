@@ -1,0 +1,33 @@
+{
+  "acknowledgmentReceived" : true,
+  "acknowledgmentSequence" : 45492,
+  "evidence" : "Kaze@341a35de18493ff61f97c93b8b10161a7512aa36 00/99 subscription then 00/99/06 notification; 00/01 GET is only documented for 02/8E keyed parameters",
+  "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+  "expectedSessionID" : "1ABFFBF2-5082-49CE-8CDB-78BB770827DD",
+  "followUpGetIssued" : false,
+  "notificationReceived" : true,
+  "notificationSequence" : 623,
+  "notificationTransactionID" : 0,
+  "operation" : "validation-wireless-video-parameters-readback",
+  "outcome" : "readback",
+  "property" : "cam_video_param_v2",
+  "querySequence" : 45492,
+  "rawValue" : "CgMAAAACAQABAA==",
+  "rawValueLength" : 10,
+  "rawValueTruncated" : false,
+  "readbackSource" : "00/99/06_notification",
+  "reason" : "matching_named_property_notification",
+  "submitted" : true,
+  "subscriptionTransactionID" : 3717099750,
+  "terminalStep" : "complete",
+  "typedValue" : {
+    "compression" : 1,
+    "compressionRaw" : 1,
+    "frameRate" : 3,
+    "frameRateRaw" : 3,
+    "raw" : "CgMAAAACAQABAA==",
+    "resolution" : 10,
+    "resolutionRaw" : 10
+  },
+  "version" : 1
+}

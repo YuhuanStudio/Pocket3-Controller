@@ -55,6 +55,7 @@
 - [x] 第二十二批以steady sample-window counter delta區分warmup與即時drop，H.264 callback改由bounded async pipeline承擔backpressure而不讓AVFoundation預先丟encoded samples；4K30實機達30.10fps median、713/713 decode與全零drop/backpressure。BGRA/NV12仍維持late-frame discard，不放寬30fps門檻；完整Release gate維持947項全過。
 - [x] 第二十三批新增H.264直幅1080×1920／720×1280矩陣案例；Host HEVC接入fresh CaptureEngine frame source與developer-only bounded hvc1 hash validation，明確Mac host provenance；AF／設定新增session/sequence/property/envelope readback診斷，區分no-route/no-reply/wrong-envelope/matched。Release gate共957項通過（Core798、Intelligence44、Evaluation1、App108、XCTest6）。
 - [x] 第二十四批要求Host HEVC每次submission使用晚於前一筆的distinct CaptureEngine frame，並把`completed`改為可序列化stored欄位；實機取得sequence1–6的六個不同hvc1 samples與完整cleanup。新async H.264直幅1080×1920、720×1280亦各以約29.98fps實機通過；heartbeat測試改為觀察實際renewal count並以非過期test clock隔離runner contention，完整Release gate維持957項全過。
+- [x] 第二十五批新增明確`host-hevc`產品輸出服務、單一`cam_video_param_v2` subscription→notification readback，以及developer Roll moving-stop/restore/reconnect驗收route。Release gate共972項通過（Core811、Intelligence44、Evaluation1、App110、XCTest6）；實機後續確認Roll session解鎖與video parameter readback均成功。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
@@ -252,7 +253,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 ## 其他本輪功能與外部發布條件
 
 - [x] DUML CRC／fragment／ACK／session 邊界、BLE 配對及原生 UDP codec 已實作；Wi-Fi join／datalink 保留研究，不是主流程或可用控制的前提。
-- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第24批同session診斷確認第一個`camcap_video_codec` subscription已送出並收到相同sequence 51779 ACK，但無property readback；reader安全停止，其餘十項未送。Phase25 依固定 Kaze source 確認 named-property ACK 後只等待 `00/99/06` notification，沒有可套用的 GET；新增單一 `cam_video_param_v2` developer reader，仍不宣稱 capability codec。[診斷](artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
+- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第25批單一`cam_video_param_v2` probe以一次00/99 subscription取得ACK sequence45492與00/99/06 notification sequence623，typed resolution10／FPS3／compression1，證明BLE named-property readback可用且不需猜測GET。舊reader仍被首個`camcap_video_codec`無notification提前中止，下一步改為逐property保留結果並繼續；writers仍未驗證。[成功readback](artifacts/hardware-complete-2026-09-13/video-parameters-readback-live.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
 - [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
 - [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。
