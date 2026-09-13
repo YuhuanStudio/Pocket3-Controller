@@ -4,6 +4,25 @@ import Testing
 
 @Suite("Bluetooth camera-settings read plan")
 struct BluetoothCameraSettingsReadPlanTests {
+    private func readinessSnapshot(
+        sessionID: UUID, peripheralID: UUID,
+        ready: Bool = false
+    ) -> BluetoothCameraPropertyReadinessSnapshot {
+        BluetoothCameraPropertyReadinessSnapshot(
+            sessionID: sessionID, peripheralID: peripheralID,
+            phase: ready ? .gattPaired : .subscribing,
+            paired: ready,
+            registrationAcknowledged: ready,
+            centralPoweredOn: ready,
+            peripheralConnected: ready,
+            fff4NotificationsEnabled: ready,
+            fff5NotificationsEnabled: ready,
+            fff5CharacteristicNotifying: ready,
+            writeWithoutResponse: ready,
+            canSendWriteWithoutResponse: ready,
+            writeQueueEmpty: ready)
+    }
+
     @Test func knownWorkingVideoParametersAreAttemptedFirst() {
         let properties = BluetoothCameraSettingsReadPlan.orderedProperties
         #expect(properties.first == .videoParameters)
@@ -57,5 +76,25 @@ struct BluetoothCameraSettingsReadPlanTests {
         #expect(partial.partial)
         #expect(partial.state == .partial)
         #expect(partial.attemptedPropertyCount == 1)
+    }
+
+    @Test func readinessWaitDistinguishesReadyTimeoutAndSessionChange() {
+        let session = UUID(), peer = UUID()
+        let waiting = readinessSnapshot(sessionID: session, peripheralID: peer)
+        #expect(BluetoothCameraSettingsReadPlan.readinessDecision(
+            expectedSessionID: session, expectedPeripheralID: peer,
+            snapshot: waiting, now: 0.1, deadline: 0.5) == .wait)
+        #expect(BluetoothCameraSettingsReadPlan.readinessDecision(
+            expectedSessionID: session, expectedPeripheralID: peer,
+            snapshot: readinessSnapshot(sessionID: session, peripheralID: peer,
+                                         ready: true), now: 0.1, deadline: 0.5) == .ready)
+        #expect(BluetoothCameraSettingsReadPlan.readinessDecision(
+            expectedSessionID: session, expectedPeripheralID: peer,
+            snapshot: waiting, now: 0.5, deadline: 0.5) == .timeout)
+        #expect(BluetoothCameraSettingsReadPlan.readinessDecision(
+            expectedSessionID: session, expectedPeripheralID: peer,
+            snapshot: readinessSnapshot(sessionID: UUID(), peripheralID: peer),
+            now: 0.5, deadline: 0.5) == .sessionChanged)
+        #expect(BluetoothCameraSettingsReadPlan.propertyReadinessTimeout == 0.5)
     }
 }

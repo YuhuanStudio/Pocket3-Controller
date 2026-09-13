@@ -27,6 +27,57 @@ public struct BluetoothCameraSettingsQueryFailure: Codable, Sendable,
     }
 }
 
+public struct BluetoothCameraPropertyReadinessSnapshot: Sendable,
+    Equatable {
+    public let sessionID: UUID
+    public let peripheralID: UUID?
+    public let phase: BluetoothDiscoveryPhase
+    public let paired: Bool
+    public let registrationAcknowledged: Bool
+    public let centralPoweredOn: Bool
+    public let peripheralConnected: Bool
+    public let fff4NotificationsEnabled: Bool
+    public let fff5NotificationsEnabled: Bool
+    public let fff5CharacteristicNotifying: Bool
+    public let writeWithoutResponse: Bool
+    public let canSendWriteWithoutResponse: Bool
+    public let writeQueueEmpty: Bool
+
+    public init(sessionID: UUID, peripheralID: UUID?,
+                phase: BluetoothDiscoveryPhase, paired: Bool,
+                registrationAcknowledged: Bool,
+                centralPoweredOn: Bool,
+                peripheralConnected: Bool,
+                fff4NotificationsEnabled: Bool,
+                fff5NotificationsEnabled: Bool,
+                fff5CharacteristicNotifying: Bool,
+                writeWithoutResponse: Bool,
+                canSendWriteWithoutResponse: Bool,
+                writeQueueEmpty: Bool) {
+        self.sessionID = sessionID
+        self.peripheralID = peripheralID
+        self.phase = phase
+        self.paired = paired
+        self.registrationAcknowledged = registrationAcknowledged
+        self.centralPoweredOn = centralPoweredOn
+        self.peripheralConnected = peripheralConnected
+        self.fff4NotificationsEnabled = fff4NotificationsEnabled
+        self.fff5NotificationsEnabled = fff5NotificationsEnabled
+        self.fff5CharacteristicNotifying = fff5CharacteristicNotifying
+        self.writeWithoutResponse = writeWithoutResponse
+        self.canSendWriteWithoutResponse = canSendWriteWithoutResponse
+        self.writeQueueEmpty = writeQueueEmpty
+    }
+}
+
+public enum BluetoothCameraPropertyReadinessDecision: String, Sendable,
+    Equatable {
+    case wait
+    case ready
+    case timeout
+    case sessionChanged = "session_changed"
+}
+
 public enum BluetoothCameraSettingsReadbackState: String, Codable, Sendable,
     Equatable {
     case notStarted = "not_started"
@@ -73,6 +124,9 @@ public enum BluetoothCameraSettingsReadPlan {
     /// Keep this explicit so adding a future property cannot silently make
     /// the read pass unbounded. The current allowlist contains eleven names.
     public static let maximumPropertyCount = 11
+    /// Readiness is allowed to settle briefly before each independent
+    /// subscription, but it cannot extend the 24-second total plan window.
+    public static let propertyReadinessTimeout: TimeInterval = 0.5
     /// Each query owns a two-second notification window. The extra two
     /// seconds cover scheduling between independent subscriptions while still
     /// bounding the total developer operation.
@@ -100,5 +154,31 @@ public enum BluetoothCameraSettingsReadPlan {
         _ result: BluetoothCameraPropertyQueryResult
     ) -> Bool {
         result.failure == nil && result.propertyReceived && result.observed != nil
+    }
+
+    public static func readinessDecision(
+        expectedSessionID: UUID,
+        expectedPeripheralID: UUID,
+        snapshot: BluetoothCameraPropertyReadinessSnapshot,
+        now: TimeInterval,
+        deadline: TimeInterval
+    ) -> BluetoothCameraPropertyReadinessDecision {
+        guard snapshot.sessionID == expectedSessionID,
+              snapshot.peripheralID == nil ||
+                snapshot.peripheralID == expectedPeripheralID else {
+            return .sessionChanged
+        }
+        guard now.isFinite, deadline.isFinite, now >= 0, deadline >= now else {
+            return .timeout
+        }
+        let routeReady = snapshot.phase == .gattPaired && snapshot.paired &&
+            snapshot.registrationAcknowledged && snapshot.centralPoweredOn &&
+            snapshot.peripheralConnected &&
+            snapshot.fff4NotificationsEnabled &&
+            snapshot.fff5NotificationsEnabled && snapshot.fff5CharacteristicNotifying &&
+            snapshot.writeWithoutResponse &&
+            snapshot.canSendWriteWithoutResponse && snapshot.writeQueueEmpty
+        if routeReady { return .ready }
+        return now >= deadline ? .timeout : .wait
     }
 }

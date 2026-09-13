@@ -167,6 +167,14 @@ MTU 或 backpressure）於 `queryFailures`；這些 failure 不會把整輪 read
 嘗試但未全數讀回才是 `partial`。所有 failure 都帶 expected session、peer、
 property 與 bounded error code；沒有 retry、GET、setter 或 Wi-Fi。
 
+Phase28 在每項 subscription 送出前最多等待 0.5 秒，確認同一 paired
+session/peer、FFF4/FFF5 notifications、registration、central/peripheral
+連線、FFF5 write-without-response、可送 credit 與空 write queue；ready 後才
+在同一 owner turn reserve sequence 並 single-submit。等待逾時回
+`bluetooth_property_query_readiness_timeout`，session/peer 變更回
+`bluetooth_property_query_connection_changed`；兩者都不會重送封包，也不延長
+整輪 24 秒上限。
+
 每個 property 要獨立帶接收時間與 connection generation。收到未改變的有效值仍須更新 freshness；上游 session 只在 value change 時 publish，不能用那個 UI publish 時間取代接收時間。`hasCoreReadback` 只代表「曾收到至少一種 property」，不足以啟用全部設定。未知 enum 值、斷線或某 property 停止推送時，保留 unknown/stale，而不是沿用 `lastSent*` 當真實相機值。[session push handling][session]、[上游 UI fallback][screen]
 
 ## 尚未納入的項目

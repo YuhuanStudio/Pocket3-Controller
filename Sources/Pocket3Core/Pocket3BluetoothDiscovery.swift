@@ -531,6 +531,60 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             && pairer?.paired == true && registrationAcknowledgmentSession == operation.session
     }
 
+    private func waitForCameraPropertyReadiness(
+        expectedSessionID: UUID,
+        expectedPeripheralID: UUID,
+        permit: OperationPermit
+    ) async throws {
+        let started = ProcessInfo.processInfo.systemUptime
+        let deadline = started +
+            BluetoothCameraSettingsReadPlan.propertyReadinessTimeout
+        while true {
+            try permit.perform {}
+            guard settingWriteOperation == nil, tapFocusOperation == nil,
+                  lensPointOperation == nil, cameraPropertyOperation == nil,
+                  lensStateOperation == nil, nativePresetOperation == nil,
+                  readinessOperation == nil, probeOperation == nil else {
+                throw BridgeFailure("bluetooth_probe_busy",
+                    "Another BLE query or probe is already running.")
+            }
+            let snapshot = BluetoothCameraPropertyReadinessSnapshot(
+                sessionID: state.generation,
+                peripheralID: selectedPeripheral?.identifier,
+                phase: state.phase,
+                paired: pairer?.paired == true,
+                registrationAcknowledged: registrationAcknowledgmentSession == state.generation,
+                centralPoweredOn: central?.state == .poweredOn,
+                peripheralConnected: selectedPeripheral?.state == .connected,
+                fff4NotificationsEnabled: fff4Notifying,
+                fff5NotificationsEnabled: fff5Notifying,
+                fff5CharacteristicNotifying: fff5?.isNotifying == true,
+                writeWithoutResponse: fff5?.properties.contains(.writeWithoutResponse) == true,
+                canSendWriteWithoutResponse: selectedPeripheral?.canSendWriteWithoutResponse == true,
+                writeQueueEmpty: writeQueue.isEmpty)
+            let now = ProcessInfo.processInfo.systemUptime
+            switch BluetoothCameraSettingsReadPlan.readinessDecision(
+                expectedSessionID: expectedSessionID,
+                expectedPeripheralID: expectedPeripheralID,
+                snapshot: snapshot, now: now, deadline: deadline) {
+            case .ready:
+                return
+            case .sessionChanged:
+                throw BridgeFailure("bluetooth_property_query_connection_changed",
+                    "The requested BLE session or peer is no longer current.")
+            case .timeout:
+                throw BridgeFailure("bluetooth_property_query_readiness_timeout",
+                    "The paired BLE property route did not become ready before the bounded wait expired.")
+            case .wait:
+                do {
+                    try await Task.sleep(for: .milliseconds(10), tolerance: .zero)
+                } catch {
+                    throw CancellationError()
+                }
+            }
+        }
+    }
+
     public func queryCameraProperty(property: CameraSettingsProperty,
                                     expectedSessionID: UUID? = nil,
                                     expectedPeripheralID: UUID? = nil,
@@ -542,20 +596,25 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
               readinessOperation == nil, readinessTask == nil else {
             throw BridgeFailure("bluetooth_probe_busy", "Another BLE query or probe is already running.")
         }
-        guard state.phase == .gattPaired, pairer?.paired == true,
-              [.paired, .credentialsReady].contains(pairer?.phase ?? .idle),
-              registrationAcknowledgmentSession == state.generation,
-              let central, central.state == .poweredOn,
-              let peripheral = selectedPeripheral, peripheral.state == .connected,
-              fff4Notifying, fff5Notifying, let fff5, fff5.isNotifying,
-              fff5.properties.contains(.writeWithoutResponse), peripheral.canSendWriteWithoutResponse,
-              writeQueue.isEmpty, let sequence = pairer?.reserveReadinessSequence() else {
-            throw BridgeFailure("bluetooth_property_query_not_ready", "Pair and register the current BLE peer before reading a camera property.")
-        }
-        guard expectedSessionID.map({ $0 == state.generation }) ?? true,
-              expectedPeripheralID.map({ $0 == peripheral.identifier }) ?? true else {
+        let sessionFence = expectedSessionID ?? state.generation
+        guard sessionFence == state.generation else {
             throw BridgeFailure("bluetooth_property_query_connection_changed",
                 "The requested BLE session or peer is no longer current.")
+        }
+        guard let peerFence = expectedPeripheralID ?? selectedPeripheral?.identifier else {
+            throw BridgeFailure("bluetooth_property_query_not_ready",
+                "Pair and select the current BLE peer before reading a camera property.")
+        }
+        try await waitForCameraPropertyReadiness(
+            expectedSessionID: sessionFence, expectedPeripheralID: peerFence,
+            permit: permit)
+        guard let central, central.state == .poweredOn,
+              let peripheral = selectedPeripheral,
+              peripheral.identifier == peerFence,
+              let fff5, fff5.isNotifying,
+              let sequence = pairer?.reserveReadinessSequence() else {
+            throw BridgeFailure("bluetooth_property_query_readiness_timeout",
+                "The paired BLE property route changed before its single submission.")
         }
         let operation = try BluetoothCameraPropertyOperation(property: property, session: state.generation, central: central,
             peripheral: peripheral, characteristic: fff5, sequence: sequence, permit: permit)
