@@ -56,6 +56,7 @@
 - [x] 第二十三批新增H.264直幅1080×1920／720×1280矩陣案例；Host HEVC接入fresh CaptureEngine frame source與developer-only bounded hvc1 hash validation，明確Mac host provenance；AF／設定新增session/sequence/property/envelope readback診斷，區分no-route/no-reply/wrong-envelope/matched。Release gate共957項通過（Core798、Intelligence44、Evaluation1、App108、XCTest6）。
 - [x] 第二十四批要求Host HEVC每次submission使用晚於前一筆的distinct CaptureEngine frame，並把`completed`改為可序列化stored欄位；實機取得sequence1–6的六個不同hvc1 samples與完整cleanup。新async H.264直幅1080×1920、720×1280亦各以約29.98fps實機通過；heartbeat測試改為觀察實際renewal count並以非過期test clock隔離runner contention，完整Release gate維持957項全過。
 - [x] 第二十五批新增明確`host-hevc`產品輸出服務、單一`cam_video_param_v2` subscription→notification readback，以及developer Roll moving-stop/restore/reconnect驗收route。Release gate共972項通過（Core811、Intelligence44、Evaluation1、App110、XCTest6）；實機後續確認Roll session解鎖與video parameter readback均成功。
+- [x] 第二十六批將Roll發布admission限制為Pocket3 VID/PID、UVC1.00與已驗證−30…30/step1/default0 profile；settings reader改為11項獨立subscription並在單項失敗後繼續；新增被動ActiveTrack off→on→off marker window。Release gate共986項通過（Core823、Intelligence44、Evaluation1、App112、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
