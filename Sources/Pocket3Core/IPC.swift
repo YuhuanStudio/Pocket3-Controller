@@ -179,6 +179,7 @@ public enum IPCClient {
             "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset",
             "validation-wireless-read-settings",
             "move", BluetoothCameraEventRecordingRequest.operation,
+            NativeActiveTrackObservationWindowRequest.operation,
             HostHEVCValidationRequest.operation,
             NativeCaptureFormatValidationRequest.operation].contains(operation) { return 120 }
         return 20

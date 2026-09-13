@@ -183,6 +183,15 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
+            if command == NativeActiveTrackObservationWindowRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled", "ActiveTrack observation requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
+                let request = try NativeActiveTrackObservationWindowRequest(cliArguments: requestArguments)
+                let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}"); return
+            }
             let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == BluetoothVideoParametersReadbackRequest.operation {
@@ -574,6 +583,8 @@ import MCP
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
           Developer only: passively record up to 20 seconds/512 bounded camera/gimbal telemetry changes. No writes or tracking claims.
+        pocket3 validation-wireless-tracking-window --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID [--window SECONDS] --marker off:SECONDS --marker on:SECONDS --marker off:SECONDS --hardware-validation
+          Developer only: passively correlate an explicit off/on/off operator window with A5/A6/A89 and 02/80 status events. No tracking command, pairing, Wi-Fi, credentials or images.
         pocket3 validation-wireless-pair [--read-connection-details]
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-read-settings

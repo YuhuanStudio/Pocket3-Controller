@@ -64,6 +64,8 @@ extension AppModel {
             let arguments = try BluetoothCameraEventRecordingRequest(arguments: request.arguments)
             return ServiceReply(id: request.id, result: try .encode(try await wireless.bluetooth.recordCameraEvents(
                 expectedSessionID: arguments.expectedSessionID, peripheralID: arguments.peripheralID)))
+        case NativeActiveTrackObservationWindowRequest.operation:
+            return try await handleActiveTrackObservationWindow(request)
         case "validation-wireless-property":
             guard let name = request.arguments["property"].string,
                   let property = CameraSettingsProperty(rawValue: name) else {
