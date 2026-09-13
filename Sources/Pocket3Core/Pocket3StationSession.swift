@@ -239,6 +239,77 @@ public struct Pocket3StationStepEvidence: Codable, Sendable, Equatable {
     }
 }
 
+/// Pocket 3's `53/10` wake reply is an evidence fact from OsmoOffload, not a
+/// new station operation in this coordinator. It is the same non-fatal wake
+/// state represented locally by the existing `07/39` network-mode probe.
+public enum Pocket3StationWakeProbeDisposition: String, Codable, Sendable,
+    Equatable, CaseIterable {
+    case notObserved = "not_observed"
+    case e0NonFatal = "e0_non_fatal"
+    case unexpected = "unexpected"
+}
+
+public struct Pocket3StationWakeProbeEvidence: Codable, Sendable, Equatable,
+    Hashable {
+    public static let operation = "53/10"
+    public static let expectedResponseCodeHex = "E0"
+    public static let defaultMetadata = Pocket3CapabilityEvidenceMetadata(
+        transport: .bluetoothDatalink,
+        transportDetail: "CoreBluetooth BLE wake diagnostic; equivalent to the existing 07/39 network-mode probe state",
+        hardwareScope: [.pocket3],
+        evidenceLevel: .publicReverseEngineering,
+        license: .mit,
+        provenance: [
+            .init(
+                project: "OsmoOffload",
+                commit: "9c5bad9cadcc3fecd402a4bddef7a52d8b2ad54f",
+                file: "src/osmooffload/ble/pairing.py",
+                url: "https://github.com/intermittech/OsmoOffload/blob/9c5bad9cadcc3fecd402a4bddef7a52d8b2ad54f/src/osmooffload/ble/pairing.py",
+                license: .mit,
+                claim: "Pocket 3 53/10 E0 wake response is non-fatal")
+        ],
+        limitations: [
+            "This evidence does not add a 53/10 send path",
+            "The existing 07/39 probe state and exact session fence remain authoritative"
+        ])
+
+    public let operation: String
+    public let equivalentOperation: Pocket3StationBLEOperation
+    public let expectedResponse: Data
+    public let observedResponse: Data?
+    public let expectedResponseHex: String
+    public let observedResponseHex: String?
+    public let disposition: Pocket3StationWakeProbeDisposition
+    public let acceptedNonFatal: Bool
+    public let metadata: Pocket3CapabilityEvidenceMetadata
+
+    public init(
+        observedResponse: Data? = nil,
+        metadata: Pocket3CapabilityEvidenceMetadata? = nil
+    ) {
+        operation = Self.operation
+        equivalentOperation = .networkModeProbe
+        expectedResponse = Data([0xE0])
+        self.observedResponse = observedResponse.map { Data($0.prefix(128)) }
+        expectedResponseHex = Self.expectedResponseCodeHex
+        observedResponseHex = self.observedResponse.map(Self.hex)
+        if let observedResponse {
+            disposition = observedResponse == Data([0xE0])
+                ? .e0NonFatal : .unexpected
+        } else {
+            disposition = .notObserved
+        }
+        acceptedNonFatal = disposition == .e0NonFatal
+        self.metadata = metadata ?? Self.defaultMetadata
+    }
+
+    public var observed: Bool { observedResponse != nil }
+
+    private static func hex(_ data: Data) -> String {
+        data.map { String(format: "%02X", $0) }.joined(separator: " ")
+    }
+}
+
 public struct Pocket3StationCleanupDebt: Codable, Sendable, Equatable {
     public let binding: Pocket3StationSessionBinding
     public let reason: String
@@ -321,6 +392,9 @@ public struct Pocket3StationSessionResult: Codable, Sendable, Equatable {
     public let cleanupDebt: Pocket3StationCleanupDebt?
     public let failureCode: String?
     public let provenance: [String]
+    /// Known `53/10 → E0` non-fatal evidence is exposed without adding a new
+    /// send path. New results carry `notObserved`; older JSON may omit it.
+    public let wakeProbe: Pocket3StationWakeProbeEvidence?
     public let automaticWiFiAssociation: Bool
     public let credentialsPersisted: Bool
 
@@ -329,7 +403,8 @@ public struct Pocket3StationSessionResult: Codable, Sendable, Equatable {
          steps: [Pocket3StationStepEvidence],
          settleSeconds: TimeInterval?,
          lan: Pocket3StationLANEvidence?, commandReady: Bool,
-         cleanupDebt: Pocket3StationCleanupDebt?, failureCode: String?) {
+         cleanupDebt: Pocket3StationCleanupDebt?, failureCode: String?,
+         wakeProbe: Pocket3StationWakeProbeEvidence? = Pocket3StationWakeProbeEvidence()) {
         self.phase = phase
         self.binding = binding
         self.steps = Array(steps.prefix(8))
@@ -339,6 +414,7 @@ public struct Pocket3StationSessionResult: Codable, Sendable, Equatable {
         self.cleanupDebt = cleanupDebt
         self.failureCode = failureCode
         self.provenance = Pocket3StationProtocol.provenance
+        self.wakeProbe = wakeProbe
         automaticWiFiAssociation = false
         credentialsPersisted = false
     }
@@ -431,6 +507,14 @@ public enum Pocket3StationProtocol {
         case .joinNetwork:
             return reply.payload == Data([0x00, 0x00])
         }
+    }
+
+    /// Classifies an observed OsmoOffload wake response against the existing
+    /// 07/39 probe state. This is intentionally a pure classifier; it never
+    /// sends 53/10 and never changes station sequencing.
+    public static func wakeProbeEvidence(observedResponse: Data? = nil)
+        -> Pocket3StationWakeProbeEvidence {
+        Pocket3StationWakeProbeEvidence(observedResponse: observedResponse)
     }
 
     /// Extracts the only identity field currently evidenced for LAN 07/07:
@@ -667,6 +751,7 @@ public struct Pocket3StationDryRunPlan: Codable, Sendable, Equatable {
     public let automaticWiFiAssociation: Bool
     public let credentialsPersisted: Bool
     public let commandReadyRequiresExactIdentity: Bool
+    public let wakeProbe: Pocket3StationWakeProbeEvidence?
 
     init(request: Pocket3StationValidationRequest) {
         operation = Pocket3StationValidationRequest.operation
@@ -686,6 +771,7 @@ public struct Pocket3StationDryRunPlan: Codable, Sendable, Equatable {
         automaticWiFiAssociation = false
         credentialsPersisted = false
         commandReadyRequiresExactIdentity = true
+        wakeProbe = Pocket3StationWakeProbeEvidence()
     }
 }
 

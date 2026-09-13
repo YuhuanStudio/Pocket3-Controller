@@ -245,7 +245,7 @@ public struct Pocket3WriterSupportEntry: Codable, Sendable,
 /// BLE session. The report itself always has `hardwareAccessed == false`.
 public struct Pocket3WriterSupportReport: Codable, Sendable, Equatable {
     public static let operation = "validation-wireless-writer-support-report"
-    public static let currentVersion = 1
+    public static let currentVersion = 2
 
     public let version: Int
     public let operation: String
@@ -254,6 +254,10 @@ public struct Pocket3WriterSupportReport: Codable, Sendable, Equatable {
     public let executeAllowed: Bool
     public let localTransport: CameraCapabilityTransport
     public let localTransportDetail: String
+    /// Evidence context makes the local BLE admission distinguishable from
+    /// upstream Wi-Fi accepted/status claims and from other camera families.
+    /// Optional keeps older exported reports decodable.
+    public let evidenceMetadata: Pocket3CapabilityEvidenceMetadata?
     public let sources: [String]
     public let notes: [String]
 
@@ -269,6 +273,8 @@ public struct Pocket3WriterSupportReport: Codable, Sendable, Equatable {
         executeAllowed = false
         localTransport = .bluetoothDatalink
         localTransportDetail = Self.localBLETransportDetail
+        evidenceMetadata = Pocket3CapabilityEvidenceInventory.current
+            .candidate(for: .settings)?.metadata
         sources = [
             Self.kazeSettingsSource,
             Self.kazeReadbackSource,
@@ -276,7 +282,8 @@ public struct Pocket3WriterSupportReport: Codable, Sendable, Equatable {
             Self.openPocketCineCommandSource,
             Self.localWriterAuditSource,
             Self.localProtocolSource,
-            Self.localHardwareEvidenceSource
+            Self.localHardwareEvidenceSource,
+            Pocket3CapabilityEvidenceInventory.reportSource
         ]
         notes = [
             "Protocol evidence and product write support are separate facts",

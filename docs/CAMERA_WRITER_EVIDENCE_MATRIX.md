@@ -22,6 +22,29 @@ OpenPocketCine 的 Pocket 3 physical survey（commit
 只標示這個外部證據，絕不改變本案 `bluetooth_datalink` 的 admission。尤其 WB
 上游 accepted 不抵銷本案兩次 BLE 5600 K 無 ACK 的結果。
 
+## Ecosystem evidence metadata
+
+Capability status JSON now carries `capabilities.evidenceInventory` and the
+developer writer report carries the same `evidenceMetadata` for settings. Each
+row has a local `transport`, explicit `hardwareScope`, `evidenceLevel`, typed
+`license`, and commit/file/URL `provenance`. These fields describe evidence;
+they do not grant a writer permission.
+
+| candidate | current metadata boundary |
+|---|---|
+| `station` | `multiple` transport: CoreBluetooth provisioning plus camera Wi-Fi TCP7001/UDP9004; Pocket 3 public reverse-engineering evidence. OsmoOffload `53/10 → E0` is a non-fatal observation of the existing `07/39` probe state, not a new send operation. |
+| `gimbal` | Native reference transport is `wifi_datalink`; Pocket3Direct supplies Pocket 3 `04/01`/neutral references, while OsmoDesk/OsmoPalm measurements are Pocket 4 Pro development-camera evidence. P4 Pro telemetry cannot unlock a Pocket 3 parser or writer. |
+| `capture_4k` | `usb_uvc` only. UVC/AVFoundation format and bounded realtime/decode trials remain separate from camera body recording and Wi-Fi HEVC. The unconfirmed Pocket4 JSON candidate in dji-remote cannot raise Pocket3 capability. |
+| `settings` | Local transport remains CoreBluetooth FFF4/FFF5. OpenPocketCine Pocket3 accepted/status evidence is camera Wi-Fi-only; it cannot authorize a BLE setter. node-osmo's historical FFF3 write mapping is not the local FFF5 route. |
+
+The machine-readable rows preserve the exact source revisions, including
+OpenPocketCine `9b30b93572797c94db5ad9236fb746410f8d761f`, OsmoOffload
+`9c5bad9cadcc3fecd402a4bddef7a52d8b2ad54f`, node-osmo
+`cec92aec9304a5cc3dae7f7de541eef38ebb680e`, dji-remote
+`c2012be6aca67d4882774cf5d9746f420a03e11f`, and the Pocket3Direct and Yjsmall
+revisions. OsmoDesk/OsmoPalm original code has no blanket license; their
+source is provenance only and is not copied into this product.
+
 | candidate | exact packet evidence | readback evidence | current admission | 最小下一個真機驗收 |
 |---|---|---|---|---|
 | `white_balance` | BLE DUML `02/2C`, `source=02 destination=01 flags=40`；Auto=`00 00 00 00 00`，custom=`06 kelvin/100 00 00 00`；上游 survey `upstreamAccepted=true`（Wi-Fi） | `00/99/06` `cam_image_effect`，至少 6 bytes；color[2]、WB mode[4]、Kelvin/100[5]，raw 保留；上游也有 matching readback | `blocked_no_verified_write`；兩次 5600 K BLE 嘗試都沒有 ACK 或 matching readback，read-only Auto 曾成功 | exact paired session 下 Auto↔custom 一次往返，ACK 後 matching image-effect，再只恢復已讀到的 baseline |

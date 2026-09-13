@@ -496,6 +496,8 @@ public struct Pocket3CapabilityGraphNode: Codable, Sendable, Equatable, Hashable
 
 /// Typed runtime inventory shared by status, CLI and MCP callers.
 public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
+    public static let currentVersion = 2
+
     public let version: Int
     public let uvcCaptureFormats: [UVCCaptureFormat]
     public let hostOutputCodecs: [HostOutputCodecCapability]
@@ -508,16 +510,21 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
     /// Read-only firmware/accessory/system preference inventory. Optional so
     /// older status JSON remains decodable when no BLE observation exists.
     public let deviceInventory: Pocket3DeviceSystemInventory?
+    /// Ecosystem evidence metadata for station, native gimbal, 4K capture and
+    /// settings candidates. Optional keeps status JSON from older builds
+    /// decodable; new graphs always publish the current bounded inventory.
+    public let evidenceInventory: Pocket3CapabilityEvidenceInventory?
     public let nodes: [Pocket3CapabilityGraphNode]
 
-    public init(version: Int = 1,
+    public init(version: Int = Self.currentVersion,
                 uvcCaptureFormats: [UVCCaptureFormat] = [],
                 hostOutputCodecs: [HostOutputCodecCapability] = [],
                 hostHEVCProduct: HostHEVCProductCapability? = nil,
                 bodyRecordingFormats: [BodyRecordingFormatCapability] = Pocket3BodyRecordingCatalog.knownResolutionFamilies,
                 nativeSession: NativeSessionCapability = .disconnected,
                 liveSession: LiveSessionCapability = .unavailable,
-                deviceInventory: Pocket3DeviceSystemInventory? = nil) {
+                deviceInventory: Pocket3DeviceSystemInventory? = nil,
+                evidenceInventory: Pocket3CapabilityEvidenceInventory? = .current) {
         self.version = version
         self.uvcCaptureFormats = uvcCaptureFormats
         self.hostOutputCodecs = hostOutputCodecs
@@ -526,6 +533,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
         self.nativeSession = nativeSession
         self.liveSession = liveSession
         self.deviceInventory = deviceInventory
+        self.evidenceInventory = evidenceInventory
 
         let uvc = Self.aggregate(uvcCaptureFormats.map(\.availability))
         let host = Self.aggregate(hostOutputCodecs.map(\.availability))
@@ -555,7 +563,8 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                             nativeSession: NativeSessionCapability? = nil,
                             bodyRecordingFormats: [BodyRecordingFormatCapability]? = nil,
                             liveSession: LiveSessionCapability = .unavailable,
-                            deviceInventory: Pocket3DeviceSystemInventory? = nil) -> Self {
+                            deviceInventory: Pocket3DeviceSystemInventory? = nil,
+                            evidenceInventory: Pocket3CapabilityEvidenceInventory? = .current) -> Self {
         var uvc: [UVCCaptureFormat] = []
         if let frame = capture.frame,
            frame.width > 0, frame.height > 0,
@@ -588,7 +597,8 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                     bodyRecordingFormats: bodyRecordingFormats.map(Pocket3BodyRecordingCatalog.merging)
                         ?? Pocket3BodyRecordingCatalog.knownResolutionFamilies,
                     nativeSession: nativeSession ?? .from(nativeControl),
-                    liveSession: liveSession, deviceInventory: deviceInventory)
+                    liveSession: liveSession, deviceInventory: deviceInventory,
+                    evidenceInventory: evidenceInventory)
     }
 
     /// Adds a read-only device inventory to a graph assembled by the USB
@@ -599,7 +609,8 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
              hostHEVCProduct: hostHEVCProduct,
              bodyRecordingFormats: bodyRecordingFormats,
              nativeSession: nativeSession, liveSession: liveSession,
-             deviceInventory: deviceInventory)
+             deviceInventory: deviceInventory,
+             evidenceInventory: evidenceInventory)
     }
 
     private static func outputCapabilities(
