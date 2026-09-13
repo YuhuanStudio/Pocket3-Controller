@@ -124,8 +124,274 @@ public struct USBPanTiltStressCasePlan: Codable, Sendable, Equatable {
     }
 }
 
-/// Errors are kept typed so a future collector can reject malformed plans
-/// before opening a control path.  This module has no collector or transport.
+/// Developer-only request for the full-range pan/tilt collector.  A range is
+/// optional for a dry run so the command can show its contract before a
+/// camera is connected.  Execution requires the caller to repeat the exact
+/// range observed from the current USB attachment.
+public struct USBPanTiltStressRequest: Codable, Sendable, Equatable {
+    public static let operation = "validation-usb-pan-tilt-stress"
+    public static let defaultHoldSeconds: TimeInterval = 0.6
+    public static let maximumHoldSeconds: TimeInterval = 1.2
+    public static let defaultPollInterval: TimeInterval = 0.05
+    public static let minimumPollInterval: TimeInterval = 0.04
+    public static let maximumPollInterval: TimeInterval = 0.25
+    public static let defaultTimeout: TimeInterval = USBPanTiltStressPlan.maximumExecutionSeconds
+    public static let minimumTimeout: TimeInterval = 15
+    public static let maximumTimeout: TimeInterval = USBPanTiltStressPlan.maximumExecutionSeconds
+
+    public let expectedDeviceID: String?
+    public let expectedSessionID: String?
+    public let declaredRange: USBPanTiltStressRange?
+    public let holdSeconds: TimeInterval
+    public let pollInterval: TimeInterval
+    public let timeout: TimeInterval
+    public let execute: Bool
+
+    public init(expectedDeviceID: String? = nil,
+                expectedSessionID: String? = nil,
+                declaredRange: USBPanTiltStressRange? = nil,
+                holdSeconds: TimeInterval = Self.defaultHoldSeconds,
+                pollInterval: TimeInterval = Self.defaultPollInterval,
+                timeout: TimeInterval = Self.defaultTimeout,
+                execute: Bool = false) throws {
+        if let expectedDeviceID {
+            guard !expectedDeviceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw USBPanTiltStressRequestError.invalidArguments
+            }
+        }
+        if let expectedSessionID {
+            guard !expectedSessionID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw USBPanTiltStressRequestError.invalidArguments
+            }
+        }
+        if execute {
+            guard let expectedDeviceID, !expectedDeviceID.isEmpty,
+                  let expectedSessionID, !expectedSessionID.isEmpty else {
+                throw USBPanTiltStressRequestError.identityRequired
+            }
+            guard declaredRange != nil else {
+                throw USBPanTiltStressRequestError.rangeRequired
+            }
+        }
+        guard holdSeconds.isFinite,
+              (0.15...Self.maximumHoldSeconds).contains(holdSeconds),
+              pollInterval.isFinite,
+              (Self.minimumPollInterval...Self.maximumPollInterval).contains(pollInterval),
+              timeout.isFinite,
+              (Self.minimumTimeout...Self.maximumTimeout).contains(timeout),
+              holdSeconds + pollInterval <= timeout else {
+            throw USBPanTiltStressRequestError.invalidArguments
+        }
+        self.expectedDeviceID = expectedDeviceID
+        self.expectedSessionID = expectedSessionID
+        self.declaredRange = declaredRange
+        self.holdSeconds = holdSeconds
+        self.pollInterval = pollInterval
+        self.timeout = timeout
+        self.execute = execute
+    }
+
+    public init(arguments: JSONValue) throws {
+        guard case .object(let fields) = arguments,
+              Set(fields.keys).isSubset(of: [
+                  "device", "session", "range", "holdSeconds", "pollInterval",
+                  "timeout", "execute"
+              ]) else {
+            throw USBPanTiltStressRequestError.invalidArguments
+        }
+        let device = try Self.string(fields["device"])
+        let session = try Self.string(fields["session"])
+        let range: USBPanTiltStressRange?
+        if let value = fields["range"], value != .null {
+            do { range = try value.decode(USBPanTiltStressRange.self) }
+            catch { throw USBPanTiltStressRequestError.invalidArguments }
+        } else { range = nil }
+        let hold = try Self.number(fields["holdSeconds"], default: Self.defaultHoldSeconds)
+        let poll = try Self.number(fields["pollInterval"], default: Self.defaultPollInterval)
+        let timeout = try Self.number(fields["timeout"], default: Self.defaultTimeout)
+        let execute = try Self.boolean(fields["execute"])
+        try self.init(expectedDeviceID: device, expectedSessionID: session,
+                      declaredRange: range, holdSeconds: hold,
+                      pollInterval: poll, timeout: timeout, execute: execute)
+    }
+
+    public init(cliArguments: [String]) throws {
+        var device: String?
+        var session: String?
+        var rangeJSON: String?
+        var raw: [String: Int32] = [:]
+        var hold = Self.defaultHoldSeconds
+        var poll = Self.defaultPollInterval
+        var timeout = Self.defaultTimeout
+        var execute = false
+        var index = 0
+        while index < cliArguments.count {
+            let argument = cliArguments[index]
+            if argument == "--execute" {
+                guard !execute else { throw USBPanTiltStressRequestError.invalidArguments }
+                execute = true
+                index += 1
+                continue
+            }
+            guard index + 1 < cliArguments.count else {
+                throw USBPanTiltStressRequestError.invalidArguments
+            }
+            let value = cliArguments[index + 1]
+            switch argument {
+            case "--device":
+                guard device == nil else { throw USBPanTiltStressRequestError.invalidArguments }
+                device = value
+            case "--session":
+                guard session == nil else { throw USBPanTiltStressRequestError.invalidArguments }
+                session = value
+            case "--range-json":
+                guard rangeJSON == nil else { throw USBPanTiltStressRequestError.invalidArguments }
+                rangeJSON = value
+            case "--minimum-pan", "--min-pan":
+                try Self.insertRaw(value, key: "minimumPan", into: &raw)
+            case "--minimum-tilt", "--min-tilt":
+                try Self.insertRaw(value, key: "minimumTilt", into: &raw)
+            case "--center-pan":
+                try Self.insertRaw(value, key: "centerPan", into: &raw)
+            case "--center-tilt":
+                try Self.insertRaw(value, key: "centerTilt", into: &raw)
+            case "--maximum-pan", "--max-pan":
+                try Self.insertRaw(value, key: "maximumPan", into: &raw)
+            case "--maximum-tilt", "--max-tilt":
+                try Self.insertRaw(value, key: "maximumTilt", into: &raw)
+            case "--hold-seconds":
+                guard let parsed = Double(value) else { throw USBPanTiltStressRequestError.invalidArguments }
+                hold = parsed
+            case "--poll-interval":
+                guard let parsed = Double(value) else { throw USBPanTiltStressRequestError.invalidArguments }
+                poll = parsed
+            case "--timeout":
+                guard let parsed = Double(value) else { throw USBPanTiltStressRequestError.invalidArguments }
+                timeout = parsed
+            default: throw USBPanTiltStressRequestError.invalidArguments
+            }
+            index += 2
+        }
+
+        let declaredRange: USBPanTiltStressRange?
+        if let rangeJSON {
+            guard raw.isEmpty, let data = rangeJSON.data(using: .utf8) else {
+                throw USBPanTiltStressRequestError.invalidArguments
+            }
+            do {
+                declaredRange = try JSONDecoder().decode(
+                    USBPanTiltStressRange.self, from: data)
+            } catch { throw USBPanTiltStressRequestError.invalidArguments }
+        } else if raw.isEmpty {
+            declaredRange = nil
+        } else {
+            guard raw.count == 6,
+                  let minimumPan = raw["minimumPan"],
+                  let minimumTilt = raw["minimumTilt"],
+                  let centerPan = raw["centerPan"],
+                  let centerTilt = raw["centerTilt"],
+                  let maximumPan = raw["maximumPan"],
+                  let maximumTilt = raw["maximumTilt"] else {
+                throw USBPanTiltStressRequestError.invalidArguments
+            }
+            do {
+                declaredRange = try USBPanTiltStressRange(
+                    minimum: .init(pan: minimumPan, tilt: minimumTilt),
+                    center: .init(pan: centerPan, tilt: centerTilt),
+                    maximum: .init(pan: maximumPan, tilt: maximumTilt))
+            } catch { throw USBPanTiltStressRequestError.invalidArguments }
+        }
+        try self.init(expectedDeviceID: device, expectedSessionID: session,
+                      declaredRange: declaredRange, holdSeconds: hold,
+                      pollInterval: poll, timeout: timeout, execute: execute)
+    }
+
+    public var arguments: JSONValue {
+        var fields: [String: JSONValue] = [
+            "holdSeconds": .number(holdSeconds),
+            "pollInterval": .number(pollInterval),
+            "timeout": .number(timeout),
+            "execute": .bool(execute),
+            "range": (try? declaredRange.map(JSONValue.encode)) ?? .null
+        ]
+        if let expectedDeviceID { fields["device"] = .string(expectedDeviceID) }
+        if let expectedSessionID { fields["session"] = .string(expectedSessionID) }
+        return .object(fields)
+    }
+
+    public static let schema: JSONValue = .object([
+        "type": .string("object"),
+        "properties": .object([
+            "device": .object(["type": .string("string"), "minLength": .number(1)]),
+            "session": .object(["type": .string("string"), "minLength": .number(1)]),
+            "range": .object(["type": .string("object")]),
+            "holdSeconds": .object(["type": .string("number"),
+                                      "minimum": .number(0.15),
+                                      "maximum": .number(maximumHoldSeconds)]),
+            "pollInterval": .object(["type": .string("number"),
+                                       "minimum": .number(minimumPollInterval),
+                                       "maximum": .number(maximumPollInterval)]),
+            "timeout": .object(["type": .string("number"),
+                                 "minimum": .number(minimumTimeout),
+                                 "maximum": .number(maximumTimeout)]),
+            "execute": .object(["type": .string("boolean")])
+        ]),
+        "additionalProperties": .bool(false)
+    ])
+
+    public init(from decoder: Decoder) throws {
+        try self.init(arguments: JSONValue(from: decoder))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        try arguments.encode(to: encoder)
+    }
+
+    private static func string(_ value: JSONValue?) throws -> String? {
+        guard let value else { return nil }
+        guard let result = value.string, !result.isEmpty else {
+            throw USBPanTiltStressRequestError.invalidArguments
+        }
+        return result
+    }
+
+    private static func number(_ value: JSONValue?, default fallback: Double) throws -> Double {
+        guard let value else { return fallback }
+        guard let result = value.number, result.isFinite else {
+            throw USBPanTiltStressRequestError.invalidArguments
+        }
+        return result
+    }
+
+    private static func boolean(_ value: JSONValue?) throws -> Bool {
+        guard let value else { return false }
+        guard let result = value.bool else {
+            throw USBPanTiltStressRequestError.invalidArguments
+        }
+        return result
+    }
+
+    private static func insertRaw(_ value: String, key: String,
+                                  into values: inout [String: Int32]) throws {
+        guard values[key] == nil, let parsed = Int64(value),
+              parsed >= Int64(Int32.min), parsed <= Int64(Int32.max) else {
+            throw USBPanTiltStressRequestError.invalidArguments
+        }
+        values[key] = Int32(parsed)
+    }
+}
+
+public enum USBPanTiltStressRequestError: Error, Codable, Sendable, Equatable {
+    case invalidArguments
+    case identityRequired
+    case rangeRequired
+}
+
+public typealias Pocket3USBPanTiltStressRequest = USBPanTiltStressRequest
+
+/// Errors are kept typed so malformed plans can be rejected before opening a
+/// control path. The executor below still receives all hardware access through
+/// an existing-owner adapter.
 public enum USBPanTiltStressAcceptanceError: Error, Codable, Sendable,
     Equatable {
     case invalidRange
@@ -134,9 +400,9 @@ public enum USBPanTiltStressAcceptanceError: Error, Codable, Sendable,
 }
 
 /// Pure, non-operational plan for a complete raw pan/tilt stress matrix.
-/// `hardwareExecutionEnabled` is stored false by construction: a later
-/// developer route must explicitly own any hardware executor rather than
-/// turning this evaluator into an accidental writer.
+/// `hardwareExecutionEnabled` remains false by construction: the developer
+/// route owns execution explicitly and this plan never becomes an accidental
+/// generic writer.
 public struct USBPanTiltStressPlan: Codable, Sendable, Equatable {
     public static let currentVersion = 1
     public static let currentProfile = "usb_pan_tilt_continuous_stress_v1"
@@ -313,8 +579,23 @@ public struct USBPanTiltStressReport: Codable, Sendable, Equatable {
     public let reconnect: USBManualReconnectFenceMetric
     public let finalBinding: USBManualAcceptanceBinding
     public let finalPosition: GimbalPosition?
+    /// Execution metadata is populated by the developer collector. Legacy
+    /// metrics fixtures default to a completed run for source compatibility.
+    public let phase: String
+    public let completed: Bool
+    public let executionFailureCode: String?
+    public let finalRestore: USBManualRestoreEvidence?
+    public let cleanupAttempted: Bool
+    public let cleanupSucceeded: Bool
     public let cameraImagesStored: Bool
     public let physicalMotionVerified: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case version, profile, createdAt, plan, initialBinding, baselineFrames,
+             trials, reconnect, finalBinding, finalPosition, phase, completed,
+             executionFailureCode, finalRestore, cleanupAttempted,
+             cleanupSucceeded, cameraImagesStored, physicalMotionVerified
+    }
 
     public init(plan: USBPanTiltStressPlan,
                 initialBinding: USBManualAcceptanceBinding,
@@ -323,6 +604,12 @@ public struct USBPanTiltStressReport: Codable, Sendable, Equatable {
                 reconnect: USBManualReconnectFenceMetric,
                 finalBinding: USBManualAcceptanceBinding,
                 finalPosition: GimbalPosition? = nil,
+                phase: String = "completed",
+                completed: Bool = true,
+                executionFailureCode: String? = nil,
+                finalRestore: USBManualRestoreEvidence? = nil,
+                cleanupAttempted: Bool = true,
+                cleanupSucceeded: Bool = true,
                 cameraImagesStored: Bool = false,
                 physicalMotionVerified: Bool = false,
                 createdAt: Date = Date()) {
@@ -336,8 +623,54 @@ public struct USBPanTiltStressReport: Codable, Sendable, Equatable {
         self.reconnect = reconnect
         self.finalBinding = finalBinding
         self.finalPosition = finalPosition
+        self.phase = phase
+        self.completed = completed
+        self.executionFailureCode = executionFailureCode
+        self.finalRestore = finalRestore
+        self.cleanupAttempted = cleanupAttempted
+        self.cleanupSucceeded = cleanupSucceeded
         self.cameraImagesStored = cameraImagesStored
         self.physicalMotionVerified = physicalMotionVerified
+    }
+
+    /// Older metrics reports predate execution metadata. Missing fields retain
+    /// the legacy completed-fixture defaults while new collector reports keep
+    /// their explicit partial/failure state.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let plan = try values.decode(USBPanTiltStressPlan.self, forKey: .plan)
+        try self.init(
+            plan: plan,
+            initialBinding: values.decode(
+                USBManualAcceptanceBinding.self, forKey: .initialBinding),
+            baselineFrames: values.decode(
+                [USBManualFrameEvidence].self, forKey: .baselineFrames),
+            trials: values.decode(
+                [USBPanTiltStressTrial].self, forKey: .trials),
+            reconnect: values.decode(
+                USBManualReconnectFenceMetric.self, forKey: .reconnect),
+            finalBinding: values.decode(
+                USBManualAcceptanceBinding.self, forKey: .finalBinding),
+            finalPosition: values.decodeIfPresent(
+                GimbalPosition.self, forKey: .finalPosition),
+            phase: values.decodeIfPresent(String.self, forKey: .phase)
+                ?? "completed",
+            completed: values.decodeIfPresent(Bool.self, forKey: .completed)
+                ?? true,
+            executionFailureCode: values.decodeIfPresent(
+                String.self, forKey: .executionFailureCode),
+            finalRestore: values.decodeIfPresent(
+                USBManualRestoreEvidence.self, forKey: .finalRestore),
+            cleanupAttempted: values.decodeIfPresent(
+                Bool.self, forKey: .cleanupAttempted) ?? true,
+            cleanupSucceeded: values.decodeIfPresent(
+                Bool.self, forKey: .cleanupSucceeded) ?? true,
+            cameraImagesStored: values.decodeIfPresent(
+                Bool.self, forKey: .cameraImagesStored) ?? false,
+            physicalMotionVerified: values.decodeIfPresent(
+                Bool.self, forKey: .physicalMotionVerified) ?? false,
+            createdAt: values.decodeIfPresent(Date.self, forKey: .createdAt)
+                ?? Date())
     }
 }
 
@@ -370,10 +703,84 @@ public struct USBPanTiltStressEvaluation: Codable, Sendable, Equatable {
     }
 }
 
-/// Metrics-only evaluator for a future developer collector.  It never opens a
-/// UVC connection, sends a target, saves an image, or turns `verified` into a
-/// claim about physical motion.
+/// Scalar state supplied by the already-running USB owner.  A hardware
+/// adapter may read AVFoundation status and UVC position, but it cannot return
+/// pixel data through this seam.
+public struct USBPanTiltStressHardwareObservation: Sendable {
+    public let binding: USBManualAcceptanceBinding
+    public let capabilities: UVCCapabilities
+    public let frame: USBManualFrameEvidence?
+    public let sampledUptime: TimeInterval
+    public let phase: String
+    public let motionActive: Bool
+
+    public init(binding: USBManualAcceptanceBinding,
+                capabilities: UVCCapabilities,
+                frame: USBManualFrameEvidence?,
+                sampledUptime: TimeInterval,
+                phase: String,
+                motionActive: Bool) {
+        self.binding = binding
+        self.capabilities = capabilities
+        self.frame = frame
+        self.sampledUptime = sampledUptime
+        self.phase = phase
+        self.motionActive = motionActive
+    }
+}
+
+/// Existing-owner seam for the full-range collector.  The App supplies
+/// closures backed by CameraService; tests can inject scalar state without a
+/// UVC connection.  No transport or image sink is stored by this value.
+public struct USBPanTiltStressExecutorAdapter: Sendable {
+    public typealias Read = @Sendable () async throws
+        -> USBPanTiltStressHardwareObservation
+    public typealias StartMove = @Sendable (
+        _ target: GimbalPosition, _ expectedSessionID: String
+    ) -> Task<MotionResult, Error>
+    public typealias Stop = @Sendable () async throws
+        -> USBManualStopEvidence
+    public typealias Restore = @Sendable (
+        _ origin: GimbalPosition, _ expectedSessionID: String
+    ) async throws -> USBManualRestoreEvidence
+    public typealias Reconnect = @Sendable (
+        _ oldBinding: USBManualAcceptanceBinding,
+        _ request: USBPanTiltStressRequest
+    ) async throws -> USBManualReconnectFenceMetric
+    /// Optional last-resort cleanup. It must be implemented by the existing
+    /// owner with an exact-current-session Stop and must never replay a stale
+    /// target. The executor calls it only after a failed Stop/restore or a
+    /// failure outside a case.
+    public typealias Cleanup = @Sendable () async -> Bool
+
+    let read: Read
+    let startMove: StartMove
+    let stop: Stop
+    let restore: Restore
+    let reconnect: Reconnect
+    let cleanup: Cleanup?
+
+    public init(read: @escaping Read,
+                startMove: @escaping StartMove,
+                stop: @escaping Stop,
+                restore: @escaping Restore,
+                reconnect: @escaping Reconnect,
+                cleanup: Cleanup? = nil) {
+        self.read = read
+        self.startMove = startMove
+        self.stop = stop
+        self.restore = restore
+        self.reconnect = reconnect
+        self.cleanup = cleanup
+    }
+}
+
+/// Metrics evaluator and bounded executor boundary for the developer
+/// collector. The Core layer never opens UVC itself; execution can only reach
+/// hardware through the existing-owner adapter, records scalar metadata, and
+/// never saves an image or turns `verified` into a claim about physical motion.
 public enum USBPanTiltStressAcceptance {
+    public static let maximumBaselineFrames = 64
     public static let minimumStopSamples = 3
     public static let minimumStopDuration: TimeInterval = 0.2
     public static let minimumTravelRaw: Int64 = 720
@@ -385,6 +792,460 @@ public enum USBPanTiltStressAcceptance {
         range: USBPanTiltStressRange
     ) throws -> USBPanTiltStressPlan {
         try USBPanTiltStressPlan(range: range)
+    }
+
+    /// Runs the reviewed 16-case matrix through the existing USB owner. The
+    /// executor records scalar readback and frame metadata only; all writes,
+    /// Stop verification and reconnect handling stay behind the adapter.
+    /// Cancellation and every failure receive a bounded, independent cleanup
+    /// attempt before the partial report is returned.
+    public static func execute(
+        _ request: USBPanTiltStressRequest,
+        adapter: USBPanTiltStressExecutorAdapter,
+        clock: any ContinuousGimbalClock = SystemContinuousGimbalClock()
+    ) async -> USBPanTiltStressReport {
+        let range = request.declaredRange ?? (try! USBPanTiltStressRange(
+            minimum: .init(pan: 0, tilt: 0),
+            center: .init(pan: 0, tilt: 0),
+            maximum: .init(pan: 0, tilt: 0)))
+        let plan = try! USBPanTiltStressPlan(
+            range: range,
+            maximumHoldSeconds: request.holdSeconds,
+            maximumExecutionSeconds: request.timeout)
+
+        guard request.execute, request.declaredRange != nil else {
+            let placeholder = placeholderBinding(for: request)
+            let fence = USBManualReconnectFenceMetric(
+                oldBinding: placeholder, newBinding: placeholder,
+                oldOperationStopped: false, oldOperationSuppressed: false,
+                newSessionReady: false)
+            return USBPanTiltStressReport(
+                plan: plan, initialBinding: placeholder, baselineFrames: [],
+                trials: [], reconnect: fence, finalBinding: placeholder,
+                phase: "dry_run", completed: false,
+                cleanupAttempted: true, cleanupSucceeded: true,
+                cameraImagesStored: false, physicalMotionVerified: false)
+        }
+
+        var binding: USBManualAcceptanceBinding?
+        var baselineFrames: [USBManualFrameEvidence] = []
+        var trials: [USBPanTiltStressTrial] = []
+        var reconnect: USBManualReconnectFenceMetric?
+        var finalBinding: USBManualAcceptanceBinding?
+        var finalPosition: GimbalPosition?
+        var finalRestore: USBManualRestoreEvidence?
+        var phase = "initial_status"
+        var failureCode: String?
+        var cleanupAttempted = false
+        var cleanupSucceeded = true
+        let started = clock.now
+        let deadline = started + request.timeout
+
+        do {
+            guard started.isFinite, deadline.isFinite else {
+                throw BridgeFailure("usb_pan_tilt_stress_timing",
+                    "USB pan/tilt stress clock is invalid")
+            }
+            let initial = try await adapter.read()
+            try validateInitial(initial, request: request, range: range,
+                                plan: plan)
+            binding = initial.binding
+
+            phase = "fresh_center_baseline"
+            baselineFrames = try await collectBaseline(
+                binding: initial.binding, range: range, plan: plan,
+                deadline: min(deadline, started + 5), adapter: adapter,
+                clock: clock)
+            try checkDeadline(deadline, clock: clock)
+
+            for casePlan in plan.cases {
+                phase = "case_\(casePlan.id)"
+                try checkDeadline(deadline, clock: clock)
+                guard let binding else {
+                    throw BridgeFailure("usb_pan_tilt_stress_binding_missing",
+                        "The USB stress run lost its current binding")
+                }
+                let result = await executeCase(
+                    casePlan, binding: binding, plan: plan,
+                    request: request, deadline: deadline,
+                    adapter: adapter, clock: clock)
+                cleanupAttempted = cleanupAttempted || result.cleanupAttempted
+                cleanupSucceeded = cleanupSucceeded && result.cleanupSucceeded
+                if let trial = result.trial { trials.append(trial) }
+                guard result.passed else {
+                    if result.failureCode == "cancelled" {
+                        throw CancellationError()
+                    }
+                    throw BridgeFailure(
+                        result.failureCode ?? "usb_pan_tilt_stress_case_failed",
+                        "USB pan/tilt stress case \(casePlan.id) did not complete safely")
+                }
+            }
+
+            phase = "reconnect_old_session_fence"
+            guard let binding else {
+                throw BridgeFailure("usb_pan_tilt_stress_binding_missing",
+                    "The USB stress run has no old-session binding")
+            }
+            let fence = try await adapter.reconnect(binding, request)
+            reconnect = fence
+            guard fence.oldBinding == binding,
+                  fence.oldOperationStopped,
+                  fence.oldOperationSuppressed,
+                  fence.newSessionReady,
+                  fence.newBinding.isComplete,
+                  fence.newBinding.deviceID == binding.deviceID,
+                  fence.newBinding.captureSessionID != binding.captureSessionID else {
+                throw BridgeFailure("usb_pan_tilt_stress_reconnect_unverified",
+                    "The old USB session was not fenced before the new session")
+            }
+            finalBinding = fence.newBinding
+
+            phase = "final_center_restore"
+            let restored = try await adapter.restore(
+                range.center, fence.newBinding.captureSessionID)
+            finalRestore = restored
+            guard restored.requested == range.center,
+                  restored.submitted, restored.verified,
+                  restored.failureCode == nil else {
+                throw BridgeFailure("usb_pan_tilt_stress_final_restore_unverified",
+                    "The final USB center restore was not verified")
+            }
+            let final = try await adapter.read()
+            try validateObservation(final, binding: fence.newBinding,
+                                    range: range, plan: plan)
+            guard final.phase == "ready", !final.motionActive,
+                  let frame = final.frame,
+                  frame.isFresh(for: fence.newBinding,
+                                maximumAge: plan.maximumFrameAgeSeconds),
+                  final.capabilities.position.distance(to: range.center) <=
+                    restorationToleranceRaw else {
+                throw BridgeFailure("usb_pan_tilt_stress_final_restore_unverified",
+                    "The final USB center has no fresh stable scalar readback")
+            }
+            finalPosition = final.capabilities.position
+            phase = "completed"
+        } catch is CancellationError {
+            failureCode = "cancelled"
+            phase = "cancelled"
+        } catch let error as BridgeFailure {
+            failureCode = error.code
+            phase = "failed"
+        } catch {
+            failureCode = "usb_pan_tilt_stress_failed"
+            phase = "failed"
+        }
+
+        if failureCode != nil {
+            // Even when a case already stopped, a failure during reconnect or
+            // final restore may have left a newer owner active. Repeat the
+            // owner's current-session cleanup before returning evidence.
+            cleanupAttempted = true
+            let cleanupResult = await forceCleanup(adapter)
+            cleanupSucceeded = cleanupSucceeded && cleanupResult
+        }
+
+        let oldBinding = binding ?? placeholderBinding(for: request)
+        let fence = reconnect ?? USBManualReconnectFenceMetric(
+            oldBinding: oldBinding,
+            newBinding: finalBinding ?? oldBinding,
+            oldOperationStopped: false, oldOperationSuppressed: false,
+            newSessionReady: false)
+        let reportBinding = finalBinding ?? fence.newBinding
+        return USBPanTiltStressReport(
+            plan: plan, initialBinding: oldBinding,
+            baselineFrames: baselineFrames, trials: trials,
+            reconnect: fence, finalBinding: reportBinding,
+            finalPosition: finalPosition, phase: phase,
+            completed: failureCode == nil,
+            executionFailureCode: failureCode,
+            finalRestore: finalRestore,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            cameraImagesStored: false, physicalMotionVerified: false)
+    }
+
+    private struct CaseExecutionResult: Sendable {
+        let trial: USBPanTiltStressTrial?
+        let passed: Bool
+        let failureCode: String?
+        let cleanupAttempted: Bool
+        let cleanupSucceeded: Bool
+    }
+
+    private static func executeCase(
+        _ casePlan: USBPanTiltStressCasePlan,
+        binding: USBManualAcceptanceBinding,
+        plan: USBPanTiltStressPlan,
+        request: USBPanTiltStressRequest,
+        deadline: TimeInterval,
+        adapter: USBPanTiltStressExecutorAdapter,
+        clock: any ContinuousGimbalClock
+    ) async -> CaseExecutionResult {
+        let origin = plan.range.center
+        let before: USBPanTiltStressHardwareObservation
+        do {
+            before = try await adapter.read()
+            try validateObservation(before, binding: binding,
+                                    range: plan.range, plan: plan)
+            guard before.phase == "ready", !before.motionActive,
+                  before.capabilities.position.distance(to: origin) <=
+                    restorationToleranceRaw else {
+                throw BridgeFailure("usb_pan_tilt_stress_origin_unstable",
+                    "The next USB stress case does not start from its restored center")
+            }
+        } catch is CancellationError {
+            return CaseExecutionResult(trial: nil, passed: false,
+                failureCode: "cancelled", cleanupAttempted: false,
+                cleanupSucceeded: true)
+        } catch let error as BridgeFailure {
+            return CaseExecutionResult(trial: nil, passed: false,
+                failureCode: error.code, cleanupAttempted: false,
+                cleanupSucceeded: true)
+        } catch {
+            return CaseExecutionResult(trial: nil, passed: false,
+                failureCode: "usb_pan_tilt_stress_case_read_failed",
+                cleanupAttempted: false, cleanupSucceeded: true)
+        }
+
+        let started = clock.now
+        var samples: [USBPanTiltStressSample] = []
+        var movementFailure: String?
+        let moveTask = adapter.startMove(casePlan.target, binding.captureSessionID)
+        let moveDeadline = min(deadline, started + request.holdSeconds)
+        while movementFailure == nil && samples.count < plan.maximumSamplesPerCase &&
+              clock.now < moveDeadline {
+            do {
+                try checkDeadline(moveDeadline, clock: clock)
+                let observation = try await adapter.read()
+                try validateObservation(observation, binding: binding,
+                                        range: plan.range, plan: plan)
+                if observation.phase == "moving", observation.motionActive {
+                    guard let frame = observation.frame,
+                          frame.isFresh(for: binding,
+                            maximumAge: plan.maximumFrameAgeSeconds) else {
+                        throw BridgeFailure("usb_pan_tilt_stress_frame_stale",
+                            "A moving USB stress sample has no fresh frame")
+                    }
+                    let elapsed = observation.sampledUptime - started
+                    guard elapsed.isFinite, elapsed >= 0 else {
+                        throw BridgeFailure("usb_pan_tilt_stress_sample_timing",
+                            "A USB stress sample has invalid timing")
+                    }
+                    samples.append(USBPanTiltStressSample(
+                        elapsed: elapsed,
+                        position: observation.capabilities.position,
+                        frame: frame, phase: "moving", motionActive: true))
+                    if samples.count >= minimumStopSamples,
+                       observation.capabilities.position.distance(to:
+                        casePlan.target) <= restorationToleranceRaw {
+                        break
+                    }
+                }
+                let next = min(moveDeadline, clock.now + request.pollInterval)
+                try await clock.sleep(until: next)
+            } catch is CancellationError {
+                movementFailure = "cancelled"
+            } catch let error as BridgeFailure {
+                movementFailure = error.code
+            } catch {
+                movementFailure = "usb_pan_tilt_stress_observation_failed"
+            }
+        }
+
+        let stop = await forceStop(adapter) ?? USBManualStopEvidence(
+            submitted: false, verified: false, motionStopped: false,
+            held: samples.last?.position, final: samples.last?.position,
+            failureCode: "usb_pan_tilt_stress_stop_missing")
+        let movementResult = await moveTask.result
+        var caseFailure = movementFailure
+        if !stop.verified {
+            caseFailure = caseFailure ?? stop.failureCode ??
+                "usb_pan_tilt_stress_stop_unverified"
+        }
+        // CameraService reports cancellation of an absolute approach after its
+        // exact hold target has been stopped. That expected error is not a
+        // second failure when the independent Stop evidence is good.
+        if caseFailure == nil, case let .failure(error) = movementResult,
+           !stop.verified {
+            caseFailure = executionFailureCode(error)
+        }
+
+        var restore: USBManualRestoreEvidence?
+        if stop.verified {
+            do {
+                restore = try await adapter.restore(
+                    origin, binding.captureSessionID)
+                if restore?.verified != true {
+                    caseFailure = caseFailure ?? restore?.failureCode ??
+                        "usb_pan_tilt_stress_restore_unverified"
+                }
+            } catch is CancellationError {
+                restore = USBManualRestoreEvidence(
+                    requested: origin, submitted: false, verified: false,
+                    failureCode: "cancelled")
+                caseFailure = caseFailure ?? "cancelled"
+            } catch let error as BridgeFailure {
+                restore = USBManualRestoreEvidence(
+                    requested: origin, submitted: false, verified: false,
+                    failureCode: error.code)
+                caseFailure = caseFailure ?? error.code
+            } catch {
+                restore = USBManualRestoreEvidence(
+                    requested: origin, submitted: false, verified: false,
+                    failureCode: "usb_pan_tilt_stress_restore_failed")
+                caseFailure = caseFailure ??
+                    "usb_pan_tilt_stress_restore_failed"
+            }
+        } else {
+            restore = USBManualRestoreEvidence(
+                requested: origin, submitted: false, verified: false,
+                failureCode: "restore_not_safe_after_stop_failure")
+        }
+
+        let holdDuration = min(plan.maximumHoldSeconds,
+            max(0.15, max(0, clock.now - started)))
+        let trial = USBPanTiltStressTrial(
+            plan: casePlan, origin: origin,
+            holdDurationSeconds: holdDuration, samples: samples,
+            stop: stop,
+            restore: restore ?? USBManualRestoreEvidence(
+                requested: origin, submitted: false, verified: false,
+                failureCode: "restore_not_attempted"))
+        var cleanupSucceeded = stop.verified && restore?.verified == true
+        var cleanupAttempted = true
+        if !cleanupSucceeded, let cleanup = adapter.cleanup {
+            cleanupSucceeded = await Task.detached(priority: .userInitiated) {
+                await cleanup()
+            }.value
+            cleanupAttempted = true
+        }
+        let passed = caseFailure == nil && samples.count >= minimumStopSamples &&
+            stop.verified && restore?.verified == true
+        return CaseExecutionResult(trial: trial, passed: passed,
+            failureCode: caseFailure, cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded)
+    }
+
+    private static func validateInitial(
+        _ observation: USBPanTiltStressHardwareObservation,
+        request: USBPanTiltStressRequest,
+        range: USBPanTiltStressRange,
+        plan: USBPanTiltStressPlan
+    ) throws {
+        guard observation.binding.isComplete,
+              observation.binding.deviceID == request.expectedDeviceID,
+              observation.binding.captureSessionID == request.expectedSessionID else {
+            throw BridgeFailure("usb_pan_tilt_stress_session_changed",
+                "Execute requires the exact current USB device and capture session")
+        }
+        try validateObservation(observation, binding: observation.binding,
+                                range: range, plan: plan)
+        guard observation.phase == "ready", !observation.motionActive,
+              observation.capabilities.position == range.center else {
+            throw BridgeFailure("usb_pan_tilt_stress_not_ready",
+                "USB pan/tilt stress requires a fresh idle center")
+        }
+    }
+
+    private static func validateObservation(
+        _ observation: USBPanTiltStressHardwareObservation,
+        binding: USBManualAcceptanceBinding,
+        range: USBPanTiltStressRange,
+        plan: USBPanTiltStressPlan
+    ) throws {
+        guard observation.binding == binding,
+              observation.sampledUptime.isFinite,
+              observation.capabilities.writable,
+              observation.capabilities.minimum == range.minimum,
+              observation.capabilities.maximum == range.maximum,
+              range.contains(observation.capabilities.position) else {
+            throw BridgeFailure("usb_pan_tilt_stress_range_changed",
+                "The fresh USB range or attachment changed during stress execution")
+        }
+        if let frame = observation.frame,
+           !frame.isFresh(for: binding,
+                          maximumAge: plan.maximumFrameAgeSeconds) {
+            throw BridgeFailure("usb_pan_tilt_stress_frame_stale",
+                "The current USB scalar frame is stale or belongs to another session")
+        }
+    }
+
+    private static func collectBaseline(
+        binding: USBManualAcceptanceBinding,
+        range: USBPanTiltStressRange,
+        plan: USBPanTiltStressPlan,
+        deadline: TimeInterval,
+        adapter: USBPanTiltStressExecutorAdapter,
+        clock: any ContinuousGimbalClock
+    ) async throws -> [USBManualFrameEvidence] {
+        var frames: [USBManualFrameEvidence] = []
+        var IDs = Set<String>()
+        for _ in 0..<maximumBaselineFrames {
+            try checkDeadline(deadline, clock: clock)
+            let observation = try await adapter.read()
+            try validateObservation(observation, binding: binding,
+                                    range: range, plan: plan)
+            guard observation.phase == "ready", !observation.motionActive,
+                  observation.capabilities.position == range.center else {
+                throw BridgeFailure("usb_pan_tilt_stress_center_changed",
+                    "The USB center moved during fresh baseline collection")
+            }
+            if let frame = observation.frame,
+               frame.isFresh(for: binding,
+                             maximumAge: plan.maximumFrameAgeSeconds),
+               IDs.insert(frame.frameID).inserted {
+                frames.append(frame)
+            }
+            if frames.count >= minimumStopSamples { return frames }
+            try await clock.sleep(until: min(deadline,
+                clock.now + USBPanTiltStressRequest.defaultPollInterval))
+        }
+        throw BridgeFailure("usb_pan_tilt_stress_fresh_frame_missing",
+            "The USB capture did not provide three fresh distinct baseline frames")
+    }
+
+    private static func checkDeadline(
+        _ deadline: TimeInterval,
+        clock: any ContinuousGimbalClock
+    ) throws {
+        try Task.checkCancellation()
+        guard deadline.isFinite, clock.now.isFinite, clock.now <= deadline else {
+            throw BridgeFailure("usb_pan_tilt_stress_timeout",
+                "USB pan/tilt stress exceeded its bounded execution time")
+        }
+    }
+
+    private static func forceStop(
+        _ adapter: USBPanTiltStressExecutorAdapter
+    ) async -> USBManualStopEvidence? {
+        await Task.detached(priority: .userInitiated) {
+            try? await adapter.stop()
+        }.value
+    }
+
+    private static func forceCleanup(
+        _ adapter: USBPanTiltStressExecutorAdapter
+    ) async -> Bool {
+        guard let cleanup = adapter.cleanup else { return false }
+        return await Task.detached(priority: .userInitiated) {
+            await cleanup()
+        }.value
+    }
+
+    private static func executionFailureCode(_ error: Error) -> String {
+        if let failure = error as? BridgeFailure { return failure.code }
+        if error is CancellationError { return "cancelled" }
+        return "usb_pan_tilt_stress_move_failed"
+    }
+
+    private static func placeholderBinding(
+        for request: USBPanTiltStressRequest
+    ) -> USBManualAcceptanceBinding {
+        USBManualAcceptanceBinding(
+            deviceID: request.expectedDeviceID ?? "",
+            captureSessionID: request.expectedSessionID ?? "",
+            registryID: "", bootSessionID: "")
     }
 
     public static func evaluate(
@@ -400,6 +1261,9 @@ public enum USBPanTiltStressAcceptance {
             report.plan.maximumExecutionSeconds.isFinite &&
             (15...USBPanTiltStressPlan.maximumExecutionSeconds)
                 .contains(report.plan.maximumExecutionSeconds))
+        check("execution_completed", report.completed)
+        check("execution_cleanup", report.cleanupAttempted &&
+            report.cleanupSucceeded)
         check("metrics_only", !report.cameraImagesStored &&
             !report.physicalMotionVerified &&
             !report.plan.hardwareExecutionEnabled &&
@@ -608,6 +1472,17 @@ public enum USBPanTiltStressAcceptance {
               final.distance(to: report.plan.range.center) <= restorationToleranceRaw else {
             return false
         }
+        if let finalRestore = report.finalRestore {
+            guard finalRestore.requested == report.plan.range.center,
+                  finalRestore.submitted, finalRestore.verified,
+                  finalRestore.failureCode == nil,
+                  finalRestore.stableSampleCount >= minimumStopSamples,
+                  finalRestore.stableDurationSeconds.isFinite,
+                  finalRestore.stableDurationSeconds >= minimumStopDuration,
+                  let observed = finalRestore.observed,
+                  observed.distance(to: report.plan.range.center) <=
+                    restorationToleranceRaw else { return false }
+        }
         return report.trials.allSatisfy { trial in
             trial.restore.verified &&
                 (trial.restore.observed?.distance(to: trial.origin) ?? .max) <=
@@ -664,3 +1539,5 @@ public typealias Pocket3USBPanTiltStressRange = USBPanTiltStressRange
 public typealias Pocket3USBPanTiltStressPlan = USBPanTiltStressPlan
 public typealias Pocket3USBPanTiltStressReport = USBPanTiltStressReport
 public typealias Pocket3USBPanTiltStressEvaluation = USBPanTiltStressEvaluation
+public typealias Pocket3USBPanTiltStressExecutorAdapter = USBPanTiltStressExecutorAdapter
+public typealias Pocket3USBPanTiltStressHardwareObservation = USBPanTiltStressHardwareObservation

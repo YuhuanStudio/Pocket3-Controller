@@ -245,4 +245,201 @@ struct USBPanTiltStressAcceptanceTests {
         #expect(!fenceEvaluation.metricsPassed)
         #expect(fenceEvaluation.checks["reconnect_session_fence"] == false)
     }
+
+    @Test func requestRequiresIdentityAndExactRangeOnlyForExecution() throws {
+        let range = try range()
+        let dry = try USBPanTiltStressRequest(cliArguments: [
+            "--minimum-pan", "-10000", "--minimum-tilt", "-8000",
+            "--center-pan", "0", "--center-tilt", "0",
+            "--maximum-pan", "10000", "--maximum-tilt", "8000"
+        ])
+        #expect(!dry.execute && dry.declaredRange == range)
+        #expect(try JSONDecoder().decode(
+            USBPanTiltStressRequest.self,
+            from: JSONEncoder().encode(dry)) == dry)
+        #expect(throws: USBPanTiltStressRequestError.identityRequired) {
+            try USBPanTiltStressRequest(declaredRange: range, execute: true)
+        }
+        #expect(throws: USBPanTiltStressRequestError.rangeRequired) {
+            try USBPanTiltStressRequest(
+                expectedDeviceID: "device", expectedSessionID: "session",
+                execute: true)
+        }
+        #expect(throws: USBPanTiltStressRequestError.invalidArguments) {
+            try USBPanTiltStressRequest(cliArguments: [
+                "--minimum-pan", "-1"
+            ])
+        }
+    }
+
+    @Test func executorRunsAllSixteenCasesAndCleansUpThroughAdapter()
+        async throws {
+        let range = try range()
+        let request = try USBPanTiltStressRequest(
+            expectedDeviceID: oldBinding.deviceID,
+            expectedSessionID: oldBinding.captureSessionID,
+            declaredRange: range, holdSeconds: 0.6,
+            pollInterval: 0.05, timeout: 15, execute: true)
+        let state = USBPanTiltStressFakeState(range: range,
+                                              old: oldBinding,
+                                              new: newBinding)
+        let clock = USBPanTiltStressTestClock()
+        let adapter = USBPanTiltStressExecutorAdapter(
+            read: { state.read(clock: clock) },
+            startMove: { target, _ in
+                let token = state.begin(target)
+                return Task {
+                    while !state.stopped(token) {
+                        try await Task.sleep(for: .milliseconds(1))
+                    }
+                    throw CancellationError()
+                }
+            },
+            stop: {
+                state.stop()
+                let position = state.position
+                return USBManualStopEvidence(
+                    submitted: true, verified: true, motionStopped: true,
+                    held: position, final: position,
+                    stableSampleCount: 4, stableDurationSeconds: 0.25)
+            },
+            restore: { origin, _ in
+                state.restore(origin)
+                return USBManualRestoreEvidence(
+                    requested: origin, observed: origin,
+                    submitted: true, verified: true,
+                    stableSampleCount: 4, stableDurationSeconds: 0.25)
+            },
+            reconnect: { old, _ in
+                #expect(old == oldBinding)
+                state.reconnect()
+                return USBManualReconnectFenceMetric(
+                    oldBinding: oldBinding, newBinding: newBinding,
+                    oldOperationStopped: true,
+                    oldOperationSuppressed: true,
+                    newSessionReady: true)
+            },
+            cleanup: { true })
+
+        let report = await USBPanTiltStressAcceptance.execute(
+            request, adapter: adapter, clock: clock)
+        let evaluation = USBPanTiltStressAcceptance.evaluate(report)
+        #expect(report.completed && report.phase == "completed")
+        #expect(report.trials.count == 16)
+        #expect(report.finalRestore?.verified == true)
+        #expect(report.cleanupAttempted && report.cleanupSucceeded)
+        #expect(evaluation.metricsPassed)
+        #expect(state.moves == 16)
+        #expect(state.stops == 16)
+        #expect(state.restores == 17) // 16 per-case restores plus final centre
+        #expect(state.reconnects == 1)
+        #expect(!report.cameraImagesStored && !report.physicalMotionVerified)
+    }
+}
+
+private final class USBPanTiltStressTestClock: ContinuousGimbalClock,
+    @unchecked Sendable {
+    private let lock = NSLock()
+    private var time: TimeInterval = 10
+    var now: TimeInterval { lock.withLock { time } }
+    func sleep(until deadline: TimeInterval) async throws {
+        try Task.checkCancellation()
+        lock.withLock { time = max(time, deadline) }
+        await Task.yield()
+    }
+}
+
+private final class USBPanTiltStressFakeState: @unchecked Sendable {
+    private let lock = NSLock()
+    private let range: USBPanTiltStressRange
+    private let old: USBManualAcceptanceBinding
+    private let new: USBManualAcceptanceBinding
+    private var binding: USBManualAcceptanceBinding
+    private var currentPosition: GimbalPosition
+    private var target: GimbalPosition?
+    private var moveReads = 0
+    private var token = 0
+    private var stoppedTokens = Set<Int>()
+    private var nextFrame = 0
+    private(set) var moves = 0
+    private(set) var stops = 0
+    private(set) var restores = 0
+    private(set) var reconnects = 0
+
+    init(range: USBPanTiltStressRange,
+         old: USBManualAcceptanceBinding,
+         new: USBManualAcceptanceBinding) {
+        self.range = range; self.old = old; self.new = new
+        binding = old; currentPosition = range.center
+    }
+
+    func begin(_ target: GimbalPosition) -> Int {
+        lock.withLock {
+            moves += 1; self.target = target; moveReads = 0
+            token += 1; return token
+        }
+    }
+
+    func stopped(_ token: Int) -> Bool {
+        lock.withLock { stoppedTokens.contains(token) }
+    }
+
+    func stop() {
+        lock.withLock {
+            stops += 1
+            if let target {
+                currentPosition = target
+            }
+            target = nil
+            stoppedTokens.insert(token)
+        }
+    }
+
+    func restore(_ value: GimbalPosition) {
+        lock.withLock { restores += 1; currentPosition = value; target = nil }
+    }
+
+    func reconnect() {
+        lock.withLock { reconnects += 1; binding = new; currentPosition = range.center }
+    }
+
+    var position: GimbalPosition { lock.withLock { currentPosition } }
+
+    func read(clock: USBPanTiltStressTestClock)
+        -> USBPanTiltStressHardwareObservation {
+        lock.withLock {
+            if let target {
+                moveReads += 1
+                let fraction = min(1, Double(moveReads) / 3)
+                currentPosition = GimbalPosition(
+                    pan: Int32((Double(range.center.pan) +
+                        Double(Int64(target.pan) - Int64(range.center.pan)) *
+                        fraction).rounded()),
+                    tilt: Int32((Double(range.center.tilt) +
+                        Double(Int64(target.tilt) - Int64(range.center.tilt)) *
+                        fraction).rounded()))
+            }
+            nextFrame += 1
+            let now = clock.now
+            let frame = USBManualFrameEvidence(
+                frameID: "stress-frame-\(nextFrame)",
+                sessionID: binding.captureSessionID,
+                deviceID: binding.deviceID,
+                receivedUptime: now - 0.01,
+                sampledUptime: now, age: 0.01,
+                width: 1920, height: 1080)
+            let moving = target != nil
+            let caps = UVCCapabilities(
+                location: 1, position: currentPosition,
+                minimum: range.minimum, maximum: range.maximum,
+                step: .init(pan: 3600, tilt: 3600), writable: true,
+                controls: ["pan-tilt-abs"], uvcVersion: 256,
+                registryID: binding.registryID,
+                bootSessionID: binding.bootSessionID)
+            return USBPanTiltStressHardwareObservation(
+                binding: binding, capabilities: caps, frame: frame,
+                sampledUptime: now,
+                phase: moving ? "moving" : "ready", motionActive: moving)
+        }
+    }
 }

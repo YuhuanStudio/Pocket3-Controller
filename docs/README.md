@@ -16,6 +16,7 @@ preview, controls, Bluetooth, local AI, MCP and troubleshooting.
 |---|---|
 | [Product overview and installation](../README.md) | Downloads, first launch, USB Webcam setup, local AI and MCP configuration |
 | [Continuous gimbal control](CONTINUOUS_GIMBAL.md) | USB gesture behaviour, release / Stop handling and physical validation boundaries |
+| [USB pan/tilt full-range stress](USB_PAN_TILT_STRESS.md) | Developer-only 16-case raw pan/tilt collector, scalar evidence and safety fences |
 | [Bluetooth telemetry](BLUETOOTH_TELEMETRY.md) | Battery, charging, pose, freshness and device-association limits |
 | [Camera settings protocol](CAMERA_SETTINGS_PROTOCOL.md) | Read-only lens, white-balance and exposure reports; protocol evidence does not imply working setters |
 | [Focus readback](FOCUS_READBACK.md) | What focus information is available and why app-side tap-to-focus remains unfinished |

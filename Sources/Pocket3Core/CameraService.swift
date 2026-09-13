@@ -763,6 +763,27 @@ public actor CameraService {
         if let expectedSessionID, expectedSessionID != capture.store.stats().sessionID { throw BridgeFailure("session_changed", "相機連線已改變，請重新調整視角") }
         return try await performMotion(direction: "absolute", panDegrees: panDegrees, tiltDegrees: tiltDegrees, origin: origin)
     }
+    /// Developer-only raw pan/tilt target used by the full-range USB stress
+    /// collector. It shares the ordinary serialized UVC owner, target
+    /// approach, cancellation and stable readback; unlike the degree-facing
+    /// API it preserves every declared Int32 raw unit exactly.
+    public func validationUSBPanTiltTarget(
+        _ target: GimbalPosition,
+        expectedSessionID: String
+    ) async throws -> MotionResult {
+        guard validationEnabled else {
+            throw BridgeFailure("validation_disabled",
+                "USB pan/tilt stress targets require a development session")
+        }
+        guard !expectedSessionID.isEmpty,
+              capture.store.stats().sessionID == expectedSessionID else {
+            throw BridgeFailure("session_changed",
+                "相機連線已改變，請重新調整 USB pan/tilt 目標")
+        }
+        return try await performMotion(
+            direction: "absolute", origin: .manual,
+            expectedSessionID: expectedSessionID, rawTarget: target)
+    }
     public func zoomCapabilities(expectedSessionID: String? = nil) async throws -> USBZoomCapabilities {
         guard !connectionInProgress, ["ready", "moving"].contains(phase), let uvc else {
             throw BridgeFailure("camera_not_ready", "請先連接相機再讀取 USB 縮放能力")
@@ -1062,7 +1083,7 @@ public actor CameraService {
         return try await performMotion(direction: "absolute", panDegrees: Double(target.pan) / 3600,
             tiltDegrees: Double(target.tilt) / 3600, origin: .manual)
     }
-    private func performMotion(direction: String, panDegrees: Double? = nil, tiltDegrees: Double? = nil, origin: RequestOrigin, interaction: InteractionStamp? = nil, isHardwareProbe: Bool = false, positionProbe: ValidationPositionProbe? = nil) async throws -> MotionResult {
+    private func performMotion(direction: String, panDegrees: Double? = nil, tiltDegrees: Double? = nil, origin: RequestOrigin, interaction: InteractionStamp? = nil, isHardwareProbe: Bool = false, positionProbe: ValidationPositionProbe? = nil, expectedSessionID: String? = nil, rawTarget: GimbalPosition? = nil) async throws -> MotionResult {
         guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認先前縮放已停止，再調整視角") }
         guard !rollNeedsHold else { throw BridgeFailure("roll_stop_required", "請先確認 Roll 已停止，再調整視角") }
         guard nativeControl == nil, !nativeControlPending else { throw BridgeFailure("native_control_active", "雲台由原生連續控制連線使用，USB 位置指令已暫停") }
@@ -1070,6 +1091,10 @@ public actor CameraService {
         if origin == .manual { interactionEpoch += 1; access = .manual }
         if let interaction { try validateInteraction(interaction, origin: origin) }
         let epoch = interactionEpoch
+        if let expectedSessionID,
+           expectedSessionID != capture.store.stats().sessionID {
+            throw BridgeFailure("session_changed", "相機連線已改變，請重新調整視角")
+        }
         if origin == .automation && access != .control { throw BridgeFailure("movement_denied", "請在 App 開放 AI 移動權限") }
         // Direct manual operation uses declared limits, exclusive ownership,
         // cancellation and hold verification below. AI motion keeps its
@@ -1080,7 +1105,20 @@ public actor CameraService {
         let lifecycle = lifecycleGeneration
         let before = try await readUVCStatus(uvc, expectedGeneration: lifecycle)
         let target: GimbalPosition
-        if let positionProbe {
+        if let rawTarget {
+            guard validationEnabled, origin == .manual,
+                  direction == "absolute", before.writable,
+                  let minimum = before.minimum, let maximum = before.maximum,
+                  rawTarget.pan >= minimum.pan,
+                  rawTarget.pan <= maximum.pan,
+                  rawTarget.tilt >= minimum.tilt,
+                  rawTarget.tilt <= maximum.tilt else {
+                throw BridgeFailure("invalid_target",
+                    "USB raw pan/tilt 目標超出目前宣告範圍")
+            }
+            target = rawTarget
+        }
+        else if let positionProbe {
             guard isHardwareProbe, validationEnabled, origin == .manual, direction == "absolute" else {
                 throw BridgeFailure("validation_disabled", "位置探測只供開發驗證")
             }
@@ -1093,7 +1131,14 @@ public actor CameraService {
         guard !zoomNeedsHold else { throw BridgeFailure("zoom_stop_required", "請先確認先前縮放已停止，再調整視角") }
         guard nativeControl == nil, !nativeControlPending, motionID == nil, phase == "ready" else { throw BridgeFailure("motion_busy", "另一個動作已先開始") }
         try requireObservation(origin)
-        guard lifecycle == lifecycleGeneration, epoch == interactionEpoch, origin == .manual || access == .control else { throw BridgeFailure("access_changed", "連接或使用權已改變，動作沒有送出") }
+        guard lifecycle == lifecycleGeneration, epoch == interactionEpoch,
+              (origin == .manual || access == .control) else {
+            throw BridgeFailure("access_changed", "連接或使用權已改變，動作沒有送出")
+        }
+        guard expectedSessionID == nil ||
+              expectedSessionID == capture.store.stats().sessionID else {
+            throw BridgeFailure("session_changed", "相機連線已改變，請重新調整視角")
+        }
         motionGeneration += 1; let generation = motionGeneration
         let id = UUID(); motionID = id; phase = "moving"
         let permit = OperationPermit(); activeMotionPermit = permit
@@ -1512,7 +1557,15 @@ public actor CameraService {
             expectedCaptureSessionID: expectedSessionID,
             expectedGeneration: binding.generation,
             expectedLifecycle: lifecycleGeneration,
-            maximumInputAge: request.maximumInputAge)
+            maximumInputAge: request.maximumInputAge,
+            fileConfiguration: try request.outputPath.map {
+                try HostHEVCProductFileConfiguration(
+                    outputPath: $0,
+                    maximumBytes: request.maximumOutputBytes
+                        ?? HostHEVCProductFileConfiguration.defaultMaximumBytes,
+                    maximumDurationSeconds: request.maximumDurationSeconds
+                        ?? HostHEVCProductFileConfiguration.defaultMaximumDurationSeconds)
+            })
     }
 
     /// Creates the product host encoder over the existing fresh BGRA capture
@@ -1524,7 +1577,8 @@ public actor CameraService {
         expectedCaptureSessionID: String,
         expectedGeneration: UInt64,
         expectedLifecycle: Int,
-        maximumInputAge: Double
+        maximumInputAge: Double,
+        fileConfiguration: HostHEVCProductFileConfiguration? = nil
     ) async throws -> HostHEVCProductOutputStatus {
         guard expectedLifecycle == lifecycleGeneration,
               !motionActiveForHostOutput,
@@ -1568,9 +1622,8 @@ public actor CameraService {
         _ = try await product.startHostHEVC(
             sessionID: binding.captureSessionID,
             generation: binding.generation,
-            // TODO: Attach an explicit product file/stream consumer. Until
-            // then the service retains only bounded sample digests.
-            sink: { _ in })
+            sink: { _ in },
+            fileConfiguration: fileConfiguration)
         try Task.checkCancellation()
         guard expectedLifecycle == lifecycleGeneration,
               capture.currentLifecycle() == binding.generation,

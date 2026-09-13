@@ -38,7 +38,19 @@
 
 先使用 Beta 基本流程驗收的 **1920×1080、NV12、30 fps**。選擇其他解析度、幀率或輸入格式後，重新連接才會生效。720p30 與 1080p24 也已取得新影格，4K30 NV12 有較早的有界實測證據。格式選單反映裝置宣告，不代表每個組合都會產生影格。
 
-直幅結果取決於機身實體方向及選定模式。早期直幅試驗在改變機身方向後通過；不能假設只選擇直幅解析度就會旋轉相機或啟用全部原生直幅模式。UYVY／H.264 路徑及 4K60 仍沒有通過的取像結果。這是 Mac 端編碼路徑；此 Pocket 3 格式不宣告 HEVC（`hvc1`）輸出，因此 **HEVC 主機輸出** 會在取像前拒絕，不會 fallback 或重試。沒有新影格時，回到已測的 1080p30 NV12。
+直幅結果取決於機身實體方向及選定模式。早期直幅試驗在改變機身方向後通過；不能假設只選擇直幅解析度就會旋轉相機或啟用全部原生直幅模式。UYVY／H.264 路徑及 4K60 仍沒有通過的取像結果。**HEVC 主機輸出**使用 BGRA／NV12 取像加 Mac VideoToolbox，這是 Mac 端編碼路徑，不代表 Pocket 3 USB wire 或機身錄影器輸出 HEVC。
+
+Developer CLI 只有在明確提供檔案路徑時才會附加本機檔案 consumer：
+
+```text
+pocket3 host-hevc-start --device DEVICE-ID --session CAPTURE-SESSION-ID \
+  --output /path/to/capture.hevc --max-bytes 268435456 \
+  --max-duration-seconds 300 --execute --hardware-validation
+pocket3 host-hevc-status --hardware-validation
+pocket3 host-hevc-stop --hardware-validation
+```
+
+輸出是 Annex-B `.hevc`；串流開始及每個 keyframe 前寫入 VPS、SPS、PPS，並嚴格驗證四位元組 length-prefixed hvc1 access unit 後按原順序轉換。停止或達到有界上限時會 flush 暫存檔並以 atomic move 發布；取消、重連及過期 session／generation 影格會刪除暫存檔。沒有 `--output` 不會建立檔案，預覽仍可同時使用。
 
 單張擷取只取得一張圖片；CLI 會寫入你明確提供的 `--output` 路徑。可以預覽不代表 App 已能錄影或控制全部機身錄影模式。
 

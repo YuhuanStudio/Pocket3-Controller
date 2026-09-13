@@ -214,6 +214,8 @@ final class AppModel {
                 case "image-workspace": return try await AppModel.shared.handleImageWorkspace(request)
                 case USBManualAcceptanceRequest.operation:
                     return try await AppModel.shared.handleUSBManualAcceptance(request)
+                case USBPanTiltStressRequest.operation:
+                    return try await AppModel.shared.handleUSBPanTiltStress(request)
                 case USBRollAcceptanceRequest.operation:
                     return try await AppModel.shared.handleUSBRollAcceptance(request)
                 case NativeCaptureFormatValidationRequest.operation:

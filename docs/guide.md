@@ -85,7 +85,28 @@ Portrait results depend on the camera's physical orientation and selected mode.
 Earlier portrait trials passed after changing the body orientation; do not assume
 that selecting a portrait resolution alone rotates the camera or enables all
 native portrait modes. UYVY / H.264 paths and 4K60 do not have a passing capture
-result. **H.264 host output** is an experimental Mac-side encoded path; this Pocket 3 format does not advertise HEVC (`hvc1`) output, so **HEVC host output** is rejected before capture rather than falling back or retrying. If no frames arrive, return to the tested 1080p30 NV12 combination.
+result. **H.264 host output** is an experimental Mac-side encoded path. The
+explicit `hevc` host policy uses BGRA/NV12 capture plus Mac VideoToolbox; it does
+not claim that the camera USB wire or camera-body recorder emits HEVC.
+
+The developer CLI can attach a local elementary-stream consumer when a file is
+chosen explicitly:
+
+```text
+pocket3 host-hevc-start --device DEVICE-ID --session CAPTURE-SESSION-ID \
+  --output /path/to/capture.hevc --max-bytes 268435456 \
+  --max-duration-seconds 300 --execute --hardware-validation
+pocket3 host-hevc-status --hardware-validation
+pocket3 host-hevc-stop --hardware-validation
+```
+
+The output is Annex-B `.hevc`. VPS, SPS and PPS are written at stream start and
+before each keyframe; each hvc1 access unit is validated as four-byte
+length-prefixed input and converted in order. The writer flushes a temporary
+file and atomically publishes it on stop or an explicit bound; cancellation,
+reconnect and stale session/generation samples remove the temporary file. No
+file is created when `--output` is omitted, and the camera preview remains
+available throughout.
 
 The snapshot action captures a single image; CLI snapshots write to your explicit `--output` path.
 A preview does not imply that the app records or controls all internal recording modes.

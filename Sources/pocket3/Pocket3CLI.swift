@@ -34,6 +34,21 @@ import MCP
                 print(reply.result?.pretty ?? "{}")
                 return
             }
+            if command == USBPanTiltStressRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "USB pan/tilt stress requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request = try USBPanTiltStressRequest(
+                    cliArguments: requestArguments)
+                let reply = try await IPCClient.call(
+                    command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == USBRollAcceptanceRequest.operation {
                 guard args.contains("--hardware-validation") else {
                     throw BridgeFailure("validation_disabled",
@@ -655,18 +670,20 @@ import MCP
           Developer only: fixed 1.2-second USB retarget and hold experiment.
         pocket3 validation-usb-manual-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--hold-seconds SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute collects bounded pan/tilt holds, zoom progress, fresh-frame evidence, verified Stop/restore and reconnect session fencing through the existing USB owner; it never stores images.
+        pocket3 validation-usb-pan-tilt-stress [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--range-json JSON | --minimum-pan RAW --minimum-tilt RAW --center-pan RAW --center-tilt RAW --maximum-pan RAW --maximum-tilt RAW] [--hold-seconds SECONDS] [--poll-interval SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute requires the exact fresh device/session/range and runs all 16 pan/tilt near/middle/far/limit cases with scalar frames, stable Stop, per-case restore, reconnect fencing and final center restore; it never stores images.
         pocket3 validation-roll-acceptance [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--raw SIGNED-RAW] [--move-seconds SECONDS] [--poll-interval SECONDS] [--timeout SECONDS] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute runs one signed Roll move, captures bounded in-flight raw readback, performs the existing stable Stop hold, restores the original raw value, and fences the old session after reconnect. It never stores images or unlocks general Roll control.
         pocket3 validation-capture-format-matrix --session CAPTURE-SESSION-ID --device DEVICE-ID [--case CASE-ID] [--max-samples N] [--warmup-seconds N] [--sample-interval N] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute runs six bounded NV12/BGRA, portrait H.264, 4K30 H.264 and UYVY/4K60 scalar trials sequentially, pauses between cases, never falls back or stores images, and restores the initial mode when safe.
         pocket3 validation-host-hevc --device DEVICE-ID --session CAPTURE-SESSION-ID [--generation N] [--max-frames N] [--max-age-seconds N] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute consumes fresh BGRA/NV12 frames and returns bounded copied hvc1 hashes; it reports macVideoToolboxHost provenance, never stores images and never claims USB wire HEVC.
-        pocket3 host-hevc-start [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--generation N] [--max-age-seconds N] [--execute] --hardware-validation
-          Developer only: dry-run by default. Execute explicitly starts the local Mac host-hevc product output from the current BGRA preview; status reports bounded hvc1 hashes/count/provenance and never stores images or claims USB wire HEVC.
+        pocket3 host-hevc-start [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--generation N] [--max-age-seconds N] [--output FILE.hevc [--max-bytes N] [--max-duration-seconds N]] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute explicitly starts the local Mac host-hevc product output from the current BGRA preview. A supplied .hevc path selects a bounded Annex-B file consumer; without it, status keeps only bounded hvc1 hashes/count/provenance and never records by default.
         pocket3 host-hevc-status --hardware-validation
-          Developer only: read the current local host-hevc selection/session/hash status.
+          Developer only: read the current local host-hevc selection/session/hash or explicit file-consumer status.
         pocket3 host-hevc-stop --hardware-validation
-          Developer only: stop the local host-hevc encoder and release its bounded sink; BGRA preview remains the capture source.
+          Developer only: stop the local host-hevc encoder, atomically publish an explicitly selected .hevc file, and release its bounded sink; BGRA preview remains the capture source.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation

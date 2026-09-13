@@ -29,8 +29,36 @@ decoder rebuilds the reviewed cases and stages and rejects changed limits or
 execution flags. The model stores scalar metadata only and always keeps
 `hardwareExecutionEnabled` and `cameraImagesStored` false.
 
-This commit adds no collector, UVC write, Wi-Fi path, image storage, or
-physical-angle claim. A later developer-only collector must separately confirm
-both directions, endpoint behavior, mechanical Stop tail motion, center
-restore, disconnect handling, and old/new session exclusion before changing
-product support status.
+## Developer collector
+
+The bounded collector is exposed only through the development bridge route:
+
+```text
+pocket3 validation-usb-pan-tilt-stress \
+  --device DEVICE-ID --session CAPTURE-SESSION-ID \
+  --minimum-pan RAW --minimum-tilt RAW \
+  --center-pan RAW --center-tilt RAW \
+  --maximum-pan RAW --maximum-tilt RAW \
+  --execute --hardware-validation
+```
+
+The default is a dry run. A dry run performs no status call and can omit the
+range; supplying the six raw bounds prints the reviewed 16-case plan. An
+executing request must include the exact device ID, capture session ID and all
+six raw range values. The App verifies those values against a fresh UVC status
+before the first write and rechecks them for every sample.
+
+Execution uses the existing `CameraService` UVC owner and its raw absolute
+target path. It runs pan and tilt in both directions at near, middle, far and
+limit distances, collects fresh scalar frame metadata, sends an independent
+Stop and waits for a stable readback, restores the center after every case,
+reconnects and suppresses an old-session target, then restores center again.
+Any failed or cancelled case receives fail-stop cleanup before the partial
+scalar report is returned. The report stores no image bytes or paths and does
+not claim calibrated physical angles or mechanical-stop performance.
+
+The route is intentionally separate from Station/native gimbal control and
+from the direct-UVC video work. A metrics pass is evidence for this bounded
+raw test only; physical direction, endpoint behavior, Stop tail motion and
+firmware coverage still require operator review before changing product
+support status.
