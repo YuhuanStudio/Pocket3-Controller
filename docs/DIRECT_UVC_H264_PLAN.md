@@ -25,6 +25,15 @@ direct backend啟動前必須停止AVFoundation、移除delegate／graph並排�
 
 回覆的format/frame/interval必須與固定descriptor entry一致，所有size有獨立上限；不送UVC 1.1/1.5的34/48-byte block。
 
+Phase34 提供 interface 1、format 2、frame 5、3840×2160 frame-based H.264
+candidate（`DirectUVCStreamPlanner.pocket3H2644K`），interval 限定為 descriptor
+宣告的 166666/200000/208333/333333/400000/416666（100 ns）。既有
+`DirectUVCNegotiator` 對 descriptor-backed plan 將四步固定成一次性、fail-stop
+sequence，並在每個 step 保留有界 request/response raw bytes；取消、錯誤或
+sequence mismatch 不會送後續 request，也不會 retry。成功結果只有
+`admitted_for_bulk_read`，`streamReady` 仍為 false，因為本階段不讀 pipe、不改
+alternate setting、不做 ownership 或硬體操作。
+
 ## Payload、NAL與VideoToolbox
 
 每次bulk completion視為一個UVC payload。header byte0是長度、byte1是flags；依旗標解析PTS 4 bytes與SCR 6 bytes。ERR、header錯誤、detach或accumulator overflow會丟棄access unit。EOF完成frame；FID翻轉時，即使前一frame缺EOF，也只發布非空且有效的前一單元。不在H.264 payload任意搜尋第二個UVC header。

@@ -150,6 +150,59 @@ public struct DirectUVCStreamPlan: Codable, Sendable, Equatable {
     }
 }
 
+/// Typed phase for the four-step UVC 1.0 VS control exchange.  A committed
+/// result is still only a hand-off to a later bulk reader; it is not stream
+/// readiness.
+public enum DirectUVCNegotiationPhase: String, Codable, Sendable, Equatable,
+    CaseIterable {
+    case idle
+    case getMaxProbe = "get_max_probe"
+    case setCurProbe = "set_cur_probe"
+    case getCurProbe = "get_cur_probe"
+    case setCurCommit = "set_cur_commit"
+    case committed
+    case failed
+    case cancelled
+}
+
+/// Admission returned after a successful control exchange.  It authorizes a
+/// future bulk-reader construction only; no pipe read is performed here.
+public struct DirectUVCBulkReaderAdmission: Codable, Sendable, Equatable {
+    public enum State: String, Codable, Sendable, Equatable, CaseIterable {
+        case blocked
+        case admittedForBulkRead = "admitted_for_bulk_read"
+    }
+
+    public let state: State
+    public let interfaceNumber: UInt8
+    public let endpointAddress: UInt8
+    public let negotiationCommitted: Bool
+    public let streamReady: Bool
+    public let reason: String?
+
+    public init(
+        state: State,
+        interfaceNumber: UInt8 = 1,
+        endpointAddress: UInt8 = 0x82,
+        negotiationCommitted: Bool,
+        reason: String? = nil
+    ) {
+        self.state = state
+        self.interfaceNumber = interfaceNumber
+        self.endpointAddress = endpointAddress
+        self.negotiationCommitted = negotiationCommitted
+        // Control ACK/COMMIT evidence cannot prove that a bulk payload exists.
+        self.streamReady = false
+        self.reason = reason.map { String($0.prefix(128)) }
+    }
+
+    public var admitted: Bool {
+        state == .admittedForBulkRead && negotiationCommitted
+    }
+
+    public var canCreateBulkReader: Bool { admitted }
+}
+
 public enum DirectUVCError: Error, Sendable, Equatable, LocalizedError {
     case invalidConfiguration
     case controlInterfaceUnavailable
@@ -248,11 +301,24 @@ public enum DirectUVCStreamPlanner {
             endpointAddress: endpointAddress)
         return try plan(inventory: inventory, configuration: configuration)
     }
+
+    /// Exact descriptor-backed Pocket 3 4K frame-based H.264 candidate used
+    /// by the first high-frame-rate direct-UVC gate.  The interval remains
+    /// selectable only from the six values advertised by frame index 5.
+    public static func pocket3H2644K(
+        inventory: UVCDescriptorInventory,
+        interval100ns: UInt32 = 166_666,
+        endpointAddress: UInt8 = 0x82
+    ) throws -> DirectUVCStreamPlan {
+        try pocket3H264(
+            inventory: inventory, mode: Pocket3H264ModeCatalog.frame5,
+            interval100ns: interval100ns, endpointAddress: endpointAddress)
+    }
 }
 
-/// One negotiation step. Payload bytes are represented by their count and the
-/// accepted probe is retained as typed fields in the result; raw USB bytes are
-/// not retained by this coordinator.
+/// One negotiation step. Typed counts support compact diagnostics while the
+/// bounded raw fields retain the exact UVC control bytes for reserved/unknown
+/// bit inspection and COMMIT correlation.
 public struct DirectUVCNegotiationStep: Codable, Sendable, Equatable {
     public let request: UVCVideoStreamingRequest
     public let payloadByteCount: Int
@@ -260,19 +326,42 @@ public struct DirectUVCNegotiationStep: Codable, Sendable, Equatable {
     public let submitted: Bool
     public let validated: Bool
     public let failureCode: String?
+    /// Exact bounded request/response bytes.  A valid UVC 1.0 block is 26
+    /// bytes; preserving the bytes here keeps reserved bits available without
+    /// creating a second block codec.
+    public let payloadRaw: Data?
+    public let responseRaw: Data?
 
     public init(request: UVCVideoStreamingRequest,
                 payloadByteCount: Int = 0,
                 responseByteCount: Int = 0,
                 submitted: Bool,
                 validated: Bool,
-                failureCode: String? = nil) {
+                failureCode: String? = nil,
+                payloadRaw: Data? = nil,
+                responseRaw: Data? = nil) {
         self.request = request
         self.payloadByteCount = payloadByteCount
         self.responseByteCount = responseByteCount
         self.submitted = submitted
         self.validated = validated
         self.failureCode = failureCode.map { String($0.prefix(128)) }
+        self.payloadRaw = Self.bound(payloadRaw)
+        self.responseRaw = Self.bound(responseRaw)
+    }
+
+    public var phase: DirectUVCNegotiationPhase {
+        switch request {
+        case .getMaxProbe: .getMaxProbe
+        case .setCurProbe: .setCurProbe
+        case .getCurProbe: .getCurProbe
+        case .setCurCommit: .setCurCommit
+        }
+    }
+
+    private static func bound(_ data: Data?) -> Data? {
+        guard let data else { return nil }
+        return Data(data.prefix(UVCVideoStreamingControlBlock.byteCount))
     }
 }
 
@@ -304,6 +393,32 @@ public struct DirectUVCNegotiationResult: Codable, Sendable, Equatable {
     }
 
     public var completed: Bool { committed && failureCode == nil }
+    public var typedPhase: DirectUVCNegotiationPhase {
+        switch phase {
+        case "idle": .idle
+        case "get_max_probe": .getMaxProbe
+        case "set_cur_probe": .setCurProbe
+        case "get_cur_probe": .getCurProbe
+        case "set_cur_commit": .setCurCommit
+        case "committed": .committed
+        case "cancelled": .cancelled
+        default: .failed
+        }
+    }
+
+    /// Alias for callers that use state-machine terminology.
+    public var state: DirectUVCNegotiationPhase { typedPhase }
+
+    /// This result never reads the VS endpoint, so it cannot be stream-ready.
+    public var streamReady: Bool { false }
+
+    /// Derived rather than stored so older diagnostic JSON remains decodable.
+    public var bulkReaderAdmission: DirectUVCBulkReaderAdmission {
+        let admitted = committed && failureCode == nil
+        return DirectUVCBulkReaderAdmission(
+            state: admitted ? .admittedForBulkRead : .blocked,
+            negotiationCommitted: admitted, reason: failureCode)
+    }
 }
 
 /// Injectable public-API boundary for a VS interface implementation. The
@@ -322,6 +437,10 @@ public protocol DirectUVCStreamTransport: Sendable {
 }
 
 public enum DirectUVCNegotiator {
+    public static let requiredSequence: [UVCVideoStreamingRequest] = [
+        .getMaxProbe, .setCurProbe, .getCurProbe, .setCurCommit
+    ]
+
     public static func run(
         plan: DirectUVCStreamPlan,
         handle: any DirectUVCStreamHandle
@@ -334,12 +453,16 @@ public enum DirectUVCNegotiator {
         func failure(_ request: UVCVideoStreamingRequest,
                      payloadBytes: Int = 0,
                      responseBytes: Int = 0,
+                     payloadRaw: Data? = nil,
+                     responseRaw: Data? = nil,
+                     submitted: Bool = false,
                      reason: String) -> DirectUVCNegotiationResult {
             var all = steps
             all.append(DirectUVCNegotiationStep(
                 request: request, payloadByteCount: payloadBytes,
-                responseByteCount: responseBytes, submitted: false,
-                validated: false, failureCode: reason))
+                responseByteCount: responseBytes, submitted: submitted,
+                validated: false, failureCode: reason,
+                payloadRaw: payloadRaw, responseRaw: responseRaw))
             return DirectUVCNegotiationResult(
                 phase: "failed", requested: true,
                 submittedCount: submittedCount,
@@ -347,10 +470,27 @@ public enum DirectUVCNegotiator {
                 steps: all, failureCode: reason)
         }
 
+        func cancelled(_ request: UVCVideoStreamingRequest,
+                       payloadBytes: Int = 0,
+                       responseBytes: Int = 0,
+                       payloadRaw: Data? = nil,
+                       responseRaw: Data? = nil,
+                       submitted: Bool = false) -> DirectUVCNegotiationResult {
+            var all = steps
+            all.append(DirectUVCNegotiationStep(
+                request: request, payloadByteCount: payloadBytes,
+                responseByteCount: responseBytes, submitted: submitted,
+                validated: false, failureCode: "cancelled",
+                payloadRaw: payloadRaw, responseRaw: responseRaw))
+            return DirectUVCNegotiationResult(
+                phase: "cancelled", requested: true,
+                submittedCount: submittedCount,
+                probeMaximum: maximum, probeAccepted: accepted,
+                steps: all, failureCode: "cancelled")
+        }
+
         do {
-            guard plan.negotiationRequests == [
-                .getMaxProbe, .setCurProbe, .getCurProbe, .setCurCommit
-            ] else {
+            guard plan.negotiationRequests == Self.requiredSequence else {
                 return DirectUVCNegotiationResult(
                     phase: "failed", requested: true,
                     failureCode: "direct_uvc_negotiation_sequence_invalid")
@@ -361,11 +501,14 @@ public enum DirectUVCNegotiator {
                     failureCode: "direct_uvc_codec_not_validated")
             }
 
+            try Task.checkCancellation()
+
             guard let maxData = try await handle.control(
                 .getMaxProbe, payload: nil) else {
                 return failure(.getMaxProbe, reason: "probe_max_missing")
             }
             submittedCount += 1
+            try Task.checkCancellation()
             do {
                 let value = try UVCVideoStreamingControlBlock.decode(maxData)
                 guard value.formatIndex == plan.configuration.formatIndex,
@@ -373,15 +516,17 @@ public enum DirectUVCNegotiator {
                       value.frameInterval == plan.configuration.frameInterval100ns else {
                     return failure(.getMaxProbe,
                         responseBytes: maxData.count,
+                        responseRaw: maxData, submitted: true,
                         reason: "probe_max_tuple_mismatch")
                 }
                 maximum = value
                 steps.append(DirectUVCNegotiationStep(
                     request: .getMaxProbe,
                     responseByteCount: maxData.count, submitted: true,
-                    validated: true))
+                    validated: true, responseRaw: maxData))
             } catch {
                 return failure(.getMaxProbe, responseBytes: maxData.count,
+                                responseRaw: maxData, submitted: true,
                                 reason: "probe_max_invalid")
             }
 
@@ -402,25 +547,33 @@ public enum DirectUVCNegotiator {
                 maxVideoFrameSize: maximum.maxVideoFrameSize,
                 maxPayloadTransferSize: maximum.maxPayloadTransferSize)
 
+            try Task.checkCancellation()
             let setProbeResponse = try await handle.control(
                 .setCurProbe, payload: requested.encodedData)
             submittedCount += 1
+            try Task.checkCancellation()
             if let setProbeResponse, !setProbeResponse.isEmpty {
                 return failure(.setCurProbe,
                     payloadBytes: requested.encodedData.count,
                     responseBytes: setProbeResponse.count,
+                    payloadRaw: requested.encodedData,
+                    responseRaw: setProbeResponse, submitted: true,
                     reason: "probe_set_unexpected_response")
             }
             steps.append(DirectUVCNegotiationStep(
                 request: .setCurProbe,
                 payloadByteCount: requested.encodedData.count,
-                submitted: true, validated: true))
+                submitted: true, validated: true,
+                payloadRaw: requested.encodedData,
+                responseRaw: setProbeResponse))
 
+            try Task.checkCancellation()
             guard let curData = try await handle.control(
                 .getCurProbe, payload: nil) else {
                 return failure(.getCurProbe, reason: "probe_cur_missing")
             }
             submittedCount += 1
+            try Task.checkCancellation()
             let current: UVCVideoStreamingControlBlock
             do {
                 current = try UVCVideoStreamingControlBlock.decode(curData)
@@ -431,36 +584,52 @@ public enum DirectUVCNegotiator {
                       current.maxPayloadTransferSize <= UVCProbeCommitSizeBounds.pocket3H264.maximumPayloadTransferSize else {
                     return failure(.getCurProbe,
                         responseBytes: curData.count,
+                        responseRaw: curData, submitted: true,
                         reason: "probe_cur_tuple_mismatch")
                 }
             } catch {
                 return failure(.getCurProbe, responseBytes: curData.count,
+                                responseRaw: curData, submitted: true,
                                 reason: "probe_cur_invalid")
             }
             accepted = current
             steps.append(DirectUVCNegotiationStep(
                 request: .getCurProbe,
                 responseByteCount: curData.count, submitted: true,
-                validated: true))
+                validated: true, responseRaw: curData))
 
+            try Task.checkCancellation()
             let commitResponse = try await handle.control(
-                .setCurCommit, payload: current.encodedData)
+                .setCurCommit, payload: curData)
             submittedCount += 1
+            try Task.checkCancellation()
             if let commitResponse, !commitResponse.isEmpty {
                 return failure(.setCurCommit,
-                    payloadBytes: current.encodedData.count,
+                    payloadBytes: curData.count,
                     responseBytes: commitResponse.count,
+                    payloadRaw: curData, responseRaw: commitResponse,
+                    submitted: true,
                     reason: "commit_unexpected_response")
             }
             steps.append(DirectUVCNegotiationStep(
                 request: .setCurCommit,
-                payloadByteCount: current.encodedData.count,
-                submitted: true, validated: true))
+                payloadByteCount: curData.count,
+                submitted: true, validated: true,
+                payloadRaw: curData, responseRaw: commitResponse))
             return DirectUVCNegotiationResult(
                 phase: "committed", requested: true,
                 submittedCount: submittedCount,
                 probeMaximum: maximum, probeAccepted: current,
                 committed: true, steps: steps)
+        } catch is CancellationError {
+            let request = plan.negotiationRequests[safe: steps.count]
+                ?? .getMaxProbe
+            // A transport may return a response immediately before the task
+            // observes cancellation.  The count fence preserves that the
+            // current request was already submitted, without issuing another
+            // request or pretending that its response was validated.
+            return cancelled(request,
+                             submitted: submittedCount > steps.count)
         } catch {
             let request = plan.negotiationRequests[safe: steps.count]
                 ?? .getMaxProbe

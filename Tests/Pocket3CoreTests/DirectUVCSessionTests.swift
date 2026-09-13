@@ -100,6 +100,31 @@ private final class AsyncDirectUVCSemaphore: @unchecked Sendable {
     }
 }
 
+private final class CancellingDirectUVCHandle: @unchecked Sendable,
+    DirectUVCStreamHandle {
+    let entered = AsyncDirectUVCSemaphore()
+    let allow = AsyncDirectUVCSemaphore()
+    private let response: Data
+    private let lock = NSLock()
+    private var requests: [UVCVideoStreamingRequest] = []
+
+    init(response: Data) { self.response = response }
+
+    var requestKinds: [UVCVideoStreamingRequest] {
+        lock.withLock { requests }
+    }
+
+    func control(_ request: UVCVideoStreamingRequest,
+                 payload _: Data?) async throws -> Data? {
+        lock.withLock { requests.append(request) }
+        entered.signal()
+        await allow.wait()
+        return response
+    }
+
+    func release() async throws -> DirectCaptureReleaseEvidence { .complete }
+}
+
 @Suite("Direct UVC public planner and ownership coordinator")
 struct DirectUVCSessionTests {
     private func inventory(endpoint: UVCStreamingEndpoint = .init(
@@ -126,10 +151,12 @@ struct DirectUVCSessionTests {
     }
 
     private func controlBlock(maxVideoFrameSize: UInt32,
-                              maxPayloadTransferSize: UInt32)
+                              maxPayloadTransferSize: UInt32,
+                              bmHint: UInt16 = 0)
         -> Data {
         UVCVideoStreamingControlBlock(
-            formatIndex: 2, frameIndex: 2, frameInterval: 333_333,
+            bmHint: bmHint, formatIndex: 2, frameIndex: 2,
+            frameInterval: 333_333,
             maxVideoFrameSize: maxVideoFrameSize,
             maxPayloadTransferSize: maxPayloadTransferSize).encodedData
     }
@@ -143,6 +170,17 @@ struct DirectUVCSessionTests {
         #expect(selected.selection.endpoint.isIN && selected.selection.endpoint.isBulk)
         #expect(selected.negotiationRequests == [
             .getMaxProbe, .setCurProbe, .getCurProbe, .setCurCommit
+        ])
+
+        let fourK = try DirectUVCStreamPlanner.pocket3H2644K(
+            inventory: inventory(), interval100ns: 166_666)
+        #expect(fourK.configuration.streamingInterfaceNumber == 1)
+        #expect(fourK.configuration.formatIndex == 2)
+        #expect(fourK.configuration.frameIndex == 5)
+        #expect(fourK.configuration.width == 3840)
+        #expect(fourK.configuration.height == 2160)
+        #expect(fourK.configuration.supportedIntervals100ns == [
+            166_666, 200_000, 208_333, 333_333, 400_000, 416_666
         ])
 
         #expect(throws: DirectUVCError.invalidConfiguration) {
@@ -186,6 +224,89 @@ struct DirectUVCSessionTests {
         #expect(handle.requestPayloads[3] == current)
         #expect(result.probeMaximum?.maxVideoFrameSize == 2_000_000)
         #expect(result.probeAccepted?.maxVideoFrameSize == 1_500_000)
+    }
+
+    @Test func negotiatorRetainsEveryWireBlockAndAdmitsOnlyTheNextBulkStage() async throws {
+        let maximum = controlBlock(
+            maxVideoFrameSize: 2_000_000, maxPayloadTransferSize: 512,
+            bmHint: 0x8001)
+        let current = controlBlock(
+            maxVideoFrameSize: 1_500_000, maxPayloadTransferSize: 512,
+            bmHint: 0x4002)
+        let handle = FakeDirectUVCHandle(maximum: maximum, current: current)
+        let result = await DirectUVCNegotiator.run(
+            plan: try plan(), handle: handle)
+
+        #expect(result.state == .committed)
+        #expect(result.submittedCount == 4)
+        #expect(result.steps.count == 4)
+        #expect(result.steps[0].phase == .getMaxProbe)
+        #expect(result.steps[0].responseRaw == maximum)
+        #expect(result.steps[1].phase == .setCurProbe)
+        #expect(result.steps[1].payloadRaw?.count == 26)
+        #expect(result.steps[1].responseRaw == nil)
+        #expect(result.steps[2].phase == .getCurProbe)
+        #expect(result.steps[2].responseRaw == current)
+        #expect(result.steps[3].phase == .setCurCommit)
+        #expect(result.steps[3].payloadRaw == current)
+        #expect(result.steps[3].responseRaw == nil)
+        #expect(result.bulkReaderAdmission.state == .admittedForBulkRead)
+        #expect(result.bulkReaderAdmission.canCreateBulkReader)
+        #expect(!result.bulkReaderAdmission.streamReady)
+        #expect(!result.streamReady)
+    }
+
+    @Test func negotiatorStopsAtFirstMismatchedResponseAndNeverRetries() async throws {
+        let maximum = controlBlock(
+            maxVideoFrameSize: 2_000_000, maxPayloadTransferSize: 512)
+        let mismatch = UVCVideoStreamingControlBlock(
+            formatIndex: 1, frameIndex: 2, frameInterval: 333_333,
+            maxVideoFrameSize: 1_500_000,
+            maxPayloadTransferSize: 512).encodedData
+        let handle = FakeDirectUVCHandle(maximum: maximum, current: mismatch)
+        let result = await DirectUVCNegotiator.run(
+            plan: try plan(), handle: handle)
+
+        #expect(result.state == .failed)
+        #expect(result.failureCode == "probe_cur_tuple_mismatch")
+        #expect(result.submittedCount == 3)
+        #expect(handle.requestKinds == [
+            .getMaxProbe, .setCurProbe, .getCurProbe
+        ])
+        #expect(result.steps.last?.responseRaw == mismatch)
+        #expect(!result.bulkReaderAdmission.admitted)
+        #expect(!result.bulkReaderAdmission.streamReady)
+    }
+
+    @Test func negotiatorCancellationStopsBeforeTheFollowingRequest() async throws {
+        let maximum = controlBlock(
+            maxVideoFrameSize: 2_000_000, maxPayloadTransferSize: 512)
+        let handle = CancellingDirectUVCHandle(response: maximum)
+        let task = Task {
+            await DirectUVCNegotiator.run(plan: try! plan(), handle: handle)
+        }
+        await handle.entered.wait()
+        task.cancel()
+        handle.allow.signal()
+        let result = await task.value
+
+        #expect(result.state == .cancelled)
+        #expect(result.failureCode == "cancelled")
+        #expect(result.submittedCount == 1)
+        #expect(handle.requestKinds == [.getMaxProbe])
+        #expect(result.steps.last?.submitted == true)
+        #expect(!result.bulkReaderAdmission.admitted)
+    }
+
+    @Test func bulkAdmissionRemainsDerivedForLegacyNegotiationJSON() throws {
+        let legacy = Data(#"{"phase":"committed","requested":true,"submittedCount":4,"probeMaximum":null,"probeAccepted":null,"committed":true,"steps":[],"failureCode":null}"#.utf8)
+        let result = try JSONDecoder().decode(
+            DirectUVCNegotiationResult.self, from: legacy)
+
+        #expect(result.state == .committed)
+        #expect(result.bulkReaderAdmission.admitted)
+        #expect(!result.bulkReaderAdmission.streamReady)
+        #expect(!result.streamReady)
     }
 
     @Test func ownershipRequiresCompleteAVFStopAndSupportsFencedRestart() async throws {
