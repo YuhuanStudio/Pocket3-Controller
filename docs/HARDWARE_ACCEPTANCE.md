@@ -446,6 +446,8 @@ Phase 32 committed source的完整Release gate通過Core 872、Intelligence 44�
 
 最新build25真機重新掃描找到`OsmoPocket3-7CF5`（RSSI −46），FFF4／FFF5均成功訂閱且收到逾千筆有效frame；相機回報paired，但可選的舊camera-AP SSID/password讀取在8秒內沒有回覆，最後為`bluetooth_credentials_timeout`。Station模式不使用camera AP password，故後續修正為pair-only也可用exact selected BLE advertisement name建立暫時identity digest，仍須由LAN `07/07`逐byte匹配後才交出command owner；credential readback若存在仍優先。4項App focused tests通過，涵蓋credential、pair-only、未配對與stale candidate。這次只送BLE pairing/credential query，未送Station join或雲台命令。
 
+修正後的乾淨build25重新啟動，第一次GATT嘗試在subscription階段逾時；第二次明確scan/connect沒有重用舊session，FFF4／FFF5均成功訂閱，pair-only完成為`gattPaired`／`protocol_pair_confirmed`，同一session累積1,586筆frame，native readiness為`paired`且沒有讀取或保存camera AP password。Station仍為idle，等待使用者在App直接輸入現有LAN credentials；尚未把pair-only成功誤寫成LAN join或雲台驗收。
+
 同批Direct UVC不再建立第二套重複session狀態：既有`DirectUVCNegotiator`固定執行GET_MAX PROBE、SET_CUR PROBE、GET_CUR PROBE、SET_CUR COMMIT，保留每一步有界raw bytes，最後COMMIT逐byte回送GET_CUR取得的26-byte block；取消、I/O錯誤與亂序全部停止且不重試。它已從成功協商結果導出bulk reader admission，但仍維持`streamReady=false`，沒有切alternate setting或讀0x82 pipe。完整Release gate為Core883、Intelligence44、Evaluation1、App115、XCTest6，共1,049項零失敗。
 
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
