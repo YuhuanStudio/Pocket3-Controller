@@ -90,7 +90,7 @@ public struct USBRollReleaseCapabilityProfile: Codable, Sendable,
     public static func vendorProduct(from deviceID: String)
         -> (vendorID: UInt16, productID: UInt16)? {
         guard deviceID.hasPrefix("0x"),
-              let raw = UInt64(deviceID.dropFirst(), radix: 16) else {
+              let raw = UInt64(String(deviceID.dropFirst(2)), radix: 16) else {
             return nil
         }
         let usbIdentity = UInt32(truncatingIfNeeded: raw)
