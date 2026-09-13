@@ -318,7 +318,7 @@ public struct Pocket3CapabilityEvidenceInventory: Codable, Sendable,
                         claim: "Pocket 4 model 0x0021 and JSON payload are unconfirmed; README confirms only Action 4 hardware")
                 ],
                 limitations: [
-                    "OpenPocketCine accepted/status evidence cannot authorize a BLE setter",
+                    "OpenPocketCine accepted/status evidence is Wi-Fi-only and cannot authorize a BLE setter",
                     "FFF3 from node-osmo is not the current local FFF5 write characteristic",
                     "Pocket 4/Pocket 4 Pro sources are not Pocket 3 BLE writer evidence",
                     "Every local write still requires same-session ACK, matching readback and restore"
