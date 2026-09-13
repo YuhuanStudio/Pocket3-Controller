@@ -5,6 +5,33 @@ import Testing
 
 @Suite("Pocket 3 station-mode presentation")
 struct Pocket3StationModeTests {
+    @MainActor @Test func stationIdentityUsesSelectedPairedAdvertisementWithoutAPCredentials() throws {
+        let peer = UUID()
+        #expect(WirelessGimbalModel.stationCameraSSID(
+            peerReportedPaired: true, selectedPeripheralID: peer,
+            credentialSSID: nil,
+            advertisedCandidates: [(peer, "OsmoPocket3-7CF5", true)]) ==
+            "OsmoPocket3-7CF5")
+        #expect(WirelessGimbalModel.stationCameraSSID(
+            peerReportedPaired: true, selectedPeripheralID: peer,
+            credentialSSID: "OsmoPocket3-ABCD",
+            advertisedCandidates: []) ==
+            "OsmoPocket3-ABCD")
+    }
+
+    @MainActor @Test func stationIdentityRejectsUnpairedStaleOrInvalidAdvertisement() throws {
+        let selected = UUID()
+        let other = UUID()
+        #expect(WirelessGimbalModel.stationCameraSSID(
+            peerReportedPaired: false, selectedPeripheralID: selected,
+            credentialSSID: nil,
+            advertisedCandidates: [(selected, "OsmoPocket3-7CF5", true)]) == nil)
+        #expect(WirelessGimbalModel.stationCameraSSID(
+            peerReportedPaired: true, selectedPeripheralID: selected,
+            credentialSSID: nil,
+            advertisedCandidates: [(other, "OsmoPocket3-7CF5", true)]) == nil)
+    }
+
     @MainActor @Test func stationInputsStayOutOfCredentialFreeStatus() async throws {
         let model = WirelessGimbalModel(
             service: CameraService(),

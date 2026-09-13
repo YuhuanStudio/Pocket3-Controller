@@ -62,6 +62,20 @@ final class WirelessGimbalModel {
     /// BLE discovery/telemetry alone never owns the shared manual controls.
     var ownsContinuousControls: Bool { datalink != nil || binding != nil || scheduler != nil || disconnectTask != nil }
     var pairingStatus: BluetoothPairingStatus? { discovery.pairing }
+    /// Station mode does not need the camera AP password.  Prefer the SSID
+    /// returned by the optional credential read, but a pair-only session may
+    /// use the exact advertised name of its selected peer as the identity
+    /// candidate.  LAN 07/07 must still return the same digest before the
+    /// command owner is admitted.
+    var pairedCameraSSIDForStation: String? {
+        Self.stationCameraSSID(
+            peerReportedPaired: discovery.pairing?.peerReportedPaired == true,
+            selectedPeripheralID: discovery.selectedPeripheralID,
+            credentialSSID: credentials?.ssid,
+            advertisedCandidates: discovery.candidates.map {
+                ($0.id, $0.name, $0.connectable)
+            })
+    }
     /// Fresh sparse body-format entries from `camcap_video_format`. The
     /// graph's official resolution families remain visible even when this
     /// readback is unavailable; these entries add only session evidence.
@@ -133,6 +147,27 @@ final class WirelessGimbalModel {
     @ObservationIgnored private let controls: ContinuousGimbalGestureController
     @ObservationIgnored private let prepareManual: @MainActor () async throws -> Void
     @ObservationIgnored private let clientIdentifier: String
+
+    static func stationCameraSSID(
+        peerReportedPaired: Bool,
+        selectedPeripheralID: UUID?,
+        credentialSSID: String?,
+        advertisedCandidates: [(id: UUID, name: String?, connectable: Bool?)]
+    ) -> String? {
+        guard peerReportedPaired,
+              let selected = selectedPeripheralID else { return nil }
+        if let credentialSSID,
+           (try? Pocket3StationIdentity(cameraSSID: credentialSSID)) != nil {
+            return credentialSSID
+        }
+        guard let candidate = advertisedCandidates.first(where: {
+            $0.id == selected && $0.connectable == true
+        }), let name = candidate.name,
+              (try? Pocket3StationIdentity(cameraSSID: name)) != nil else {
+            return nil
+        }
+        return name
+    }
 
     init(service: CameraService, controls: ContinuousGimbalGestureController,
          prepareManual: @escaping @MainActor () async throws -> Void) {
@@ -331,7 +366,7 @@ final class WirelessGimbalModel {
               !connecting, disconnectTask == nil, datalink == nil,
               !nativeBodyValidationBusy,
               pairingStatus?.peerReportedPaired == true,
-              let pairedCredentials = credentials else {
+              let pairedCameraSSID = pairedCameraSSIDForStation else {
             issue = AppErrorPresentation.message(BridgeFailure(
                 "station_ble_not_ready",
                 "Pair the current Bluetooth peer before starting station mode."))
@@ -350,7 +385,7 @@ final class WirelessGimbalModel {
         let stationBinding: Pocket3StationSessionBinding
         do {
             stationBinding = try bluetooth.stationSessionBinding(
-                expectedCameraSSID: pairedCredentials.ssid)
+                expectedCameraSSID: pairedCameraSSID)
         } catch {
             issue = AppErrorPresentation.message(error)
             return
