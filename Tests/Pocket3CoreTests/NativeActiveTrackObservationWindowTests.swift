@@ -203,6 +203,11 @@ struct NativeActiveTrackObservationWindowTests {
         #expect(result.events(in: result.segments[2]).map(\.kind) == [.a89])
         #expect(result.events(in: result.segments[3]).map(\.kind) == [.cameraStatus])
         #expect(result.events[1].rawEnvelope.payloadHex == "070102")
+        #expect(result.comparison?.comparable == true)
+        #expect(result.comparison?.assessment == .scalarDifferenceObserved)
+        #expect(result.comparison?.onA89Boxes.count == 1)
+        #expect(result.comparison?.offA6CandidateCount == 1)
+        #expect(result.comparison?.claimsTrackingCausality == false)
     }
 
     @Test func availableRouteWithNoTelemetryIsNotUnavailableRoute() throws {

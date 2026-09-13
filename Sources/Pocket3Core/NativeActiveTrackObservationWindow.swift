@@ -378,6 +378,9 @@ public struct NativeActiveTrackObservationWindowResult: Codable, Sendable,
     public let unchangedFrameCount: Int
     public let events: [NativeActiveTrackObservationEvent]
     public let segments: [NativeActiveTrackObservationWindowSegment]
+    /// Scalar ON-versus-OFF comparison when the three lifecycle markers are
+    /// present. The raw envelopes remain in `events`.
+    public let comparison: NativeActiveTrackRecordingComparison?
     public let failureCode: String?
 
     public var routeAvailable: Bool { route.isAvailable }
@@ -422,6 +425,7 @@ public struct NativeActiveTrackObservationWindowResult: Codable, Sendable,
         recording: BluetoothCameraEventRecording?,
         events: [NativeActiveTrackObservationEvent] = [],
         segments: [NativeActiveTrackObservationWindowSegment] = [],
+        comparison: NativeActiveTrackRecordingComparison? = nil,
         failureCode: String? = nil
     ) {
         self.request = request
@@ -436,6 +440,7 @@ public struct NativeActiveTrackObservationWindowResult: Codable, Sendable,
         self.unchangedFrameCount = recording?.unchangedFrameCount ?? 0
         self.events = Array(events.prefix(BluetoothCameraEventRecorder.maximumSamples))
         self.segments = segments
+        self.comparison = comparison
         self.failureCode = failureCode
     }
 }
@@ -512,6 +517,9 @@ public struct NativeActiveTrackObservationWindowService: Sendable {
         }
         let segments = makeSegments(
             projected, request: request, startedUptime: recording.startedUptime)
+        let comparison = makeComparison(
+            projected, segments: segments, request: request,
+            startedUptime: recording.startedUptime)
         let outcome: NativeActiveTrackObservationWindowOutcome
         let failureCode: String?
         switch recording.end {
@@ -537,6 +545,7 @@ public struct NativeActiveTrackObservationWindowService: Sendable {
         return .init(request: request, route: route, outcome: outcome,
                      baseline: baseline, recording: recording,
                      events: Array(projected), segments: segments,
+                     comparison: comparison,
                      failureCode: failureCode)
     }
 
@@ -599,6 +608,39 @@ public struct NativeActiveTrackObservationWindowService: Sendable {
                 endOffsetSeconds: end, markerState: states[index],
                 eventIndices: Array(indices.prefix(Self.maximumCorrelatedEvents)))
         }
+    }
+
+    private func makeComparison(
+        _ events: [NativeActiveTrackObservationEvent],
+        segments: [NativeActiveTrackObservationWindowSegment],
+        request: NativeActiveTrackObservationWindowRequest,
+        startedUptime: TimeInterval
+    ) -> NativeActiveTrackRecordingComparison? {
+        guard segments.count == 4 else { return nil }
+        let onSegment = segments[2]
+        let offSegments = [segments[1], segments[3]]
+        let onEvents: [BluetoothCameraEvent] = onSegment.eventIndices.compactMap { index in
+            guard events.indices.contains(index) else { return nil }
+            return events[index].rawEnvelope
+        }
+        let offEvents: [BluetoothCameraEvent] = offSegments.flatMap { segment in
+            segment.eventIndices.compactMap { index in
+                guard events.indices.contains(index) else { return nil }
+                return events[index].rawEnvelope
+            }
+        }
+        let onDuration = onSegment.endOffsetSeconds -
+            onSegment.startOffsetSeconds
+        let offDuration = offSegments.reduce(0.0) {
+            $0 + $1.endOffsetSeconds - $1.startOffsetSeconds
+        }
+        return NativeActiveTrackRecordingComparator.compare(
+            onEvents: onEvents, offEvents: offEvents,
+            sessionID: request.expectedSessionID,
+            peripheralID: request.peripheralID,
+            onDurationSeconds: onDuration,
+            offDurationSeconds: offDuration,
+            startedUptime: startedUptime)
     }
 
     private func project(
