@@ -141,6 +141,10 @@ Kaze（MIT）仍是重要參考，尤其是 Pocket 3 的 BLE→Wi-Fi handoff、T
 
 GitHub 搜尋也出現多個 2026 年新 repo（Pocket 4 RTMP HEVC、OsmoDesk/Palm、OsmoOffload、Pocket3HeadTrack、macOS OpenPocketCine shell）。它們的星數與 README 不是可信度代理；後續只在 source、license、hardware identity、firmware、raw evidence 和 negative cases 同時可核對時提升證據等級。
 
+補充 source audit 後，`node-osmo@cec92ae` 仍把 FFF3 當 command write characteristic，且 README 對 BLE 穩定性保留限制；Pocket 3 現行實測應使用 FFF5 write-without-response與FFF4 notify，因此它只能作歷史RTMP/DUML候選。`dji-remote@c2012be` 的硬體確認範圍是 Action 4；Pocket 3/4 model enum與Pocket 4 HEVC JSON只屬source/packet candidate。兩者都是MIT，但不能用來提升本機writer或Pocket 4 capability。[^27][^28]
+
+OsmoDesk／OsmoPalm 的安全架構（single UDP owner、stale telemetry、neutral/STOP、abort與部署rollback）值得學習；其開發相機是Pocket 4 Pro，Pocket 3／4未測，且兩個repo的原創碼沒有清楚的blanket license，故不可直接複製camera常數或實作。Pocket3Direct iOS/Android雖提供清楚的04/01、neutral、FE08與TCP7001/UDP9004程式，但公開provenance主要是simulator/offline tests，應視為協議實作參考，不代替本專案真機驗收。
+
 ## 與目前實作的差距
 
 ### USB encoded UVC
@@ -192,6 +196,8 @@ GitHub 搜尋也出現多個 2026 年新 repo（Pocket 4 RTMP HEVC、OsmoDesk/Pa
 4. BLE可斷開，Mac保持原Wi-Fi；在LAN上發現相機DHCP地址，TCP7001＋UDP9004握手；
 5. 用LAN `07/07`回覆精確比對先前BLE identity，不能只憑IP或join ACK認相機；
 6. 離開時送`07/48 00`恢復camera AP，失敗則保存cleanup debt並在下次重試。
+
+OsmoOffload另記錄Pocket 3在BLE Wi-Fi wake `53/10`回`E0`時可繼續流程；這只能成為Pocket 3 model-specific non-fatal diagnostic，不能泛化成所有錯誤都忽略。其FFF4 arm、FFF5 no-response與約100 ms pacing可作BLE transport參考。[^23]
 
 OpenPocketCine後續三相機iPhone實測同時取得Pocket 4 Pro、Pocket 3與Nano預覽並確認錄影start/stop；Pocket 3 app-switch recovery曾需完整rejoin約一分鐘。這證明station控制路徑存在，不等於長時間穩定或AP restore已完整驗收。產品可接受拓撲依序是：
 
@@ -276,3 +282,5 @@ OpenPocketCine後續三相機iPhone實測同時取得Pocket 4 Pro、Pocket 3與N
 [^24]: Kimsec, “[belabox-pocket4-rtmp-hevc](https://github.com/Kimsec/belabox-pocket4-rtmp-hevc/tree/2c99a0760b8f3124a294b9b98a6dca974b0baf26),” commit `2c99a07`, 2026.
 [^25]: DJI SDK, “[Osmo-GPS-Controller-Demo](https://github.com/dji-sdk/Osmo-GPS-Controller-Demo/tree/92fe23e5a749f189593f980a26a105c3bb66aa1c),” commit `92fe23e`, 2025.
 [^26]: Yjsmall, “[OpenPocketCine macOS operator shell](https://github.com/Yjsmall/OpenPocketCine/tree/2bb7e0f4ae8b3dd9289f6c606f97c6d6b0e52a34),” commit `2bb7e0f`, 2026.
+[^27]: datagutt, “[node-osmo](https://github.com/datagutt/node-osmo/tree/cec92aec9304a5cc3dae7f7de541eef38ebb680e),” commit `cec92ae`, 2026.
+[^28]: dimadesu, “[dji-remote](https://github.com/dimadesu/dji-remote/tree/c2012be6aca67d4882774cf5d9746f420a03e11f),” commit `c2012be`, 2026.
