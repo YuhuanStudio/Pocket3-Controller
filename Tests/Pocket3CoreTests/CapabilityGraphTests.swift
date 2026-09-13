@@ -122,6 +122,7 @@ import Testing
             graph.hostOutputCodecs.first(where: { $0.codec == .hevc }))
         #expect(hevc.requested)
         #expect(hevc.observedSampleCount == 0)
+        #expect(hevc.transport == .local)
         #expect(hevc.availability.read && hevc.availability.write)
         #expect(!hevc.availability.verified)
         #expect(hevc.availability.reason == "Waiting for a host HEVC sample")

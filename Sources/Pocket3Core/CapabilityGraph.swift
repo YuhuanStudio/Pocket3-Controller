@@ -663,7 +663,8 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                             : verified
                                 ? nil
                                 : "Waiting for a host HEVC sample"),
-                evidence: .localReadOnly)
+                evidence: .localReadOnly,
+                transport: .local)
         } else {
             hevc = HostOutputCodecCapability(
                 codec: .hevc, requested: policy == .hevc,
