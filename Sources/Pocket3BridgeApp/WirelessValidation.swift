@@ -123,6 +123,13 @@ extension AppModel {
                 arguments: request.arguments)
             return ServiceReply(id: request.id, result: try .encode(
                 BluetoothReversibleSettingCandidate.dryRun(arguments)))
+        case Pocket3WriterSupportReport.operation:
+            guard request.arguments == .object([:]) else {
+                throw BridgeFailure("invalid_writer_support_arguments",
+                    "Writer support report accepts no arguments")
+            }
+            return ServiceReply(id: request.id, result: try .encode(
+                Pocket3WriterSupportReport.current))
         case "validation-wireless-readiness":
             let result = try await wireless.bluetooth.queryNativeReadiness()
             return ServiceReply(id: request.id, result: try .encode(result))
