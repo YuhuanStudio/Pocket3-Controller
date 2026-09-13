@@ -34,14 +34,56 @@ public enum DirectUVCHostOutputStatus: String, Codable, Sendable,
     case callbacksObserved = "callbacks_observed"
 }
 
+/// Descriptor evidence for the Pocket 3 frame-based H.264 candidate.  It is
+/// intentionally labelled as a candidate: these intervals do not prove that
+/// macOS can own the VS interface or receive a stream from it.
+public struct DirectUVCFrameBasedFormatEvidence: Codable, Sendable,
+    Equatable {
+    public let descriptorArtifact: String
+    public let formatSubtype: String
+    public let codec: DirectUVCVideoCodec
+    public let width: UInt16
+    public let height: UInt16
+    public let intervals100ns: [UInt32]
+    public let status: String
+
+    public init(descriptorArtifact: String, formatSubtype: String,
+                codec: DirectUVCVideoCodec, width: UInt16, height: UInt16,
+                intervals100ns: [UInt32],
+                status: String = "descriptor_candidate_not_stream_confirmed") {
+        self.descriptorArtifact = descriptorArtifact
+        self.formatSubtype = formatSubtype
+        self.codec = codec
+        self.width = width
+        self.height = height
+        self.intervals100ns = intervals100ns
+        self.status = status
+    }
+}
+
 /// Exact scalar identity and format facts that a future direct-UVC collector
-/// must bind before attempting any negotiation.  Defaults match the reviewed
-/// Pocket 3 H.264/UYVY 4K60 candidate; they are not a hardware capability
-/// claim.
+/// must bind before attempting any negotiation. Defaults match the reviewed
+/// Pocket 3 H.264 4K60 descriptor candidate; they are not a hardware stream
+/// or ownership confirmation. The separate UYVY host observation belongs to
+/// `DirectUVCHostOutputObservation`. In particular, endpoint 0x82 becomes
+/// evidence only when a normal open returns that matching observation.
 public struct DirectUVCOwnershipAdmissionRequest: Codable, Sendable,
     Equatable {
     public static let currentVersion = 1
-    public static let currentProfile = "direct_uvc_uyvy_4k60_ownership_v1"
+    public static let currentProfile = "direct_uvc_h264_4k60_ownership_v1"
+    public static let reviewedFormatEvidence =
+        DirectUVCFrameBasedFormatEvidence(
+            descriptorArtifact:
+                "artifacts/usb-all-descriptors-2026-09-09.json:H264_FORMAT_FRAME_BASED",
+            formatSubtype: "FORMAT_FRAME_BASED", codec: .h264,
+            width: 3840, height: 2160,
+            intervals100ns: [166_666, 200_000, 208_333, 333_333,
+                             400_000, 416_666])
+    public static let reviewedSources = [
+        "local:artifacts/usb-all-descriptors-2026-09-09.json",
+        "daijertech/obs-dji-uvc@504452d",
+        "BELABOX/gstlibuvch264src@1644b6d"
+    ]
 
     public let version: Int
     public let profile: String
@@ -63,7 +105,7 @@ public struct DirectUVCOwnershipAdmissionRequest: Codable, Sendable,
         alternateSetting: UInt8 = 0,
         endpointAddress: UInt8 = 0x82,
         codec: DirectUVCVideoCodec = .h264,
-        inputFourCC: String = "2vuy",
+        inputFourCC: String = "H264",
         width: UInt16 = 3840,
         height: UInt16 = 2160,
         frameRate: Int = 60,
@@ -242,6 +284,8 @@ public struct DirectUVCOwnershipAdmissionEvaluation: Codable, Sendable,
     public let checks: [String: Bool]
     public let failureCode: String?
     public let hostOutputStatus: DirectUVCHostOutputStatus
+    public let candidateFormatEvidence: DirectUVCFrameBasedFormatEvidence
+    public let provenance: [String]
     public let directStreamReady: Bool
     public let conditions: [DirectUVCOwnershipAdmissionCondition]
 
@@ -256,6 +300,9 @@ public struct DirectUVCOwnershipAdmissionEvaluation: Codable, Sendable,
         self.checks = checks
         self.failureCode = failureCode
         self.hostOutputStatus = hostOutputStatus
+        candidateFormatEvidence =
+            DirectUVCOwnershipAdmissionRequest.reviewedFormatEvidence
+        provenance = DirectUVCOwnershipAdmissionRequest.reviewedSources
         directStreamReady = false
         self.conditions = conditions
     }
@@ -284,9 +331,6 @@ public enum DirectUVCOwnershipAdmission {
                         $0.isIN && $0.isBulk
                 }
         } ?? false
-        let hostFormatMatches = evidence.hostOutput.map {
-            $0.selectedInputFourCC.map { $0 == request.inputFourCC } ?? true
-        } ?? true
         let exactIdentity: Bool = {
             guard let open else { return true }
             if let expected = request.expectedRegistryID,
@@ -300,7 +344,6 @@ public enum DirectUVCOwnershipAdmission {
         check("normal_open_owned", open?.opened == true &&
             open?.ownedOpen == true && open?.status == .opened)
         check("descriptor_endpoint_match", endpointMatches)
-        check("host_output_format_match", hostFormatMatches)
         check("exact_attachment_identity", exactIdentity)
         check("no_unsafe_operations", !evidence.seizeAttempted &&
             !evidence.alternateSettingChanged &&
@@ -336,12 +379,10 @@ public enum DirectUVCOwnershipAdmission {
                           .preserveNoSeize]
         } else if open?.opened != true || open?.ownedOpen != true ||
                     open?.status != .opened || !endpointMatches ||
-                    !exactIdentity || !hostFormatMatches {
+                    !exactIdentity {
             state = .blockedByInvalidEvidence
             failure = open?.status == .detached
                 ? "direct_uvc_attachment_changed"
-                : !hostFormatMatches
-                ? "direct_uvc_host_format_mismatch"
                 : "direct_uvc_open_evidence_mismatch"
             conditions = [.descriptorEndpointMatch,
                           .preserveNoSeize,

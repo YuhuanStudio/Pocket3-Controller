@@ -69,8 +69,19 @@ struct DirectUVCOwnershipAdmissionTests {
             DirectUVCOwnershipAdmissionRequest.self,
             from: JSONEncoder().encode(value))
         #expect(decoded == value)
-        #expect(value.inputFourCC == "2vuy" && value.width == 3840 &&
+        #expect(value.inputFourCC == "H264" && value.width == 3840 &&
                 value.height == 2160 && value.frameRate == 60)
+        #expect(DirectUVCOwnershipAdmissionRequest.reviewedFormatEvidence
+                    .formatSubtype ==
+                "FORMAT_FRAME_BASED")
+        #expect(DirectUVCOwnershipAdmissionRequest.reviewedFormatEvidence
+                    .intervals100ns == [
+            166_666, 200_000, 208_333, 333_333, 400_000, 416_666
+        ])
+        #expect(DirectUVCOwnershipAdmissionRequest.reviewedSources.contains(
+            "daijertech/obs-dji-uvc@504452d"))
+        #expect(DirectUVCOwnershipAdmissionRequest.reviewedSources.contains(
+            "BELABOX/gstlibuvch264src@1644b6d"))
         #expect(throws: DirectUVCOwnershipAdmissionError.invalidRequest) {
             try DirectUVCOwnershipAdmissionRequest(
                 location: location, endpointAddress: 0x02)
@@ -99,6 +110,10 @@ struct DirectUVCOwnershipAdmissionTests {
         #expect(report.state == .blockedBySystemOwner)
         #expect(report.failureCode == "direct_uvc_blocked_by_system_owner")
         #expect(report.hostOutputStatus == .expectedZeroCallbacks)
+        #expect(report.candidateFormatEvidence.status ==
+                "descriptor_candidate_not_stream_confirmed")
+        #expect(report.provenance.contains(
+            "local:artifacts/usb-all-descriptors-2026-09-09.json"))
         #expect(!report.directStreamReady)
         #expect(report.checks["avfoundation_stopped_and_drained"] == true)
         #expect(report.checks["normal_open_owned"] == false)
@@ -130,7 +145,7 @@ struct DirectUVCOwnershipAdmissionTests {
         #expect(report.failureCode == nil)
         #expect(report.hostOutputStatus == .expectedZeroCallbacks)
         #expect(report.directStreamReady == false)
-        #expect(report.checks.values.filter { $0 }.count == 7)
+        #expect(report.checks.values.filter { $0 }.count == 6)
         #expect(report.checks["bulk_read_ready"] == false)
         #expect(report.conditions.contains(.boundedNegotiationReview))
         #expect(report.conditions.contains(
