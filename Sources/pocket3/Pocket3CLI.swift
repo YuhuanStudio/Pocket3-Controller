@@ -227,7 +227,7 @@ import MCP
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
-            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, BluetoothSinglePropertyReadbackRequest.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
+            let wirelessCommands = ["validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, BluetoothSinglePropertyReadbackRequest.operation, BluetoothReversibleSettingCandidateRequest.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-property", "validation-wireless-body", NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-route", NativeActiveTrackValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, "validation-wireless-disconnect"]
             if wirelessCommands.contains(command) {
                 if command == BluetoothVideoParametersReadbackRequest.operation {
                     guard args.contains("--hardware-validation") else {
@@ -253,6 +253,21 @@ import MCP
                         $0 != "--hardware-validation"
                     })
                     let request = try BluetoothSinglePropertyReadbackRequest(
+                        cliArguments: requestArguments)
+                    let reply = try await IPCClient.call(
+                        command, arguments: request.arguments, address: bridgeAddress)
+                    print(reply.result?.pretty ?? "{}")
+                    return
+                }
+                if command == BluetoothReversibleSettingCandidateRequest.operation {
+                    guard args.contains("--hardware-validation") else {
+                        throw BridgeFailure("validation_disabled",
+                            "Setting candidate dry-run requires --hardware-validation")
+                    }
+                    let requestArguments = Array(args.dropFirst().filter {
+                        $0 != "--hardware-validation"
+                    })
+                    let request = try BluetoothReversibleSettingCandidateRequest(
                         cliArguments: requestArguments)
                     let reply = try await IPCClient.call(
                         command, arguments: request.arguments, address: bridgeAddress)
@@ -651,6 +666,8 @@ import MCP
           Developer only, read-only: submits one Kaze-backed cam_video_param_v2 subscription and waits for its 00/99/06 notification; no 00/01 GET or setter fallback.
         pocket3 validation-wireless-single-property-readback --property cam_lens_state|cam_expo_param --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
           Developer only, read-only: submits one bounded 00/99 subscription for lens or exposure state; preserves raw and typed fields and never sends a setter or guessed GET.
+        pocket3 validation-wireless-setting-candidate --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --capture-session CAPTURE-SESSION-UUID --target single|continuous --sequence N --now UPTIME --baseline-json JSON [--execute] --hardware-validation
+          Developer only, dry-run: admits the reversible 02/24 AF-mode candidate against a fresh raw B1/B2 baseline; execute remains explicitly unsupported until a matching BLE ACK/readback/restore capture exists.
         pocket3 validation-wireless-readback-diagnostic --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID [--path settings|paired_tap_focus|native_tap_focus|all] --hardware-validation
           Developer only, read-only: correlates cached paired BLE/native requests and notifications by exact session, sequence and property; classifies no-route, no-reply, wrong-envelope and readback without starting a query.
         pocket3 validation-wireless-body --action start|stop|format [--resolution NAME --fps FPS] [--execute] [--hardware-validation]

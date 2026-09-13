@@ -256,7 +256,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 ## 其他本輪功能與外部發布條件
 
 - [x] DUML CRC／fragment／ACK／session 邊界、BLE 配對及原生 UDP codec 已實作；Wi-Fi join／datalink 保留研究，不是主流程或可用控制的前提。
-- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第28批11項獨立reader實機取得9項typed readback，僅`camcap_video_codec`／`camcap_video_format`為ACK-only timeout，無preflight failure。Lens 47-byte raw讀到focus mode2/raw178；Exposure 44-byte raw解析Auto、EV0、effective ISO430。BLE讀取面已大致成立，writers仍須逐項ACK＋matching readback驗證。[9/11](artifacts/hardware-complete-2026-09-13/read-settings-9-of-11.json)、[Lens](artifacts/hardware-complete-2026-09-13/lens-readback-live.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
+- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第28批11項獨立reader實機取得9項typed readback，僅`camcap_video_codec`／`camcap_video_format`為ACK-only timeout，無preflight failure。第29批只產出可逆`02/24` AF-mode candidate gate/dry-run；執行仍因 BLE-only writer evidence=0 而 unsupported，writers仍須逐項ACK＋matching readback驗證。[9/11](artifacts/hardware-complete-2026-09-13/read-settings-9-of-11.json)、[Lens](artifacts/hardware-complete-2026-09-13/lens-readback-live.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
 - [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
 - [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。

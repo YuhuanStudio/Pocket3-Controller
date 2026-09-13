@@ -118,6 +118,11 @@ extension AppModel {
             return ServiceReply(id: request.id, result: try .encode(
                 BluetoothSinglePropertyReadbackProbe.report(
                     request: arguments, query: query)))
+        case BluetoothReversibleSettingCandidateRequest.operation:
+            let arguments = try BluetoothReversibleSettingCandidateRequest(
+                arguments: request.arguments)
+            return ServiceReply(id: request.id, result: try .encode(
+                BluetoothReversibleSettingCandidate.dryRun(arguments)))
         case "validation-wireless-readiness":
             let result = try await wireless.bluetooth.queryNativeReadiness()
             return ServiceReply(id: request.id, result: try .encode(result))

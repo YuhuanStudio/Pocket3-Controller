@@ -175,6 +175,28 @@ session/peer、FFF4/FFF5 notifications、registration、central/peripheral
 `bluetooth_property_query_connection_changed`；兩者都不會重送封包，也不延長
 整輪 24 秒上限。
 
+### Phase29：可逆單一設定的 candidate gate
+
+Kaze fixed revision 與 OpenPocketCine fixed revision 都有 `02/24` focus-mode
+builder（S-AF=`01`、C-AF=`02`），而 Kaze／本機 named-property parser 都把
+`cam_lens_state` 的 B1/B2 定義為對應 readback。這足以描述一個可逆 candidate
+的 wire shape；本機 `ble-camera-write-route` 稽核仍明確記錄 Pocket 3
+BLE-only WB/AF/EV writer 成功證據為 0，故不能把它升格為可用 writer。
+
+`validation-wireless-setting-candidate` 是 developer-only pure dry-run route，
+目前只接受 focus mode。admission 必須同時看到 exact BLE session binding、
+fresh `cam_lens_state`、raw B1/B2 與 typed S-AF/C-AF 一致、合法 capture-session
+UUID 和 transport sequence；unknown、stale、property mismatch 會拒絕。不同於
+baseline 的 target 只回 `candidate`，`--execute` 回 `unsupported`／
+`local_writer_unverified`，永遠 `setterIssued=false`、`restoreIssued=false`、
+`hardwareAccessed=false`。報告仍保留 target/restore payload、原始 bytes、route
+與下一個單次 SET→ACK→notification→restore 捕捉流程。
+
+最小下一步是同一 Pocket 3 firmware／paired BLE session 下只做一次 AF mode
+切換，記錄 `02/24` exact ACK 及提交後 `00/99/06 cam_lens_state` matching
+readback，再以同樣契約恢復 baseline；任一步 session、peer、sequence、ACK 或
+readback 不符就停止，不重試、不猜測新 opcode，也不加入相機 Wi-Fi。[來源稽核](../research/2026-09-09/ble-camera-write-route.md)
+
 每個 property 要獨立帶接收時間與 connection generation。收到未改變的有效值仍須更新 freshness；上游 session 只在 value change 時 publish，不能用那個 UI publish 時間取代接收時間。`hasCoreReadback` 只代表「曾收到至少一種 property」，不足以啟用全部設定。未知 enum 值、斷線或某 property 停止推送時，保留 unknown/stale，而不是沿用 `lastSent*` 當真實相機值。[session push handling][session]、[上游 UI fallback][screen]
 
 ## 尚未納入的項目
