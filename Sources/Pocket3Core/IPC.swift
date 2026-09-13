@@ -178,6 +178,7 @@ public enum IPCClient {
         if ["ask", "detect", "evaluate-image", "evaluate-workflow", "evaluate-perception",
             "evaluate-grounding", "image-workspace", "validation-connect", "validation-manual-preset",
             "validation-wireless-read-settings",
+            BluetoothSinglePropertyReadbackRequest.operation,
             "move", BluetoothCameraEventRecordingRequest.operation,
             NativeActiveTrackObservationWindowRequest.operation,
             NativeActiveTrackObservationWindowLifecycleRequest.operation,
