@@ -1,0 +1,133 @@
+{
+  "cameraImagesStored" : false,
+  "evaluation" : {
+    "cameraImagesStored" : false,
+    "checks" : {
+      "baseline" : true,
+      "final_binding" : true,
+      "in_flight_progress" : true,
+      "initial_binding" : true,
+      "metrics_only" : true,
+      "reconnect_session_fence" : true,
+      "restore" : true,
+      "schema" : true,
+      "signed_target" : true,
+      "stop_stable_window" : true
+    },
+    "metricsPassed" : true,
+    "physicalMotionVerified" : false,
+    "profile" : "usb_roll_moving_stop_restore_v1",
+    "version" : 1
+  },
+  "operation" : "validation-roll-acceptance",
+  "physicalMotionVerified" : false,
+  "report" : {
+    "baseline" : {
+      "current" : 0,
+      "defaultValue" : 0,
+      "maximum" : 30,
+      "minimum" : -30,
+      "step" : 1,
+      "writable" : true
+    },
+    "cameraImagesStored" : false,
+    "completed" : true,
+    "expectedDeviceID" : "0x11000002ca30023",
+    "expectedSessionID" : "1267992C-936E-4A5A-AE9F-2C57F7D23240",
+    "finalBinding" : {
+      "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+      "captureSessionID" : "E1B2D456-4E13-4774-9096-57B19B9308B8",
+      "deviceID" : "0x11000002ca30023",
+      "registryID" : "0000000100069ad3"
+    },
+    "initialBinding" : {
+      "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+      "captureSessionID" : "1267992C-936E-4A5A-AE9F-2C57F7D23240",
+      "deviceID" : "0x11000002ca30023",
+      "registryID" : "0000000100069ad3"
+    },
+    "phase" : "completed",
+    "physicalMotionVerified" : false,
+    "plan" : {
+      "cameraImagesStored" : false,
+      "hardwareExecutionEnabled" : true,
+      "maximumMoveSeconds" : 1.2,
+      "maximumProgressSamples" : 24,
+      "profile" : "usb_roll_moving_stop_restore_v1",
+      "signedRawMaximum" : 32767,
+      "signedRawMinimum" : -32768,
+      "stages" : [
+        "fresh_binding_and_roll_baseline",
+        "one_signed_raw_move_with_in_flight_progress",
+        "stop_and_stable_roll_readback",
+        "restore_original_raw_value",
+        "reconnect_old_session_fence"
+      ],
+      "stopStableWindowSeconds" : 0.8,
+      "version" : 1
+    },
+    "profile" : "usb_roll_moving_stop_restore_v1",
+    "progress" : [
+      {
+        "deviceID" : "0x11000002ca30023",
+        "elapsed" : 2.2499996703118086e-05,
+        "maximumRaw" : 30,
+        "minimumRaw" : -30,
+        "observedRaw" : 0,
+        "phase" : "moving",
+        "sessionID" : "1267992C-936E-4A5A-AE9F-2C57F7D23240",
+        "stepRaw" : 1,
+        "targetRaw" : 30
+      },
+      {
+        "deviceID" : "0x11000002ca30023",
+        "elapsed" : 0.050525333324912935,
+        "maximumRaw" : 30,
+        "minimumRaw" : -30,
+        "observedRaw" : 2,
+        "phase" : "moving",
+        "sessionID" : "1267992C-936E-4A5A-AE9F-2C57F7D23240",
+        "stepRaw" : 1,
+        "targetRaw" : 30
+      }
+    ],
+    "reconnect" : {
+      "newBinding" : {
+        "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+        "captureSessionID" : "E1B2D456-4E13-4774-9096-57B19B9308B8",
+        "deviceID" : "0x11000002ca30023",
+        "registryID" : "0000000100069ad3"
+      },
+      "newSessionReady" : true,
+      "oldBinding" : {
+        "bootSessionID" : "3BE429C7-124C-4BA4-BB77-C5F76DE8EE15",
+        "captureSessionID" : "1267992C-936E-4A5A-AE9F-2C57F7D23240",
+        "deviceID" : "0x11000002ca30023",
+        "registryID" : "0000000100069ad3"
+      },
+      "oldOperationStopped" : true,
+      "oldOperationSuppressed" : true
+    },
+    "restore" : {
+      "observedRaw" : 0,
+      "requestedRaw" : 0,
+      "stableDurationSeconds" : 0.25646066665649414,
+      "stableSampleCount" : 5,
+      "submitted" : true,
+      "verified" : true
+    },
+    "stop" : {
+      "observed" : 2,
+      "sampleCount" : 12,
+      "stableDurationSeconds" : 0.855986208334798,
+      "submitted" : true,
+      "target" : 2,
+      "toleranceRaw" : 0,
+      "verification" : "fresh_exact_uvc_roll_hold_readback",
+      "verified" : true
+    },
+    "targetRaw" : 30,
+    "version" : 1
+  },
+  "rollControlUnlocked" : true
+}

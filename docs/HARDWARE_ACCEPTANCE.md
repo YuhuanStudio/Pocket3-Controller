@@ -412,6 +412,8 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 同一已配對BLE session `2378D4DC-AA8D-4961-814F-C911DD53E520`執行一次allowlisted read-settings。第一個`camcap_video_codec` request已submitted，transaction `3600540990`收到相同sequence `51779`的response／ACK，但沒有matching property readback；reader回completed=false並未送其餘十項。新的readback diagnostic將它分類為`ack_without_property_readback`／`bluetooth_readback_no_reply`，而不是no-route或unsupported。沒有送setter、tap-focus、Wi-Fi或媒體命令。[原結果](../artifacts/hardware-complete-2026-09-13/read-settings-ack-no-readback.json)、[診斷](../artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)
 
+第25批Roll acceptance修正為看到第一個in-flight中間值即Stop。raw0→target30時在0.103秒讀到13，Stop保持13共12筆／0.846秒exact stable，restore0共5筆／0.252秒，capture reconnect後舊session寫入被拒絕。驗收後App以同device/registry/boot與新session核對成功，回`rollControlUnlocked=true`，獨立status亦為`rollStopValidated=true`。暫時將App access設control後，一般產品`roll`命令raw1與restore0分別以5／4筆exact readback通過，最後恢復manual、motion=false。這證明UVC raw與Stop生命週期，不校準物理角度／方向。[驗收](../artifacts/hardware-complete-2026-09-13/roll-stop-unlock.json)、[raw1](../artifacts/hardware-complete-2026-09-13/roll-product-raw1.json)、[restore0](../artifacts/hardware-complete-2026-09-13/roll-product-restore0.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

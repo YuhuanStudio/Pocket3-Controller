@@ -22,6 +22,11 @@ struct USBRollAcceptanceValidationTests {
         #expect(payload["report"]["cameraImagesStored"] == .bool(false))
         #expect(payload["report"]["physicalMotionVerified"] == .bool(false))
         #expect(payload["evaluation"]["metricsPassed"] == .bool(false))
+        #expect(payload["rollControlUnlocked"] == .bool(false))
+        let unlocked = try USBRollAcceptanceAppPresentation.payload(
+            report: report, evaluation: evaluation,
+            rollControlUnlocked: true)
+        #expect(unlocked["rollControlUnlocked"] == .bool(true))
     }
 
     @Test func planAdvertisesSignedRangeAndStableStopStages() {

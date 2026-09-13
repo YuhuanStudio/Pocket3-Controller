@@ -870,6 +870,34 @@ public actor CameraService {
         return result
     }
 
+    /// Admits the current capture session after the developer acceptance route
+    /// proved a moving Roll Stop and restore on the same physical attachment.
+    /// Any later connection change clears this flag again.
+    public func admitRollStopValidation(
+        old: USBRollAcceptanceBinding,
+        new: USBRollAcceptanceBinding
+    ) throws {
+        guard validationEnabled else {
+            throw BridgeFailure("validation_disabled",
+                "Roll Stop validation is only available in a development session")
+        }
+        let currentSession = capture.store.stats().sessionID
+        guard old.captureSessionID != new.captureSessionID,
+              old.deviceID == new.deviceID,
+              old.registryID != nil, old.registryID == new.registryID,
+              old.bootSessionID != nil, old.bootSessionID == new.bootSessionID,
+              selected?.id == new.deviceID,
+              currentSession == new.captureSessionID,
+              capabilities?.registryID == new.registryID,
+              capabilities?.bootSessionID == new.bootSessionID,
+              phase == "ready", !connectionInProgress, motionID == nil,
+              !rollNeedsHold else {
+            throw BridgeFailure("roll_acceptance_session_changed",
+                "Roll acceptance evidence does not match the current attachment")
+        }
+        rollStopValidated = true
+    }
+
     public func roll(rawValue: Int, expectedSessionID: String, origin: RequestOrigin = .manual) async throws -> USBRollResult {
         try Task.checkCancellation()
         try requireObservation(origin)

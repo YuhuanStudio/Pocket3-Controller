@@ -604,6 +604,13 @@ public enum USBRollAcceptanceExecutor {
                     maximumRaw: current.maximum ?? Int(Int16.max),
                     stepRaw: current.step ?? 0,
                     sessionID: initial.captureSessionID, deviceID: initial.deviceID))
+                // Stop on the first confirmed in-flight value. Waiting for
+                // the whole observation window lets a short Roll move finish
+                // and removes the pending operation that Stop must verify.
+                if current.current != fresh.current &&
+                    current.current != chosen {
+                    break
+                }
                 let next = min(moveDeadline, now + request.pollInterval)
                 try await clock.sleep(until: next)
             }

@@ -8,13 +8,15 @@ import Pocket3Core
 /// evidence visible to a validation caller without adding a general UI model.
 enum USBRollAcceptanceAppPresentation {
     static func payload(report: USBRollAcceptanceReport,
-                        evaluation: USBRollAcceptanceEvaluation) throws -> JSONValue {
+                        evaluation: USBRollAcceptanceEvaluation,
+                        rollControlUnlocked: Bool = false) throws -> JSONValue {
         .object([
             "operation": .string(USBRollAcceptanceRequest.operation),
             "report": try .encode(report),
             "evaluation": try .encode(evaluation),
             "cameraImagesStored": .bool(report.cameraImagesStored),
-            "physicalMotionVerified": .bool(report.physicalMotionVerified)
+            "physicalMotionVerified": .bool(report.physicalMotionVerified),
+            "rollControlUnlocked": .bool(rollControlUnlocked)
         ])
     }
 }
@@ -148,10 +150,19 @@ extension AppModel {
             stop: stop, readBinding: readBinding, reconnect: reconnect)
         let report = await USBRollAcceptanceExecutor.execute(input,
             adapter: adapter)
+        let evaluation = USBRollAcceptanceExecutor.evaluate(report)
+        var unlocked = false
+        if evaluation.metricsPassed, report.completed,
+           let old = report.initialBinding,
+           let new = report.finalBinding {
+            try await service.admitRollStopValidation(old: old, new: new)
+            unlocked = true
+        }
         return ServiceReply(id: request.id,
             result: try USBRollAcceptanceAppPresentation.payload(
                 report: report,
-                evaluation: USBRollAcceptanceExecutor.evaluate(report)))
+                evaluation: evaluation,
+                rollControlUnlocked: unlocked))
     }
 }
 

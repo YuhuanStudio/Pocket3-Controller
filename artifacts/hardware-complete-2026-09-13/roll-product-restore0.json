@@ -1,0 +1,20 @@
+{
+  "accepted" : true,
+  "capabilities" : {
+    "current" : 0,
+    "defaultValue" : 0,
+    "maximum" : 30,
+    "minimum" : -30,
+    "step" : 1,
+    "writable" : true
+  },
+  "completed" : true,
+  "message" : "Roll 原始值已精確回讀並穩定；未校準物理角度或驗證移動中停止",
+  "observed" : 0,
+  "sampleCount" : 4,
+  "stableDurationSeconds" : 0.25969991664169356,
+  "target" : 0,
+  "toleranceRaw" : 0,
+  "verification" : "stable_exact_uvc_roll_raw_readback",
+  "verified" : true
+}
