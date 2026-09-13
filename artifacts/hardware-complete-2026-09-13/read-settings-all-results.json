@@ -1,0 +1,549 @@
+{
+  "attemptedPropertyCount" : 11,
+  "bluetooth" : {
+    "activeTrackHistory" : [
+
+    ],
+    "authentication" : "protocol_pair_confirmed",
+    "authorization" : "authorized",
+    "battery" : {
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "sessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "telemetry" : {
+        "chargingState" : "notCharging",
+        "chargingStateRaw" : 0,
+        "percent" : 100,
+        "receivedAt" : "2026-09-13T06:49:37Z",
+        "source" : "bluetooth"
+      }
+    },
+    "cameraSettingsObservations" : [
+      {
+        "binding" : {
+          "generation" : 0,
+          "sessionID" : "ble:9C6207AD-831B-4F74-989A-7C6923E4276E"
+        },
+        "property" : "cam_video_param_v2",
+        "readOnlyValue" : {
+          "videoParameters" : {
+            "_0" : {
+              "compression" : 1,
+              "compressionRaw" : 1,
+              "frameRate" : 3,
+              "frameRateRaw" : 3,
+              "raw" : "CgMAAAACAQABAA==",
+              "resolution" : 10,
+              "resolutionRaw" : 10
+            }
+          }
+        },
+        "receivedUptime" : 221414.57745245835,
+        "transactionID" : 9460,
+        "value" : {
+          "videoCompression" : {
+            "_0" : 1
+          }
+        }
+      }
+    ],
+    "cameraStatus" : {
+      "elapsedRecordSeconds" : 0,
+      "mediaSessionState" : {
+        "unknown" : {
+          "raw" : 3
+        }
+      },
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "playbackBit" : false,
+      "receivedAt" : "2026-09-13T06:49:38Z",
+      "receivedUptime" : 221414.68008345834,
+      "recording" : false,
+      "remainingRecordSeconds" : 36630,
+      "sessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "shootingModeRaw" : 35,
+      "statusByte" : 3,
+      "statusFlagsRaw" : 8389123,
+      "storageFreeMiB" : 176032,
+      "storageTotalMiB" : 488015,
+      "transitioning" : false,
+      "videoLike" : true
+    },
+    "candidates" : [
+      {
+        "connectable" : true,
+        "id" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+        "name" : "OsmoPocket3-7CF5",
+        "rssi" : -41
+      }
+    ],
+    "fff4NotificationEnabled" : true,
+    "fff4Properties" : 58,
+    "fff5NotificationEnabled" : true,
+    "fff5Properties" : 54,
+    "fragments" : {
+      "FFF4" : {
+        "discardedBytes" : 0,
+        "expiredFragments" : 0,
+        "invalidFrames" : 0,
+        "invalidHeaders" : 0,
+        "overflows" : 0,
+        "validFrames" : 208
+      },
+      "FFF5" : {
+        "discardedBytes" : 0,
+        "expiredFragments" : 0,
+        "invalidFrames" : 0,
+        "invalidHeaders" : 0,
+        "overflows" : 0,
+        "validFrames" : 0
+      }
+    },
+    "identityVerification" : "unverified_candidate",
+    "nativeProbeActive" : false,
+    "pairing" : {
+      "credentialAccessFailed" : false,
+      "credentialsAvailable" : false,
+      "peerReportedPaired" : true,
+      "phase" : "paired"
+    },
+    "phase" : "gattPaired",
+    "pose" : {
+      "calibration" : "not_calibrated_to_usb",
+      "limitStatusRaw" : 0,
+      "modeStatusRaw" : 128,
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "pitchRaw" : 1800,
+      "receivedAt" : "2026-09-13T06:49:38Z",
+      "receivedUptime" : 221414.68019604168,
+      "rollRaw" : 0,
+      "sequence" : 58794,
+      "sessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "unit" : "device_reported_deci_degrees",
+      "yawRaw" : 1
+    },
+    "receivedFrames" : 208,
+    "recentHeaders" : [
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58794,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 128,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 62896,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58781,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58774,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF5",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 72,
+        "direction" : "submitted_tx",
+        "flags" : 192,
+        "sequence" : 9774,
+        "source" : 2
+      },
+      {
+        "characteristic" : "FFF5",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 72,
+        "direction" : "submitted_tx",
+        "flags" : 192,
+        "sequence" : 9772,
+        "source" : 2
+      },
+      {
+        "characteristic" : "FFF5",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 72,
+        "direction" : "submitted_tx",
+        "flags" : 192,
+        "sequence" : 9770,
+        "source" : 2
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 128,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 62895,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58761,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 153,
+        "commandSet" : 0,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 11975,
+        "source" : 40
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 28,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58756,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 5,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58754,
+        "source" : 4
+      },
+      {
+        "characteristic" : "FFF5",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 72,
+        "direction" : "queued_tx",
+        "flags" : 192,
+        "sequence" : 9774,
+        "source" : 2
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 129,
+        "commandSet" : 0,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 64,
+        "sequence" : 9774,
+        "source" : 72
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 128,
+        "commandSet" : 2,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 62894,
+        "source" : 1
+      },
+      {
+        "characteristic" : "FFF4",
+        "commandID" : 39,
+        "commandSet" : 4,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 58741,
+        "source" : 4
+      }
+    ],
+    "registrationAcknowledgmentSubmitted" : true,
+    "selectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+    "sessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+    "storageStatus" : {
+      "freeMiB" : 176032,
+      "peripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "receivedAt" : "2026-09-13T06:49:37Z",
+      "receivedUptime" : 221414.40953075,
+      "sessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "storeCount" : 1,
+      "totalMiB" : 488015
+    },
+    "trackingCandidates" : [
+
+    ]
+  },
+  "completed" : false,
+  "expectedPropertyCount" : 11,
+  "issue" : "無法讀取相機設定，請確認已配對的相機後再試一次。",
+  "observations" : [
+    {
+      "binding" : {
+        "generation" : 0,
+        "sessionID" : "ble:9C6207AD-831B-4F74-989A-7C6923E4276E"
+      },
+      "property" : "cam_video_param_v2",
+      "readOnlyValue" : {
+        "videoParameters" : {
+          "_0" : {
+            "compression" : 1,
+            "compressionRaw" : 1,
+            "frameRate" : 3,
+            "frameRateRaw" : 3,
+            "raw" : "CgMAAAACAQABAA==",
+            "resolution" : 10,
+            "resolutionRaw" : 10
+          }
+        }
+      },
+      "receivedUptime" : 221414.57745245835,
+      "transactionID" : 9460,
+      "value" : {
+        "videoCompression" : {
+          "_0" : 1
+        }
+      }
+    }
+  ],
+  "partial" : true,
+  "queryFailures" : [
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "2:camcap_video_format",
+      "index" : 2,
+      "property" : "camcap_video_format",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "3:cam_sensor_aspect_ratio",
+      "index" : 3,
+      "property" : "cam_sensor_aspect_ratio",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "4:cam_image_effect",
+      "index" : 4,
+      "property" : "cam_image_effect",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "5:cam_expo_param",
+      "index" : 5,
+      "property" : "cam_expo_param",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "6:cam_lens_state",
+      "index" : 6,
+      "property" : "cam_lens_state",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "7:cam_photo_param",
+      "index" : 7,
+      "property" : "cam_photo_param",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "8:cam_lapse_param",
+      "index" : 8,
+      "property" : "cam_lapse_param",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "9:cam_motionlapse_params",
+      "index" : 9,
+      "property" : "cam_motionlapse_params",
+      "stage" : "preflight"
+    },
+    {
+      "code" : "bluetooth_property_query_not_ready",
+      "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "expectedSessionID" : "9C6207AD-831B-4F74-989A-7C6923E4276E",
+      "id" : "10:cam_pano_params",
+      "index" : 10,
+      "property" : "cam_pano_params",
+      "stage" : "preflight"
+    }
+  ],
+  "queryResults" : [
+    {
+      "ackHeader" : {
+        "characteristic" : "FFF4",
+        "commandID" : 153,
+        "commandSet" : 0,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 192,
+        "sequence" : 51928,
+        "source" : 40
+      },
+      "ackReceived" : true,
+      "ackTimedOut" : false,
+      "ackUptime" : 221412.65405825002,
+      "binding" : {
+        "generation" : 0,
+        "sessionID" : "ble:9C6207AD-831B-4F74-989A-7C6923E4276E"
+      },
+      "cancelled" : false,
+      "connectionChanged" : false,
+      "evidence" : "same_ble_session_post_subscription_named_property_not_setting_confirmation",
+      "finishedUptime" : 221412.65702879167,
+      "foreignSessionNotificationCount" : 0,
+      "localSubmitted" : true,
+      "observationWindowCompleted" : false,
+      "observed" : {
+        "binding" : {
+          "generation" : 0,
+          "sessionID" : "ble:9C6207AD-831B-4F74-989A-7C6923E4276E"
+        },
+        "property" : "cam_video_param_v2",
+        "readOnlyValue" : {
+          "videoParameters" : {
+            "_0" : {
+              "compression" : 1,
+              "compressionRaw" : 1,
+              "frameRate" : 3,
+              "frameRateRaw" : 3,
+              "raw" : "CgMAAAACAQABAA==",
+              "resolution" : 10,
+              "resolutionRaw" : 10
+            }
+          }
+        },
+        "receivedUptime" : 221412.38499825003,
+        "transactionID" : 9453,
+        "value" : {
+          "videoCompression" : {
+            "_0" : 1
+          }
+        }
+      },
+      "property" : "cam_video_param_v2",
+      "propertyHeader" : {
+        "characteristic" : "FFF4",
+        "commandID" : 153,
+        "commandSet" : 0,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 11967,
+        "source" : 40
+      },
+      "propertyReceived" : true,
+      "propertyTransactionID" : 9453,
+      "propertyUptime" : 221412.38499825003,
+      "querySequence" : 51928,
+      "startedUptime" : 221412.14092233335,
+      "submittedUptime" : 221412.14280533334,
+      "subscriptionTransactionID" : 2646670366,
+      "timedOut" : false,
+      "valueHex" : "0a030000000201000100",
+      "valueLength" : 10,
+      "valueRaw" : "CgMAAAACAQABAA==",
+      "valueTruncated" : false,
+      "wrongEnvelopeCount" : 0,
+      "wrongPropertyCount" : 0,
+      "wrongSequenceCount" : 0
+    },
+    {
+      "ackHeader" : {
+        "characteristic" : "FFF4",
+        "commandID" : 153,
+        "commandSet" : 0,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 192,
+        "sequence" : 51929,
+        "source" : 40
+      },
+      "ackReceived" : true,
+      "ackTimedOut" : false,
+      "ackUptime" : 221413.058655,
+      "binding" : {
+        "generation" : 0,
+        "sessionID" : "ble:9C6207AD-831B-4F74-989A-7C6923E4276E"
+      },
+      "cancelled" : false,
+      "connectionChanged" : false,
+      "evidence" : "same_ble_session_post_subscription_named_property_not_setting_confirmation",
+      "finishedUptime" : 221414.6720569167,
+      "foreignSessionNotificationCount" : 0,
+      "lastRejectedHeader" : {
+        "characteristic" : "FFF4",
+        "commandID" : 153,
+        "commandSet" : 0,
+        "destination" : 2,
+        "direction" : "received",
+        "flags" : 0,
+        "sequence" : 11975,
+        "source" : 40
+      },
+      "localSubmitted" : true,
+      "observationWindowCompleted" : true,
+      "property" : "camcap_video_codec",
+      "propertyReceived" : false,
+      "querySequence" : 51929,
+      "startedUptime" : 221412.6595771667,
+      "submittedUptime" : 221412.661361,
+      "subscriptionTransactionID" : 392781232,
+      "timedOut" : true,
+      "valueTruncated" : false,
+      "wrongEnvelopeCount" : 0,
+      "wrongPropertyCount" : 6,
+      "wrongSequenceCount" : 0
+    }
+  ],
+  "readbackState" : "partial",
+  "routeAvailable" : true
+}

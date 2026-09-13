@@ -420,6 +420,10 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 新版independent settings reader在BLE session `9EC00B96-51B9-43BA-8FDC-B1045DBC6ADA`先成功讀到`cam_video_param_v2`，第二項`camcap_video_codec`取得ACK但兩秒內只有5筆wrong-property notifications並timeout。第三項進入前的preflight throw仍讓整批停止，立即status仍是同session paired；因此partial結果有效，但「所有11項獨立繼續」尚未實機通過，需把preflight failure也轉成per-property evidence。[結果](../artifacts/hardware-complete-2026-09-13/read-settings-independent-partial.json)
 
+第27批把preflight throw也轉為per-property evidence後，未配對空plan正確回`completed=false`。配對session `9C6207AD-831B-4F74-989A-7C6923E4276E`下11項都有結果：`cam_video_param_v2`成功readback；`camcap_video_codec`為ACK-only timeout；其餘9項均保留`bluetooth_property_query_not_ready` preflight failure。這證明整批不再中止，但也顯示每項間需bounded等待CoreBluetooth write-without-response readiness，而非立即嘗試。[結果](../artifacts/hardware-complete-2026-09-13/read-settings-all-results.json)
+
+同輪產品`host-hevc` lifecycle在1080p30 BGRA preview上explicit start，1秒status為29個hvc1 samples、verified、1筆自有bounded backpressure drop；Stop後共30 samples、phase stopped、sink detached。BGRA preview共存，沒有automatic fallback、USB wire codec claim、影像或payload持久化。[start](../artifacts/hardware-complete-2026-09-13/host-hevc-product-start.json)、[status](../artifacts/hardware-complete-2026-09-13/host-hevc-product-status.json)、[stop](../artifacts/hardware-complete-2026-09-13/host-hevc-product-stop.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

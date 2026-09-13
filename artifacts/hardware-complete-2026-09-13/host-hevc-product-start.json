@@ -1,0 +1,72 @@
+{
+  "automaticFallback" : false,
+  "cameraImagesStored" : false,
+  "dryRun" : false,
+  "operation" : "host-hevc-start",
+  "requiresBGRA" : true,
+  "selection" : "host-hevc",
+  "status" : {
+    "capability" : {
+      "configured" : true,
+      "contract" : {
+        "automaticFallback" : false,
+        "codec" : "hevc",
+        "codecIdentifier" : "hvc1",
+        "inputPixelFormats" : [
+          "bgra",
+          "nv12VideoRange",
+          "nv12FullRange"
+        ],
+        "selection" : "host-hevc",
+        "supportsConcurrentBGRAPreview" : true,
+        "transport" : "macVideoToolboxHost"
+      },
+      "generation" : 1,
+      "observedSampleCount" : 0,
+      "sessionID" : "EC823DB3-5990-40A5-910A-6562558EDA66",
+      "verified" : false
+    },
+    "phase" : "running",
+    "samples" : [
+
+    ],
+    "selection" : "host-hevc",
+    "session" : {
+      "capability" : {
+        "codec" : "hevc",
+        "codecIdentifier" : "hvc1",
+        "configured" : true,
+        "frameRate" : 30,
+        "generation" : 1,
+        "height" : 1080,
+        "inputPixelFormats" : [
+          "bgra",
+          "nv12VideoRange",
+          "nv12FullRange"
+        ],
+        "observedSampleCount" : 0,
+        "sessionID" : "EC823DB3-5990-40A5-910A-6562558EDA66",
+        "transport" : "macVideoToolboxHost",
+        "verified" : false,
+        "width" : 1920
+      },
+      "encoder" : {
+        "cancelledFrames" : 0,
+        "droppedBackpressure" : 0,
+        "droppedStaleOutput" : 0,
+        "encodedFrames" : 0,
+        "generation" : 1,
+        "pendingFrames" : 0,
+        "phase" : "running",
+        "sessionID" : "EC823DB3-5990-40A5-910A-6562558EDA66",
+        "submittedFrames" : 0
+      },
+      "generation" : 1,
+      "maximumInputAgeSeconds" : 1,
+      "phase" : "running",
+      "sessionID" : "EC823DB3-5990-40A5-910A-6562558EDA66"
+    },
+    "sinkAttached" : true
+  },
+  "usbWireCodecClaim" : null
+}

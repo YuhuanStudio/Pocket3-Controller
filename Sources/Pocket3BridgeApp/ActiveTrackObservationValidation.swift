@@ -119,7 +119,7 @@ extension AppModel {
             return ServiceReply(id: request.id, result: try .encode(status))
 
         case .marker:
-            guard let coordinator = developerActiveTrackObservationWindow else {
+            guard var coordinator = developerActiveTrackObservationWindow else {
                 throw BridgeFailure("active_track_observation_not_active",
                     "Start an ActiveTrack observation window first")
             }
@@ -132,12 +132,11 @@ extension AppModel {
             return ServiceReply(id: request.id, result: try .encode(status))
 
         case .status:
-            guard var coordinator = developerActiveTrackObservationWindow else {
+            guard let coordinator = developerActiveTrackObservationWindow else {
                 throw BridgeFailure("active_track_observation_not_active",
                     "Start an ActiveTrack observation window first")
             }
             try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
-            developerActiveTrackObservationWindow = coordinator
             let status = coordinator.update(
                 recording: wireless.bluetooth.cameraEventRecordingSnapshot,
                 action: .status)
