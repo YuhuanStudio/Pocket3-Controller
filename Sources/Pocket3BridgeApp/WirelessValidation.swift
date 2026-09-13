@@ -45,6 +45,7 @@ extension AppModel {
             return ServiceReply(id: request.id, result: .object([
                 "completed": .bool(wireless.issue == nil), "issue": wireless.issue.map(JSONValue.string) ?? .null,
                 "observations": try .array(wireless.discovery.cameraSettingsObservations.map(JSONValue.encode)),
+                "queryResults": try .array(wireless.lastCameraSettingsQueryResults.map(JSONValue.encode)),
                 "bluetooth": try .encode(wireless.discovery)
             ]))
         case "validation-wireless-probe": return try await performBluetoothGimbalProbe(request)

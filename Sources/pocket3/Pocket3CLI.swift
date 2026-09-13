@@ -577,7 +577,7 @@ import MCP
         pocket3 validation-wireless-pair [--read-connection-details]
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-read-settings
-          Developer only: sequentially reads allowlisted paired-camera properties; never writes a setting or joins Wi-Fi.
+          Developer only: reads up to 11 allowlisted paired-camera properties (cam_video_param_v2 first), preserving each ACK/notification result and continuing after a bounded no-reply; never writes or joins Wi-Fi.
         pocket3 validation-wireless-video-parameters-readback --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
           Developer only, read-only: submits one Kaze-backed cam_video_param_v2 subscription and waits for its 00/99/06 notification; no 00/01 GET or setter fallback.
         pocket3 validation-wireless-readback-diagnostic --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID [--path settings|paired_tap_focus|native_tap_focus|all] --hardware-validation

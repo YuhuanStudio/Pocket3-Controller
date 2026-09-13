@@ -153,6 +153,14 @@ sequence `51779` 的 ACK，卻沒有 notification；這證明 BLE route 與 ACK�
 `ack_without_named_property_notification`，再停止，不改成 GET 猜測。[固定來源與
 hash](../research/2026-09-08/camera-settings/PROVENANCE.md)、[本機診斷](../artifacts/hardware-complete-2026-09-13/readback-diagnostic-after-query.json)
 
+Phase26 的 `validation-wireless-read-settings` 會先嘗試已知可讀回的
+`cam_video_param_v2`，再逐項執行其餘目前 allowlist，最多 11 項、總窗口 24
+秒。單一 property 的 timeout、ACK-only 或 malformed notification 只保留在
+該 property 結果，reader 會繼續下一項；只有 exact BLE session／peer 變更才
+停止整輪。CLI 回覆新增 `queryResults`，diagnostic report 的 `summary` 同時
+統計 submitted、readback、no-reply、wrong-envelope 與 no-route，因此 partial
+readback 不會被誤報為 complete，也不會被成功 property 隱藏。
+
 每個 property 要獨立帶接收時間與 connection generation。收到未改變的有效值仍須更新 freshness；上游 session 只在 value change 時 publish，不能用那個 UI publish 時間取代接收時間。`hasCoreReadback` 只代表「曾收到至少一種 property」，不足以啟用全部設定。未知 enum 值、斷線或某 property 停止推送時，保留 unknown/stale，而不是沿用 `lastSent*` 當真實相機值。[session push handling][session]、[上游 UI fallback][screen]
 
 ## 尚未納入的項目

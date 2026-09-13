@@ -432,8 +432,10 @@ final class WirelessGimbalModel {
     /// Cancellation cannot undo CoreWLAN association after its commit point;
     /// joinTask remains tracked until the blocking call has actually returned.
     func readCameraSettings() {
-        guard settingsReadTask == nil, discovery.phase == .gattPaired, pairingStatus?.peerReportedPaired == true else { return }
-        let id = UUID(), session = discovery.sessionID, peer = discovery.selectedPeripheralID
+        guard settingsReadTask == nil, discovery.phase == .gattPaired,
+              pairingStatus?.peerReportedPaired == true,
+              let peer = discovery.selectedPeripheralID else { return }
+        let id = UUID(), session = discovery.sessionID
         settingsReadID = id; readingCameraSettings = true; issue = nil
         lastCameraSettingsQueryResults = []
         settingsReadTask = Task { @MainActor [weak self] in
@@ -444,19 +446,34 @@ final class WirelessGimbalModel {
                 }
             }
             do {
-                for property in CameraSettingsProperty.allCases {
+                let deadline = ProcessInfo.processInfo.systemUptime +
+                    BluetoothCameraSettingsReadPlan.maximumDuration
+                var failedProperties: [CameraSettingsProperty] = []
+                var reachedTotalDeadline = false
+                for property in BluetoothCameraSettingsReadPlan.orderedProperties {
                     try Task.checkCancellation()
-                    guard self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
-                    let result = try await self.bluetooth.queryCameraProperty(property: property)
-                    try Task.checkCancellation()
-                    guard !result.cancelled, !result.connectionChanged,
-                          self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
-                    guard result.failure == nil, result.propertyReceived else {
-                        self.lastCameraSettingsQueryResults.append(result)
-                        throw BridgeFailure("camera_settings_unavailable", "The camera property was not received")
+                    guard ProcessInfo.processInfo.systemUptime < deadline else {
+                        reachedTotalDeadline = true
+                        break
                     }
+                    guard self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
+                    let result = try await self.bluetooth.queryCameraProperty(
+                        property: property, expectedSessionID: session,
+                        expectedPeripheralID: peer)
+                    try Task.checkCancellation()
+                    guard BluetoothCameraSettingsReadPlan.shouldContinue(after: result),
+                          self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
                     self.lastCameraSettingsQueryResults.append(result)
+                    if !BluetoothCameraSettingsReadPlan.hasTypedReadback(result) {
+                        failedProperties.append(property)
+                    }
                     await self.refresh()
+                }
+                if reachedTotalDeadline || !failedProperties.isEmpty {
+                    self.issue = AppErrorPresentation.message(
+                        BridgeFailure("camera_settings_unavailable",
+                            "One or more camera properties were not read."),
+                        fallback: .cameraSettingsUnavailable)
                 }
             } catch {
                 guard !(error is CancellationError), self.settingsReadID == id else { return }

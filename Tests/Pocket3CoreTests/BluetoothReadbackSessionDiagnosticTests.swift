@@ -157,6 +157,19 @@ struct BluetoothReadbackSessionDiagnosticTests {
         #expect(noReply.entries.allSatisfy { $0.outcome == .noReply })
     }
 
+    @Test func partialSettingsKeepsSuccessfulPropertyInAggregateSummary() throws {
+        let report = BluetoothReadbackSessionDiagnostic.make(
+            request: try request(), bluetooth: readyStatus(),
+            settingsQueries: [try query()], pairedTapFocus: nil,
+            nativeSession: nativeSession(), nativeTapFocus: nil)
+        #expect(report.outcome == .noReply)
+        #expect(report.summary?.total == CameraSettingsProperty.allCases.count)
+        #expect(report.summary?.readback == 1)
+        #expect(report.summary?.noReply == CameraSettingsProperty.allCases.count - 1)
+        #expect(report.summary?.submitted == 1)
+        #expect(report.summary?.complete == false)
+    }
+
     @Test func wrongEnvelopeRetainsSequenceAndPropertyCorrelation() throws {
         let result = try query(wrongEnvelope: true, readback: false)
         let report = BluetoothReadbackSessionDiagnostic.make(

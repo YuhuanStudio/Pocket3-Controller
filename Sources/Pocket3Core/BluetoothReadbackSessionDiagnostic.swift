@@ -198,6 +198,31 @@ public struct BluetoothReadbackDiagnosticEntry: Codable, Sendable,
     }
 }
 
+/// Counts every per-property result without collapsing a partial read into a
+/// false all-good report. The legacy `outcome` remains the conservative
+/// aggregate gate; this summary makes successful properties visible when a
+/// different property times out.
+public struct BluetoothReadbackDiagnosticSummary: Codable, Sendable,
+    Equatable {
+    public let total: Int
+    public let submitted: Int
+    public let readback: Int
+    public let noReply: Int
+    public let wrongEnvelope: Int
+    public let noRoute: Int
+
+    init(entries: [BluetoothReadbackDiagnosticEntry]) {
+        total = entries.count
+        submitted = entries.count(where: { $0.submitted })
+        readback = entries.count(where: { $0.outcome == .readback })
+        noReply = entries.count(where: { $0.outcome == .noReply })
+        wrongEnvelope = entries.count(where: { $0.outcome == .wrongEnvelope })
+        noRoute = entries.count(where: { $0.outcome == .noRoute })
+    }
+
+    public var complete: Bool { total > 0 && readback == total }
+}
+
 public struct BluetoothReadbackSessionDiagnosticReport: Codable, Sendable,
     Equatable {
     public static let currentVersion = 1
@@ -209,6 +234,9 @@ public struct BluetoothReadbackSessionDiagnosticReport: Codable, Sendable,
     public let routeAvailable: Bool
     public let nativeRouteAvailable: Bool
     public let entries: [BluetoothReadbackDiagnosticEntry]
+    /// Optional for decoding reports written before Phase26 added counts.
+    /// New reports always populate it.
+    public let summary: BluetoothReadbackDiagnosticSummary?
     public let outcome: BluetoothReadbackDiagnosticOutcome
     public let failureCode: String?
     public let bounded: Bool
@@ -226,6 +254,7 @@ public struct BluetoothReadbackSessionDiagnosticReport: Codable, Sendable,
         self.routeAvailable = routeAvailable
         self.nativeRouteAvailable = nativeRouteAvailable
         self.entries = entries
+        summary = BluetoothReadbackDiagnosticSummary(entries: entries)
         outcome = Self.aggregate(entries)
         failureCode = outcome == .readback ? nil :
             "bluetooth_readback_\(outcome.rawValue)"
@@ -293,7 +322,7 @@ public enum BluetoothReadbackSessionDiagnostic {
             return [entry(path: .settings, key: "route", request: request,
                           outcome: .noRoute, reason: "paired_settings_route_unavailable")]
         }
-        return CameraSettingsProperty.allCases.map { property in
+        return BluetoothCameraSettingsReadPlan.orderedProperties.map { property in
             guard let query = queries.last(where: { $0.property == property }) else {
                 return entry(path: .settings, key: property.rawValue,
                              request: request, outcome: .noReply,
@@ -309,11 +338,12 @@ public enum BluetoothReadbackSessionDiagnostic {
     ) -> BluetoothReadbackDiagnosticEntry {
         let sessionMatches = query.binding.sessionID ==
             "ble:\(request.expectedSessionID.uuidString)"
+        let malformedProperty = query.propertyReceived && query.observed == nil
         let wrongEnvelope = (query.wrongEnvelopeCount ?? 0) > 0 ||
             (query.wrongPropertyCount ?? 0) > 0 ||
             (query.wrongSequenceCount ?? 0) > 0 ||
             (query.foreignSessionNotificationCount ?? 0) > 0 ||
-            !sessionMatches
+            !sessionMatches || malformedProperty
         let readback = query.propertyReceived && query.observed != nil &&
             sessionMatches
         let outcome: BluetoothReadbackDiagnosticOutcome
@@ -321,6 +351,7 @@ public enum BluetoothReadbackSessionDiagnostic {
         if wrongEnvelope {
             outcome = .wrongEnvelope
             reason = !sessionMatches ? "query_session_mismatch" :
+                malformedProperty ? "unparseable_property_notification" :
                 "rejected_notification_envelope"
         } else if readback {
             outcome = .readback
