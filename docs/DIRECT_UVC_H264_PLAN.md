@@ -34,6 +34,16 @@ sequence mismatch 不會送後續 request，也不會 retry。成功結果只有
 `admitted_for_bulk_read`，`streamReady` 仍為 false，因為本階段不讀 pipe、不改
 alternate setting、不做 ownership 或硬體操作。
 
+Phase35 新增 `DirectUVCH264BulkReader` production core：它只能由已完成
+negotiation 的 `DirectUVCBulkReaderBinding` 建立，binding 同時固定 owner UUID、
+generation、interface 1 與 bulk-IN `0x82` admission。每次 reader 呼叫只對
+injectable bulk-IN adapter 發出一次 bounded read；short/error/空 transfer、UVC
+ERR／格式錯誤、未完成 EOF、H.264 parse error、取消或 owner/generation 變更都
+進入 terminal state，沒有 retry。成功 completion 先經既有
+`UVCAccessUnitAssembler`，再經 `H264AccessUnitNormalizer`；可回報 parameter-set /
+IDR readiness，但仍不包含 USB pipe backend、seize、alternate-setting 或真機
+成功宣稱。
+
 ## Payload、NAL與VideoToolbox
 
 每次bulk completion視為一個UVC payload。header byte0是長度、byte1是flags；依旗標解析PTS 4 bytes與SCR 6 bytes。ERR、header錯誤、detach或accumulator overflow會丟棄access unit。EOF完成frame；FID翻轉時，即使前一frame缺EOF，也只發布非空且有效的前一單元。不在H.264 payload任意搜尋第二個UVC header。
