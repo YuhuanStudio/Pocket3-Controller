@@ -35,7 +35,7 @@ public enum NativeActiveTrackObservationWindowLifecycleError: Error,
         case .invalidWindow:
             "ActiveTrack observation window must be between 0 and 20 seconds"
         case .markerRequired:
-            "marker requires state and an absolute monotonic timestamp"
+            "marker requires a valid state and optional monotonic timestamp"
         case .markerNotAllowed:
             "state and timestamp are valid only for marker"
         case .markerOutsideWindow:
@@ -66,7 +66,8 @@ public struct NativeActiveTrackObservationWindowLifecycleRequest: Codable,
     public let peripheralID: UUID
     public let windowSeconds: TimeInterval?
     public let markerState: NativeActiveTrackOperatorMarkerState?
-    /// Absolute host monotonic uptime, as returned by start status.
+    /// Optional absolute host monotonic uptime. When omitted, the App route
+    /// stamps the marker at IPC receipt, so timings need not be predeclared.
     public let markerUptime: TimeInterval?
 
     public init(
@@ -89,9 +90,8 @@ public struct NativeActiveTrackObservationWindowLifecycleRequest: Codable,
                 }
             }
         case .marker:
-            guard windowSeconds == nil,
-                  let markerState, let markerUptime,
-                  markerUptime.isFinite else {
+            guard windowSeconds == nil, let markerState,
+                  markerUptime.map({ $0.isFinite }) ?? true else {
                 throw NativeActiveTrackObservationWindowLifecycleError.markerRequired
             }
             _ = markerState
@@ -126,6 +126,10 @@ public struct NativeActiveTrackObservationWindowLifecycleRequest: Codable,
         let markerState = fields["markerState"]?.string.flatMap(
             NativeActiveTrackOperatorMarkerState.init(rawValue:))
         let markerUptime = fields["markerUptime"]?.number
+        guard fields["windowSeconds"] == nil || windowSeconds != nil,
+              fields["markerUptime"] == nil || markerUptime != nil else {
+            throw NativeActiveTrackObservationWindowLifecycleError.invalidArguments
+        }
         guard fields["markerState"]?.string == nil || markerState != nil else {
             throw NativeActiveTrackObservationWindowLifecycleError.invalidArguments
         }
@@ -201,6 +205,65 @@ public enum NativeActiveTrackObservationWindowLifecyclePhase: String,
     case failed
 }
 
+/// Compact operator-facing status derived from the full lifecycle snapshot.
+/// It makes the next legal marker and the evidence counts visible without
+/// requiring an operator to inspect raw envelopes or predeclare timings.
+public struct NativeActiveTrackObservationWindowStatusProjection: Codable,
+    Sendable, Equatable {
+    public static let requiredMarkerCount = 3
+    public static let requiredMarkerStates =
+        NativeActiveTrackObservationWindowRequest.requiredMarkerStates
+
+    public let phase: NativeActiveTrackObservationWindowLifecyclePhase
+    public let routeAvailable: Bool
+    public let baselineCaptured: Bool
+    public let exactSessionID: UUID
+    public let peripheralID: UUID
+    public let markerCount: Int
+    public let nextMarkerState: NativeActiveTrackOperatorMarkerState?
+    public let recordingActive: Bool
+    public let rawEventCount: Int
+    public let a5EventCount: Int
+    public let a6EventCount: Int
+    public let a89EventCount: Int
+    public let cameraStatusEventCount: Int
+    public let observationOutcome: NativeActiveTrackObservationWindowOutcome?
+    public let observationCompleted: Bool
+    public let failureCode: String?
+
+    fileprivate init(
+        phase: NativeActiveTrackObservationWindowLifecyclePhase,
+        route: NativeActiveTrackObservationWindowRoute,
+        baseline: NativeActiveTrackObservationBaseline?,
+        sessionID: UUID,
+        peripheralID: UUID,
+        markers: [NativeActiveTrackOperatorMarker],
+        recording: BluetoothCameraEventRecording?,
+        observation: NativeActiveTrackObservationWindowResult?,
+        failureCode: String?
+    ) {
+        self.phase = phase
+        self.routeAvailable = route.isAvailable
+        self.baselineCaptured = baseline != nil
+        self.exactSessionID = sessionID
+        self.peripheralID = peripheralID
+        self.markerCount = markers.count
+        self.nextMarkerState = markers.count < Self.requiredMarkerStates.count
+            ? Self.requiredMarkerStates[markers.count] : nil
+        self.recordingActive = recording?.end == nil &&
+            (phase == .armed || phase == .observing)
+        let events = recording?.events ?? observation?.rawEvents ?? []
+        self.rawEventCount = events.count
+        self.a5EventCount = events.filter { $0.commandSet == 0x02 && $0.commandID == 0xA5 }.count
+        self.a6EventCount = events.filter { $0.commandSet == 0x02 && $0.commandID == 0xA6 }.count
+        self.a89EventCount = events.filter { $0.commandSet == 0x02 && $0.commandID == 0x89 }.count
+        self.cameraStatusEventCount = events.filter { $0.commandSet == 0x02 && $0.commandID == 0x80 }.count
+        self.observationOutcome = observation?.outcome
+        self.observationCompleted = observation?.completed == true
+        self.failureCode = failureCode ?? observation?.failureCode
+    }
+}
+
 /// Snapshot returned by each lifecycle call. The recording is the existing
 /// bounded passive recorder snapshot; it contains no credentials, images or
 /// replayable command payload.
@@ -219,6 +282,7 @@ public struct NativeActiveTrackObservationWindowLifecycleStatus: Codable,
     public let markers: [NativeActiveTrackOperatorMarker]
     public let recording: BluetoothCameraEventRecording?
     public let observation: NativeActiveTrackObservationWindowResult?
+    public let projection: NativeActiveTrackObservationWindowStatusProjection
     public let failureCode: String?
 
     public var markerCount: Int { markers.count }
@@ -252,6 +316,11 @@ public struct NativeActiveTrackObservationWindowLifecycleStatus: Codable,
         self.markers = Array(markers.prefix(3))
         self.recording = recording
         self.observation = observation
+        self.projection = NativeActiveTrackObservationWindowStatusProjection(
+            phase: phase, route: route, baseline: baseline,
+            sessionID: expectedSessionID, peripheralID: peripheralID,
+            markers: self.markers, recording: recording,
+            observation: observation, failureCode: failureCode)
         self.failureCode = failureCode
     }
 }
@@ -327,6 +396,20 @@ public struct NativeActiveTrackObservationWindowLifecycleCoordinator: Sendable {
         markers.append(try NativeActiveTrackOperatorMarker(
             state: state, offsetSeconds: offset))
         phase = .observing
+    }
+
+    /// Fences the lifecycle when the selected BLE route changes. No recorder
+    /// cleanup is performed here; the discovery owner remains responsible for
+    /// finishing or cancelling its passive operation.
+    public mutating func observeRoute(
+        _ route: NativeActiveTrackObservationWindowRoute
+    ) {
+        guard !route.isAvailable else { return }
+        self.route = route
+        if phase == .armed || phase == .observing {
+            phase = .unavailableRoute
+            failureCode = route.code ?? "active_track_observation_route_unavailable"
+        }
     }
 
     public func update(

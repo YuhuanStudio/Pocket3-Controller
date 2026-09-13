@@ -65,6 +65,24 @@ struct NativeActiveTrackObservationLifecycleTests {
         #expect(marker.markerState == .off && marker.markerUptime == 11)
         #expect(try NativeActiveTrackObservationWindowLifecycleRequest(
             arguments: marker.arguments) == marker)
+        let receiptStamped = try NativeActiveTrackObservationWindowLifecycleRequest(
+            cliArguments: [
+                "--action", "marker", "--session", session.uuidString,
+                "--peripheral", peer.uuidString, "--state", "on"
+            ])
+        #expect(receiptStamped.markerState == .on &&
+            receiptStamped.markerUptime == nil)
+        #expect(IPCClient.timeoutSeconds(
+            for: NativeActiveTrackObservationWindowLifecycleRequest.operation) == 120)
+        let envelope = ServiceRequest(
+            token: "test-token",
+            operation: NativeActiveTrackObservationWindowLifecycleRequest.operation,
+            arguments: start.arguments)
+        let decodedEnvelope = try JSONValue.encode(envelope)
+        #expect(decodedEnvelope["operation"].string ==
+            NativeActiveTrackObservationWindowLifecycleRequest.operation)
+        #expect(try NativeActiveTrackObservationWindowLifecycleRequest(
+            arguments: decodedEnvelope["arguments"]) == start)
         #expect(throws: BridgeFailure.self) {
             try NativeActiveTrackObservationWindowLifecycleRequest(
                 cliArguments: [
@@ -90,6 +108,10 @@ struct NativeActiveTrackObservationLifecycleTests {
             baseline: try baseline(), startedUptime: 10)
         try coordinator.mark(try markerRequest(.off, at: 11))
         #expect(coordinator.markers.count == 1)
+        let active = coordinator.update(
+            recording: recording(end: nil), action: .status)
+        #expect(active.projection.recordingActive)
+        #expect(active.projection.nextMarkerState == .on)
         #expect(throws: NativeActiveTrackObservationWindowLifecycleError.markerSequence) {
             try coordinator.mark(try markerRequest(.off, at: 11.5))
         }
@@ -122,6 +144,14 @@ struct NativeActiveTrackObservationLifecycleTests {
         #expect(status.observation?.outcome == .noEvents)
         #expect(status.observation?.completed == true)
         #expect(status.recordingActive == false)
+        #expect(status.projection.baselineCaptured)
+        #expect(status.projection.markerCount == 3)
+        #expect(status.projection.nextMarkerState == nil)
+        #expect(status.projection.observationOutcome == .noEvents)
+        #expect(status.projection.observationCompleted)
+        let encoded = try JSONValue.encode(status)
+        #expect(encoded["projection"]["nextMarkerState"].string == nil)
+        #expect(encoded["projection"]["observationOutcome"].string == "noEvents")
     }
 
     @Test func cancelKeepsPartialMarkersAndDoesNotInventCompletion() throws {
