@@ -1,0 +1,47 @@
+{
+  "acknowledgmentReceived" : false,
+  "evidence" : "Kaze@341a35de18493ff61f97c93b8b10161a7512aa36 one 00/99 subscription and local Pocket 3 cam_expo_param schema; same BLE session/peer; 00/99/06 notification only; no setter or follow-up GET",
+  "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+  "expectedSessionID" : "9386318D-B0DB-448C-8857-7CA83316208C",
+  "followUpGetIssued" : false,
+  "notificationReceived" : true,
+  "notificationSequence" : 16322,
+  "notificationTransactionID" : 13153,
+  "observedBinding" : {
+    "generation" : 0,
+    "sessionID" : "ble:9386318D-B0DB-448C-8857-7CA83316208C"
+  },
+  "operation" : "validation-wireless-single-property-readback",
+  "outcome" : "wrong_envelope",
+  "property" : "cam_expo_param",
+  "propertyName" : "cam_expo_param",
+  "querySequence" : 53994,
+  "rawValue" : "AAAAAAAAEAEAAAAJAsgAEK4BAAAygAAAAAAAAGQAAAAB2AACZAAAAAEBAAA=",
+  "rawValueLength" : 44,
+  "rawValueTruncated" : false,
+  "readbackSource" : "00/99/06_notification",
+  "reason" : "rejected_named_property_notification",
+  "setterIssued" : false,
+  "settingValue" : {
+    "autoEV" : {
+      "thirdStops" : 0
+    }
+  },
+  "submitted" : true,
+  "subscriptionCount" : 1,
+  "subscriptionTransactionID" : 4001693137,
+  "terminalStep" : "complete",
+  "typedValue" : {
+    "exposure" : {
+      "_0" : {
+        "effectiveISO" : 430,
+        "evRaw" : 16,
+        "evThirdStops" : 0,
+        "exposureMode" : 1,
+        "exposureModeRaw" : 1,
+        "raw" : "AAAAAAAAEAEAAAAJAsgAEK4BAAAygAAAAAAAAGQAAAAB2AACZAAAAAEBAAA="
+      }
+    }
+  },
+  "version" : 1
+}

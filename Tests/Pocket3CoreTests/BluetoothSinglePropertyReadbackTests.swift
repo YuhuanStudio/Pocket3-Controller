@@ -284,4 +284,29 @@ struct BluetoothSinglePropertyReadbackTests {
         #expect(sessionMismatch.reason == "query_session_mismatch")
         #expect(sessionMismatch.observedBinding == otherBinding)
     }
+
+    @Test func unrelatedPushDoesNotInvalidateLaterMatchingTypedReadback() throws {
+        var state = try query(.exposure)
+        try state.submitted(at: 0.01)
+        state.receive(
+            try packet(payload: propertyPayload(
+                name: "cam_lens_state", transaction: 6,
+                value: Data(repeating: 0, count: 47))),
+            characteristic: "FFF4", binding: binding, at: 0.05)
+        let exposure = hex(
+            "00003c80000013010000000702c80010400600003c8000000000000064000000016501086400000001010000")
+        state.receive(
+            try packet(sequence: 10, payload: propertyPayload(
+                name: "cam_expo_param", transaction: 7,
+                value: exposure)),
+            characteristic: "FFF4", binding: binding, at: 0.10)
+        let queryResult = state.finish(at: 2.1)
+        #expect((queryResult.wrongPropertyCount ?? 0) == 1)
+        let report = BluetoothSinglePropertyReadbackProbe.report(
+            request: try request(.exposure), query: queryResult)
+        #expect(report.notificationReceived)
+        #expect(report.typedValue?.property == .exposure)
+        #expect(report.outcome == .readback)
+        #expect(report.reason == "matching_named_property_notification")
+    }
 }

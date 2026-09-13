@@ -1,0 +1,44 @@
+{
+  "acknowledgmentReceived" : false,
+  "evidence" : "Kaze@341a35de18493ff61f97c93b8b10161a7512aa36 one 00/99 subscription and local Pocket 3 cam_lens_state schema; same BLE session/peer; 00/99/06 notification only; no setter or follow-up GET",
+  "expectedPeripheralID" : "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+  "expectedSessionID" : "9386318D-B0DB-448C-8857-7CA83316208C",
+  "followUpGetIssued" : false,
+  "notificationReceived" : true,
+  "notificationSequence" : 16279,
+  "notificationTransactionID" : 13111,
+  "observedBinding" : {
+    "generation" : 0,
+    "sessionID" : "ble:9386318D-B0DB-448C-8857-7CA83316208C"
+  },
+  "operation" : "validation-wireless-single-property-readback",
+  "outcome" : "readback",
+  "property" : "cam_lens_state",
+  "propertyName" : "cam_lens_state",
+  "querySequence" : 53993,
+  "rawValue" : "sgD//z4A//8+ANkAZAPZAAAABxIHEiwCfgZGBwEAAAAAAAAAAAAArAAAAKwAAAA=",
+  "rawValueLength" : 47,
+  "rawValueTruncated" : false,
+  "readbackSource" : "00/99/06_notification",
+  "reason" : "matching_named_property_notification",
+  "setterIssued" : false,
+  "settingValue" : {
+    "focus" : {
+      "_0" : 2
+    }
+  },
+  "submitted" : true,
+  "subscriptionCount" : 1,
+  "subscriptionTransactionID" : 253870243,
+  "terminalStep" : "complete",
+  "typedValue" : {
+    "lensState" : {
+      "_0" : {
+        "focusMode" : 2,
+        "focusModeRaw" : 178,
+        "raw" : "sgD//z4A//8+ANkAZAPZAAAABxIHEiwCfgZGBwEAAAAAAAAAAAAArAAAAKwAAAA="
+      }
+    }
+  },
+  "version" : 1
+}

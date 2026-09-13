@@ -424,6 +424,8 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 同輪產品`host-hevc` lifecycle在1080p30 BGRA preview上explicit start，1秒status為29個hvc1 samples、verified、1筆自有bounded backpressure drop；Stop後共30 samples、phase stopped、sink detached。BGRA preview共存，沒有automatic fallback、USB wire codec claim、影像或payload持久化。[start](../artifacts/hardware-complete-2026-09-13/host-hevc-product-start.json)、[status](../artifacts/hardware-complete-2026-09-13/host-hevc-product-status.json)、[stop](../artifacts/hardware-complete-2026-09-13/host-hevc-product-stop.json)
 
+第28批加入每項subscription前最多0.5秒readiness wait後，11項settings reader全部產生結果：9項typed readback，只有`camcap_video_codec`與`camcap_video_format`為ACK-only timeout，且無queryFailures。單一Lens probe保留47-byte raw並讀到focus mode2/raw178；Exposure probe保留44-byte raw並解析Auto、EV0、effective ISO430。同窗其他named-property push不再否定requested typed readback；沒有GET、setter或Wi-Fi。[9/11](../artifacts/hardware-complete-2026-09-13/read-settings-9-of-11.json)、[Lens](../artifacts/hardware-complete-2026-09-13/lens-readback-live.json)、[Exposure基線](../artifacts/hardware-complete-2026-09-13/exposure-readback-precedence-baseline.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

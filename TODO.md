@@ -58,7 +58,7 @@
 - [x] 第二十五批新增明確`host-hevc`產品輸出服務、單一`cam_video_param_v2` subscription→notification readback，以及developer Roll moving-stop/restore/reconnect驗收route。Release gate共972項通過（Core811、Intelligence44、Evaluation1、App110、XCTest6）；實機後續確認Roll session解鎖與video parameter readback均成功。
 - [x] 第二十六批將Roll發布admission限制為Pocket3 VID/PID、UVC1.00與已驗證−30…30/step1/default0 profile；settings reader改為11項獨立subscription並在單項失敗後繼續；新增被動ActiveTrack off→on→off marker window。Release gate共986項通過（Core823、Intelligence44、Evaluation1、App112、XCTest6）。
 - [x] 第二十七批補齊settings preflight failure逐項證據與空plan語意；ActiveTrack新增互動式start/mark/status/finish/cancel lifecycle；`host-hevc`加入明確本機產品start/status/stop服務與capability，保持opt-in/no-fallback/no-wire-claim。Release gate共992項通過（Core829、Intelligence44、Evaluation1、App112、XCTest6）。
-- [x] 第二十八批每次BLE property subscription前bounded等待write-without-response readiness且只送一次；ActiveTrack marker可由App以IPC receipt monotonic time即時戳記；新增`cam_lens_state`／`cam_expo_param`單一唯讀probe。Release gate共998項通過（Core835、Intelligence44、Evaluation1、App112、XCTest6）。
+- [x] 第二十八批每次BLE property subscription前bounded等待write-without-response readiness且只送一次；ActiveTrack marker可由App以IPC receipt monotonic time即時戳記；新增`cam_lens_state`／`cam_expo_param`單一唯讀probe，並允許匹配typed readback在同窗其他property push存在時成立。Release gate共999項通過（Core836、Intelligence44、Evaluation1、App112、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
@@ -256,7 +256,7 @@ build 4 App SHA-256：`f6e3207c34510ae58ce808d20f3e7e58659fd431637bc34ffc8ac6428
 ## 其他本輪功能與外部發布條件
 
 - [x] DUML CRC／fragment／ACK／session 邊界、BLE 配對及原生 UDP codec 已實作；Wi-Fi join／datalink 保留研究，不是主流程或可用控制的前提。
-- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第25批單一`cam_video_param_v2` probe以一次00/99 subscription取得ACK sequence45492與00/99/06 notification sequence623，typed resolution10／FPS3／compression1，證明BLE named-property readback可用且不需猜測GET。第26–28批將`validation-wireless-read-settings`改為`cam_video_param_v2`優先、逐property bounded query，單項無回覆、preflight failure或readiness timeout仍繼續並保留`queryResults`／`queryFailures`；未配對空計畫不再回報complete，writers仍未驗證。[成功readback](artifacts/hardware-complete-2026-09-13/video-parameters-readback-live.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
+- [ ] 曝光、白平衡、色彩、機內拍攝、音訊等機身設定逐項接入並驗證；第28批11項獨立reader實機取得9項typed readback，僅`camcap_video_codec`／`camcap_video_format`為ACK-only timeout，無preflight failure。Lens 47-byte raw讀到focus mode2/raw178；Exposure 44-byte raw解析Auto、EV0、effective ISO430。BLE讀取面已大致成立，writers仍須逐項ACK＋matching readback驗證。[9/11](artifacts/hardware-complete-2026-09-13/read-settings-9-of-11.json)、[Lens](artifacts/hardware-complete-2026-09-13/lens-readback-live.json)、[設定協議](docs/CAMERA_SETTINGS_PROTOCOL.md)
 - [ ] 追蹤、素材、配件與其他機身選項依可靠協議證據擴充。
 - [x] 本專案正式appcast／公鑰／archive位置及公開下載／簽章核對已完成，見上節Beta發布紀錄；不再列為待配置。
 - [ ] 以已發布beta1實際更新至下一個可發布版本，驗證安裝／替換／重啟與偏好、相機／IPC清理；signed feed有效及公開下載成功不代替這一步。

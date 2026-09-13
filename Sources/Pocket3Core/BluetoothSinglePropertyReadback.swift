@@ -215,7 +215,14 @@ public struct BluetoothSinglePropertyReadbackReport: Codable, Sendable,
             (query.wrongSequenceCount ?? 0) > 0 ||
             (query.foreignSessionNotificationCount ?? 0) > 0 ||
             !sessionMatches || !propertyMatches
-        if rejectedEnvelope {
+        if sessionMatches, propertyMatches,
+           query.propertyReceived, typedValue != nil {
+            // Other named properties can legitimately be pushed during the
+            // same window. Preserve their counters, but do not let unrelated
+            // traffic invalidate the requested matching typed readback.
+            outcome = .readback
+            reason = "matching_named_property_notification"
+        } else if rejectedEnvelope {
             outcome = .wrongEnvelope
             if !sessionMatches {
                 reason = "query_session_mismatch"
@@ -224,9 +231,6 @@ public struct BluetoothSinglePropertyReadbackReport: Codable, Sendable,
             } else {
                 reason = "rejected_named_property_notification"
             }
-        } else if query.propertyReceived, typedValue != nil {
-            outcome = .readback
-            reason = "matching_named_property_notification"
         } else if query.propertyReceived {
             outcome = .wrongEnvelope
             reason = "named_property_value_short_or_unparseable"
