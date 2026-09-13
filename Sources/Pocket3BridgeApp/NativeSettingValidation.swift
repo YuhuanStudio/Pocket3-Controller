@@ -47,7 +47,7 @@ extension AppModel {
         }
     }
 
-    private func nativeSettingBaseline(
+    func nativeSettingBaseline(
         _ action: NativeSettingValidationOperation,
         observations: [CameraSettingsObservation],
         sessionID: UUID, generation: UInt64,

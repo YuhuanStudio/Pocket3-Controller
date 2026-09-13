@@ -18,3 +18,13 @@ is attempted on completion, cancellation or connection change.
 The owner does not create a second transport, associate with Wi-Fi, persist
 credentials, or save images. Hardware execution remains an explicit caller
 choice and is not performed by tests.
+
+The developer IPC operation
+`validation-wireless-native-gimbal-acceptance` and the matching CLI command
+consume the `WirelessGimbalModel` station link. They require the BLE session,
+peer, station generation, native binding ID and native generation supplied by
+the caller to match the current station result. Omitting `--execute` returns
+the bounded plan without an owner; `--execute` gets the existing station owner
+only after those fences and the 07/07 identity evidence pass. No second socket,
+Wi-Fi association, credential field or image data is involved. Cancellation or
+a connection change returns typed partial evidence after one fail-stop.

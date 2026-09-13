@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Pocket 3 writer support report")
 struct Pocket3WriterSupportReportTests {
-    @Test func reportCoversTheSixWriterFamiliesWithoutHardwareAccess() throws {
+    @Test func reportCoversWriterFamiliesWithoutHardwareAccess() throws {
         let report = Pocket3WriterSupportReport.current
         #expect(report.version == Pocket3WriterSupportReport.currentVersion)
         #expect(report.operation == Pocket3WriterSupportReport.operation)
@@ -12,13 +12,13 @@ struct Pocket3WriterSupportReportTests {
         #expect(report.localTransportDetail.contains("CoreBluetooth"))
         #expect(report.localTransportDetail.contains("FFF5"))
         #expect(report.entries.map(\.id) == [
-            .whiteBalance, .focusMode, .colorProfile, .exposure,
+            .whiteBalance, .focusMode, .colorProfile, .productShowcase, .exposure,
             .bodyRecording, .audioDSP
         ])
         #expect(!report.hardwareAccessed)
         #expect(!report.executeAllowed)
         #expect(report.candidateCount == 4)
-        #expect(report.blockedCount == 2)
+        #expect(report.blockedCount == 3)
         #expect(report.unsupportedCount == 0)
         #expect(report.verifiedCount == 0)
         #expect(report.entries.allSatisfy { !$0.executionAllowed })

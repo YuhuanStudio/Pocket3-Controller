@@ -1,7 +1,7 @@
 import Foundation
 
 /// The setting-writer evidence matrix shared by developer diagnostics and the
-/// command line.  It deliberately describes product support separately from
+/// command line. It deliberately describes product support separately from
 /// protocol shape: a known frame and a readback parser are still only a
 /// candidate until the same-session write is acknowledged and read back.
 public enum Pocket3WriterCandidateID: String, Codable, Sendable,
@@ -9,6 +9,7 @@ public enum Pocket3WriterCandidateID: String, Codable, Sendable,
     case whiteBalance = "white_balance"
     case focusMode = "focus_mode"
     case colorProfile = "color_profile"
+    case productShowcase = "product_showcase"
     case exposure
     case bodyRecording = "body_recording"
     case audioDSP = "audio_dsp"
@@ -348,7 +349,7 @@ public struct Pocket3WriterSupportReport: Codable, Sendable, Equatable {
     ]
 
     private static func makeEntries() -> [Pocket3WriterSupportEntry] {
-        [whiteBalanceEntry(), focusEntry(), colorEntry(), exposureEntry(),
+        [whiteBalanceEntry(), focusEntry(), colorEntry(), showcaseEntry(), exposureEntry(),
          bodyEntry(), audioEntry()]
     }
 
@@ -423,6 +424,33 @@ public struct Pocket3WriterSupportReport: Codable, Sendable, Equatable {
                      candidateOperation: "validation-wireless-native-setting",
                      reason: "02/42 is a reviewed candidate command, not a product-supported writer",
                      nextNote: "Use one profile transition with matching image-effect readback and explicit restore")
+    }
+
+    private static func showcaseEntry() -> Pocket3WriterSupportEntry {
+        let packets = [
+            packet(operation: "set", commandSet: 0x02, commandID: 0x8E,
+                   payloadShape: "keyed SET [01 01 pidLE 01 selector], PID 003B Product Showcase",
+                   payloadHex: "01 01 3B 00 01 01", payloadLength: 6,
+                   payloadExact: true,
+                   references: [kazeSettingsSource, localProtocolSource])
+        ]
+        let readbacks = [keyedProperty(
+            route: "02/8E keyed response", property: "product_showcase",
+            minimumBytes: 8,
+            fields: ["status[0...2]", "PID[3...4]",
+                     "declaredLength[5]", "mode[7]"],
+            observed: false,
+            references: [localProtocolSource])]
+        return entry(id: .productShowcase, protocolStatus: .exact,
+                     evidence: [.publicReverseEngineering, .softwareFixture],
+                     packets: packets, readbacks: readbacks,
+                     availability: .init(read: false, write: false,
+                         verified: false,
+                         reason: "No same-session keyed Product Showcase baseline or restore has been verified"),
+                     admission: .blockedNoVerifiedWrite,
+                     candidateOperation: "validation-wireless-native-setting",
+                     reason: "02/8E Product Showcase is a typed candidate, but the local keyed baseline and write proof remain incomplete",
+                     nextNote: "Capture one fresh keyed baseline, perform one mode transition, correlate ACK/readback, then restore")
     }
 
     private static func exposureEntry() -> Pocket3WriterSupportEntry {

@@ -54,6 +54,17 @@ pocket3 host-hevc-stop --hardware-validation
 
 快照只采集一张图片；CLI 会写入你明确提供的 `--output` 路径。可以预览不代表 App 已能录像或控制全部机身录像模式。
 
+## 原生相机设置写入器
+
+`camera_native_setting_status`（或 `pocket3 native-setting-status`）报告
+command-ready 会话，以及白平衡、对焦模式、色彩配置和 Product Showcase
+各自的写入 admission。`camera_set_native_setting` 与
+`pocket3 native-setting` 沿用现有 Station／Pocket3Datalink owner。每次写入
+都必须提供完全匹配的 session、peer、generation，并先有新鲜类型化 baseline；
+目标值必须取得一次 ACK 加 matching readback，随后再以第二次 ACK 加 matching
+readback 恢复刚才的 baseline。每项设置单独解锁，没有接受证据的候选项仍会拒绝；
+不创建第二个 transport、不重试不确定的命令，也不在普通 UI 显示控制。
+
 ## 手动云台控制
 
 按住方向按钮或拖动摇杆，移动 pan／tilt；离中心越远，要求的移动越快。松开输入、失焦或按停止都会结束手势。手动操作优先于 AI，通过 USB 位置目标控制，Mac 保留原有网络。
@@ -154,7 +165,7 @@ build22曾在真实App、无相机条件下通过Apple问答、MLX计数与定�
 
 `assistFraming`仍需要符合条件的相机控制权与能力。Debug版 `evaluate-workflow` 的模拟相机也接受相同intent，省略时同样只观察；模拟动作不是硬件证据。
 
-MCP目前有十三个基础相机工具：`camera_status`、`camera_format_inventory`、`camera_body_status`、`camera_connect`、`camera_pause`、`camera_compare_frames`、`camera_focus_status`、`camera_roll_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。`camera_connect`明确启动本机USB预览、`camera_pause`释放它；`camera_compare_frames`需要观察权限，只返回同一session两张新帧的scalar差异。`camera_focus_status`只读取 AVFoundation 的点选／自动／连续对焦能力，不发送对焦点或启动 BLE。`camera_format_inventory`列出所选相机声明的模式与输入 path，不启动采集；声明不代表已验证可串流。`camera_body_status`只返回 App 已有的 Bluetooth discovery snapshot，不扫描、配对、加入 Wi-Fi 或写入设置。`camera_roll_status`只报告 UVC Roll capability；在独立物理 moving-stop 验证通过前，刻意不提供 Roll 写入。CLI的`ask`、媒体文件分析及评测入口没有另外包装成新的MCP工具。
+MCP目前有十四个基础相机工具：`camera_status`、`camera_format_inventory`、`camera_body_status`、`camera_body_recording`、`camera_connect`、`camera_pause`、`camera_compare_frames`、`camera_focus_status`、`camera_roll_status`、`capture_frame`、`move_gimbal`、`stop_gimbal`、`camera_zoom_status`、`camera_set_zoom`。`camera_connect`明确启动本机USB预览、`camera_pause`释放它；`camera_compare_frames`需要观察权限，只返回同一session两张新帧的scalar差异。`camera_focus_status`只读取 AVFoundation 的点选／自动／连续对焦能力，不发送对焦点或启动 BLE。`camera_format_inventory`列出所选相机声明的模式与输入 path，不启动采集；声明不代表已验证可串流。`camera_body_status`只返回 App 已有的 Bluetooth discovery snapshot，不扫描、配对、加入 Wi-Fi 或写入设置。`camera_body_recording`接受普通 Video 的`start`、`stop`或一组合法`resolution`／`fps`；请传入`camera_body_status`的精确 session、peer 与 generation，默认`execute=false`只做 dry-run，只有收到 ACK 及匹配的终端状态回读才算完成；Timelapse与全景不在此产品工具内。`camera_roll_status`只报告 UVC Roll capability；在独立物理 moving-stop 验证通过前，刻意不提供 Roll 写入。CLI的`ask`、媒体文件分析及评测入口没有另外包装成新的MCP工具。
 
 MCP 缩放先取得 `camera_status.capture.sessionID`，以 `expectedSessionID` 传给 `camera_zoom_status`，再选择符合其 minimum／maximum／step 刻度的整数 `rawValue` 调用 `camera_set_zoom`。检查 `completed` 与 `verified`，再取得新帧。取消或未确认的动作不能触发自动连续重试。
 

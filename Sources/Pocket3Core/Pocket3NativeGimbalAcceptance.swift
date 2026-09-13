@@ -736,3 +736,229 @@ public final class Pocket3StationNativeGimbalOwner:
         }
     }
 }
+
+/// Credential-free IPC/CLI input for one bounded station gimbal acceptance.
+/// The station BLE session and the native LAN binding are separate fences:
+/// callers must name both, so a stale station result cannot be reused after a
+/// reconnect.  It contains no host, SSID or password.
+public struct Pocket3NativeGimbalAcceptanceValidationRequest: Codable,
+    Sendable, Equatable {
+    public static let operation =
+        "validation-wireless-native-gimbal-acceptance"
+    public static let defaultHoldSeconds: TimeInterval =
+        Pocket3NativeGimbalAcceptanceRequest.defaultHoldSeconds
+    public static let defaultPumpInterval: TimeInterval =
+        Pocket3NativeGimbalAcceptanceRequest.defaultPumpInterval
+    public static let defaultTelemetryTimeout: TimeInterval =
+        Pocket3NativeGimbalAcceptanceRequest.defaultTelemetryTimeout
+
+    public let expectedSessionID: UUID
+    public let peripheralID: UUID
+    public let stationGeneration: UInt64
+    public let nativeSessionID: String
+    public let nativeGeneration: UInt64
+    public let holdSeconds: TimeInterval
+    public let pumpInterval: TimeInterval
+    public let telemetryTimeout: TimeInterval
+    public let execute: Bool
+
+    public init(expectedSessionID: UUID, peripheralID: UUID,
+                stationGeneration: UInt64, nativeSessionID: String,
+                nativeGeneration: UInt64,
+                holdSeconds: TimeInterval = Self.defaultHoldSeconds,
+                pumpInterval: TimeInterval = Self.defaultPumpInterval,
+                telemetryTimeout: TimeInterval = Self.defaultTelemetryTimeout,
+                execute: Bool = false) throws {
+        guard stationGeneration != 0,
+              nativeGeneration != 0,
+              !nativeSessionID.isEmpty,
+              nativeSessionID.utf8.count <= 128,
+              !nativeSessionID.unicodeScalars.contains(where: {
+                  CharacterSet.controlCharacters.contains($0)
+              }),
+              holdSeconds.isFinite,
+              (0.1...2).contains(holdSeconds),
+              pumpInterval.isFinite,
+              (0.05...0.2).contains(pumpInterval),
+              telemetryTimeout.isFinite,
+              (0.2...3).contains(telemetryTimeout),
+              holdSeconds >= pumpInterval else {
+            throw Pocket3NativeGimbalAcceptanceError.invalidRequest
+        }
+        self.expectedSessionID = expectedSessionID
+        self.peripheralID = peripheralID
+        self.stationGeneration = stationGeneration
+        self.nativeSessionID = nativeSessionID
+        self.nativeGeneration = nativeGeneration
+        self.holdSeconds = holdSeconds
+        self.pumpInterval = pumpInterval
+        self.telemetryTimeout = telemetryTimeout
+        self.execute = execute
+    }
+
+    public init(arguments: JSONValue) throws {
+        guard case .object(let fields) = arguments,
+              Set(fields.keys).isSubset(of: Self.allowedKeys),
+              let sessionText = fields["expectedSessionID"]?.string,
+              let expectedSessionID = UUID(uuidString: sessionText),
+              let peripheralText = fields["peripheralID"]?.string,
+              let peripheralID = UUID(uuidString: peripheralText),
+              let stationGeneration = Self.integer(
+                  fields["stationGeneration"]),
+              let nativeSessionID = fields["nativeSessionID"]?.string,
+              let nativeGeneration = Self.integer(
+                  fields["nativeGeneration"]) else {
+            throw Pocket3NativeGimbalAcceptanceError.invalidRequest
+        }
+        let holdSeconds = try Self.number(fields["holdSeconds"],
+                                          default: Self.defaultHoldSeconds)
+        let pumpInterval = try Self.number(fields["pumpInterval"],
+                                           default: Self.defaultPumpInterval)
+        let telemetryTimeout = try Self.number(
+            fields["telemetryTimeout"], default: Self.defaultTelemetryTimeout)
+        let execute: Bool
+        if let value = fields["execute"] {
+            guard let parsed = value.bool else {
+                throw Pocket3NativeGimbalAcceptanceError.invalidRequest
+            }
+            execute = parsed
+        } else {
+            execute = false
+        }
+        try self.init(expectedSessionID: expectedSessionID,
+                      peripheralID: peripheralID,
+                      stationGeneration: stationGeneration,
+                      nativeSessionID: nativeSessionID,
+                      nativeGeneration: nativeGeneration,
+                      holdSeconds: holdSeconds,
+                      pumpInterval: pumpInterval,
+                      telemetryTimeout: telemetryTimeout,
+                      execute: execute)
+    }
+
+    public init(cliArguments: [String]) throws {
+        var values: [String: JSONValue] = [:]
+        let names = [
+            "--session": "expectedSessionID",
+            "--peripheral": "peripheralID",
+            "--station-generation": "stationGeneration",
+            "--native-session": "nativeSessionID",
+            "--native-generation": "nativeGeneration",
+            "--hold-seconds": "holdSeconds",
+            "--pump-interval": "pumpInterval",
+            "--telemetry-timeout": "telemetryTimeout"
+        ]
+        var index = 0
+        while index < cliArguments.count {
+            let argument = cliArguments[index]
+            if argument == "--execute" {
+                guard values["execute"] == nil else {
+                    throw BridgeFailure("usage",
+                        "Duplicate --execute for native gimbal acceptance")
+                }
+                values["execute"] = .bool(true)
+                index += 1
+                continue
+            }
+            guard let key = names[argument], index + 1 < cliArguments.count,
+                  values[key] == nil else {
+                throw BridgeFailure("usage",
+                    "Unknown, duplicate or incomplete native gimbal acceptance option")
+            }
+            let raw = cliArguments[index + 1]
+            switch key {
+            case "expectedSessionID", "peripheralID", "nativeSessionID":
+                values[key] = .string(raw)
+            default:
+                guard let number = Double(raw), number.isFinite else {
+                    throw BridgeFailure("usage",
+                        "Native gimbal acceptance numeric options must be finite")
+                }
+                values[key] = .number(number)
+            }
+            index += 2
+        }
+        do {
+            try self.init(arguments: .object(values))
+        } catch let error as Pocket3NativeGimbalAcceptanceError {
+            throw BridgeFailure("invalid_native_gimbal_acceptance_request",
+                String(describing: error))
+        }
+    }
+
+    public var arguments: JSONValue {
+        .object([
+            "expectedSessionID": .string(expectedSessionID.uuidString),
+            "peripheralID": .string(peripheralID.uuidString),
+            "stationGeneration": .number(Double(stationGeneration)),
+            "nativeSessionID": .string(nativeSessionID),
+            "nativeGeneration": .number(Double(nativeGeneration)),
+            "holdSeconds": .number(holdSeconds),
+            "pumpInterval": .number(pumpInterval),
+            "telemetryTimeout": .number(telemetryTimeout),
+            "execute": .bool(execute)
+        ])
+    }
+
+    public static let schema: JSONValue = .object([
+        "type": .string("object"),
+        "properties": .object([
+            "expectedSessionID": .object(["type": .string("string")]),
+            "peripheralID": .object(["type": .string("string")]),
+            "stationGeneration": .object([
+                "type": .string("integer"), "minimum": .number(1)]),
+            "nativeSessionID": .object([
+                "type": .string("string"), "minLength": .number(1)]),
+            "nativeGeneration": .object([
+                "type": .string("integer"), "minimum": .number(1)]),
+            "holdSeconds": .object([
+                "type": .string("number"), "minimum": .number(0.1),
+                "maximum": .number(2)]),
+            "pumpInterval": .object([
+                "type": .string("number"), "minimum": .number(0.05),
+                "maximum": .number(0.2)]),
+            "telemetryTimeout": .object([
+                "type": .string("number"), "minimum": .number(0.2),
+                "maximum": .number(3)]),
+            "execute": .object(["type": .string("boolean")])
+        ]),
+        "required": .array([
+            .string("expectedSessionID"), .string("peripheralID"),
+            .string("stationGeneration"), .string("nativeSessionID"),
+            .string("nativeGeneration")
+        ]),
+        "additionalProperties": .bool(false)
+    ])
+
+    public init(from decoder: Decoder) throws {
+        try self.init(arguments: JSONValue(from: decoder))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        try arguments.encode(to: encoder)
+    }
+
+    private static let allowedKeys: Set<String> = [
+        "expectedSessionID", "peripheralID", "stationGeneration",
+        "nativeSessionID", "nativeGeneration", "holdSeconds",
+        "pumpInterval", "telemetryTimeout", "execute"
+    ]
+
+    private static func integer(_ value: JSONValue?) -> UInt64? {
+        guard let number = value?.number,
+              number.isFinite,
+              number.rounded() == number,
+              number >= 1,
+              number < 18_446_744_073_709_551_616 else { return nil }
+        return UInt64(exactly: number)
+    }
+
+    private static func number(_ value: JSONValue?, default fallback: Double)
+        throws -> Double {
+        guard let value else { return fallback }
+        guard let number = value.number else {
+            throw Pocket3NativeGimbalAcceptanceError.invalidRequest
+        }
+        return number
+    }
+}

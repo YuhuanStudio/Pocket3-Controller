@@ -220,6 +220,8 @@ final class AppModel {
                     return try await AppModel.shared.handleUSBRollAcceptance(request)
                 case NativeCaptureFormatValidationRequest.operation:
                     return try await AppModel.shared.handleNativeCaptureFormatValidation(request)
+                case CameraBodyRecordingRequest.operation:
+                    return try await AppModel.shared.handleCameraBodyRecording(request)
                 case BluetoothReadbackSessionDiagnosticRequest.operation:
                     return try await AppModel.shared.handleReadbackDiagnostic(request)
                 case "validation-manual-control": return try await AppModel.shared.handleManualControlValidation(request)
@@ -256,10 +258,12 @@ final class AppModel {
                         if let wirelessStorage = self.wirelessStorage {
                             return .object(["initialized": .bool(true),
                                 "discovery": try .encode(wirelessStorage.discovery),
-                                "capabilities": try .encode(wirelessStorage.capabilityGraph)])
+                                "capabilities": try .encode(wirelessStorage.capabilityGraph),
+                                "nativeReadiness": try .encode(wirelessStorage.nativeSessionStatus)])
                         }
                         return .object(["initialized": .bool(false), "discovery": .null,
-                            "capabilities": try .encode(Pocket3CapabilityGraph())])
+                            "capabilities": try .encode(Pocket3CapabilityGraph()),
+                            "nativeReadiness": .null])
                     }
                     return ServiceReply(id: request.id, result: bodyStatus)
                 case "validation-focus-status", "validation-focus-point":
@@ -273,7 +277,15 @@ final class AppModel {
                         throw BridgeFailure("invalid_focus_point", "Pass normalized x and y with an active camera")
                     }
                     return ServiceReply(id: request.id, result: try .encode(try await service.capture.focus(at: CGPoint(x: x, y: y), sessionToken: token)))
-                case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, BluetoothSinglePropertyReadbackRequest.operation, BluetoothReversibleSettingCandidateRequest.operation, Pocket3WriterSupportReport.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", BluetoothCameraEventRecordingRequest.operation, NativeActiveTrackObservationWindowRequest.operation, NativeActiveTrackObservationWindowLifecycleRequest.operation, "validation-wireless-tap-focus", NativeTapFocusValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-setting", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect":
+                case MCPNativeSettingToolContract.operation,
+                     MCPNativeSettingToolContract.statusOperation:
+                    if request.operation == MCPNativeSettingToolContract.statusOperation {
+                        return ServiceReply(
+                            id: request.id,
+                            result: try await AppModel.shared.nativeSettingProductStatus())
+                    }
+                    return try await AppModel.shared.handleNativeSettingProductWrite(request)
+                case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, BluetoothSinglePropertyReadbackRequest.operation, BluetoothReversibleSettingCandidateRequest.operation, Pocket3WriterSupportReport.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", BluetoothCameraEventRecordingRequest.operation, NativeActiveTrackObservationWindowRequest.operation, NativeActiveTrackObservationWindowLifecycleRequest.operation, "validation-wireless-tap-focus", NativeTapFocusValidationRequest.operation, NativeMotionValidationRequest.operation, Pocket3NativeGimbalAcceptanceValidationRequest.operation, NativeSettingValidationRequest.operation, NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-setting", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect":
                     if request.operation == NativeActiveTrackObservationWindowLifecycleRequest.operation {
                         return try await AppModel.shared.handleActiveTrackObservationWindowLifecycle(request)
                     }
@@ -288,6 +300,9 @@ final class AppModel {
                     }
                     if request.operation == NativeMotionValidationRequest.operation {
                         return try await AppModel.shared.handleNativeMotionValidation(request)
+                    }
+                    if request.operation == Pocket3NativeGimbalAcceptanceValidationRequest.operation {
+                        return try await AppModel.shared.handleNativeGimbalAcceptanceValidation(request)
                     }
                     if request.operation == NativeSettingValidationRequest.operation {
                         return try await AppModel.shared.handleNativeSettingValidation(request)

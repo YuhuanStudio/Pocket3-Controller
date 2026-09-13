@@ -43,6 +43,7 @@ final class WirelessGimbalModel {
     }
     private(set) var presetBusy = false
     private(set) var nativeBodyValidationBusy = false
+    private(set) var nativeGimbalAcceptanceBusy = false
     var issue: String?
     private(set) var readingCameraSettings = false
     /// Last bounded property-query outcomes from the explicit paired BLE
@@ -698,8 +699,17 @@ final class WirelessGimbalModel {
     }
     private func configureControls() {
         guard datalink != nil, let scheduler, let binding else { return }
+        let availability: ContinuousGimbalAvailability
+        if presetBusy {
+            availability = .blocked(loc("Finishing camera action…"))
+        } else if nativeGimbalAcceptanceBusy {
+            availability = .blocked(loc("Native gimbal acceptance is running…"))
+        } else {
+            availability = nativeSessionStatus.isReady(for: .gimbal)
+                ? .ready : .blocked(loc("Control connection is not ready."))
+        }
         controls.configure(scheduler: scheduler, binding: binding,
-                           availability: presetBusy ? .blocked(loc("Finishing camera action…")) : nativeSessionStatus.isReady(for: .gimbal) ? .ready : .blocked(loc("Control connection is not ready.")),
+                           availability: availability,
                            prepare: { [weak self] in
                                guard let self else { throw CancellationError() }
                                self.cancelPreset()
@@ -952,6 +962,102 @@ final class WirelessGimbalModel {
         }
     }
 
+    /// Builds the acceptance request from the one station owner already held
+    /// by this model.  The LAN executor's link must be the same object as the
+    /// model's command-ready link; this prevents a validation route from
+    /// accidentally opening a second datalink or using a stale station result.
+    func nativeGimbalAcceptanceContext(
+        _ input: Pocket3NativeGimbalAcceptanceValidationRequest
+    ) async throws -> (
+        request: Pocket3NativeGimbalAcceptanceRequest,
+        owner: (any Pocket3NativeGimbalAcceptanceOwner)?) {
+        guard !connecting, !joiningNetwork, !stationConnecting,
+              !presetBusy, !nativeBodyValidationBusy,
+              nativeSessionStatus.commandReady,
+              nativeSessionStatus.sessionID == input.expectedSessionID,
+              nativeSessionStatus.peerID == input.peripheralID else {
+            throw BridgeFailure("native_gimbal_acceptance_session_changed",
+                "The requested station session or peer is no longer current")
+        }
+        guard let station = stationSessionResult,
+              station.commandReady,
+              station.phase == .commandReady,
+              station.binding.bleSessionID == input.expectedSessionID,
+              station.binding.peripheralID == input.peripheralID,
+              station.binding.generation == input.stationGeneration,
+              let lanEvidence = station.lan,
+              lanEvidence.transportReady,
+              lanEvidence.identityReplyValidated,
+              lanEvidence.identity.matches(station.binding.bleIdentity),
+              lanEvidence.identityRaw == station.binding.bleIdentity.raw else {
+            throw BridgeFailure("native_gimbal_acceptance_station_not_ready",
+                "A matching station 07/07 owner and identity are required")
+        }
+        guard let link = datalink,
+              let currentBinding = binding,
+              currentBinding.sessionID == input.nativeSessionID,
+              currentBinding.generation == input.nativeGeneration,
+              nativeStatus?.phase == .ready,
+              nativeStatus?.binding == currentBinding,
+              let stationLANExecutor,
+              let stationLink = await stationLANExecutor.connectedDatalink(
+                  for: station.binding),
+              stationLink === link else {
+            throw BridgeFailure("native_gimbal_acceptance_owner_changed",
+                "The station datalink owner or native binding changed")
+        }
+
+        let request = try Pocket3NativeGimbalAcceptanceRequest(
+            stationBinding: station.binding, lanEvidence: lanEvidence,
+            nativeBinding: currentBinding, holdSeconds: input.holdSeconds,
+            pumpInterval: input.pumpInterval,
+            telemetryTimeout: input.telemetryTimeout, execute: input.execute)
+        guard input.execute else { return (request, nil) }
+
+        // A held UI gesture owns the same scheduler/link.  Finish it before
+        // handing the link to the bounded acceptance owner; the stop is
+        // awaited so no velocity send overlaps the first acceptance frame.
+        if controls.canStop {
+            let stop = await controls.stop(reason: .cancelled)
+            if stop?.matchedLease == true, stop?.neutralSent == false {
+                throw BridgeFailure("native_gimbal_acceptance_neutral_failed",
+                    "The existing gimbal control did not reach neutral")
+            }
+        }
+        let owner = try Pocket3StationNativeGimbalOwner(
+            link: link, stationBinding: station.binding,
+            lanEvidence: lanEvidence, nativeBinding: currentBinding)
+        return (request, owner)
+    }
+
+    /// Runs one developer acceptance through the exact station owner while
+    /// serializing validation requests at the model boundary.  The busy flag
+    /// is released after cancellation or a connection failure as well, so a
+    /// later explicitly fenced request can retry only after the caller has
+    /// supplied a fresh binding.
+    func runNativeGimbalAcceptance(
+        _ input: Pocket3NativeGimbalAcceptanceValidationRequest
+    ) async throws -> Pocket3NativeGimbalAcceptanceResult {
+        guard !nativeGimbalAcceptanceBusy else {
+            throw BridgeFailure("native_gimbal_acceptance_busy",
+                "A native gimbal acceptance operation is already in flight")
+        }
+        nativeGimbalAcceptanceBusy = true
+        defer {
+            nativeGimbalAcceptanceBusy = false
+            if input.execute { configureControls() }
+        }
+        let context = try await nativeGimbalAcceptanceContext(input)
+        if input.execute {
+            controls.configure(scheduler: nil, binding: nil,
+                               availability: .blocked(
+                                   loc("Native gimbal acceptance is running…")),
+                               prepare: prepareManual)
+        }
+        return await Pocket3NativeGimbalAcceptanceExecutor(
+            owner: context.owner).run(context.request)
+    }
+
     /// Returns the same single-owner transaction boundary for native WB,
     /// focus, color and Product Showcase validation. It never creates another
     /// datalink; the setting service owns the one-request/readback policy.
@@ -1136,6 +1242,7 @@ final class WirelessGimbalModel {
                  "nativeNetworkConfiguration": try .encode(nativeNetworkConfiguration),
                  "nativeRouteStatus": try .encode(nativeRouteStatus),
                  "nativeBodyValidationBusy": .bool(nativeBodyValidationBusy),
+                 "nativeGimbalAcceptanceBusy": .bool(nativeGimbalAcceptanceBusy),
                  "capabilities": try .encode(capabilityGraph),
                  "credentialsAvailable": .bool(credentials != nil),
                  "stationPhase": .string(stationPhase.rawValue),

@@ -111,6 +111,19 @@ available throughout.
 The snapshot action captures a single image; CLI snapshots write to your explicit `--output` path.
 A preview does not imply that the app records or controls all internal recording modes.
 
+## Native camera setting writer
+
+`camera_native_setting_status` (or `pocket3 native-setting-status`) reports the
+command-ready session and per-setting admission for white balance, focus mode,
+color profile and Product Showcase. `camera_set_native_setting` and
+`pocket3 native-setting` use the existing Station/Pocket3Datalink owner. A
+write requires exact session, peer and generation IDs, a fresh typed baseline,
+one ACK plus matching readback for the target, and a second ACK plus matching
+readback that restores the captured baseline. Each setting is unlocked
+independently; candidates without accepted evidence remain rejected. The
+writer does not create another transport, retry an uncertain command, or
+expose a regular UI control.
+
 ## Manual gimbal control
 
 Hold a direction button or drag the joystick to move pan or tilt. Drag farther
@@ -238,7 +251,7 @@ In the development CLI, introduced in build 22, `ask --intent observe|assistFram
 
 `assistFraming` still needs eligible camera-control permission and capabilities. Debug `evaluate-workflow` accepts the same intent for its simulated camera; it defaults to observation too, and a simulated action is not hardware evidence.
 
-MCP exposes thirteen basic camera tools: `camera_status`, `camera_format_inventory`, `camera_body_status`, `camera_connect`, `camera_pause`, `camera_compare_frames`, `camera_focus_status`, `camera_roll_status`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. `camera_connect` starts the local USB preview explicitly; `camera_pause` releases it. `camera_compare_frames` requires observation access and returns only scalar difference metrics for two fresh frames in one session. `camera_focus_status` reads AVFoundation point/auto/continuous-focus capability without sending a focus point or starting BLE. `camera_format_inventory` lists the selected camera's advertised modes and input paths without starting capture; advertised does not mean stream-verified. `camera_body_status` returns only the App's existing Bluetooth discovery snapshot; it never scans, pairs, joins Wi-Fi, or writes camera settings. `camera_roll_status` reports UVC Roll capability only; it deliberately exposes no Roll write until independent physical moving-stop validation passes. CLI `ask`, media-file analysis and the evaluation endpoints are not new MCP wrapper tools.
+MCP exposes fourteen basic camera tools: `camera_status`, `camera_format_inventory`, `camera_body_status`, `camera_body_recording`, `camera_connect`, `camera_pause`, `camera_compare_frames`, `camera_focus_status`, `camera_roll_status`, `capture_frame`, `move_gimbal`, `stop_gimbal`, `camera_zoom_status`, and `camera_set_zoom`. `camera_connect` starts the local USB preview explicitly; `camera_pause` releases it. `camera_compare_frames` requires observation access and returns only scalar difference metrics for two fresh frames in one session. `camera_focus_status` reads AVFoundation point/auto/continuous-focus capability without sending a focus point or starting BLE. `camera_format_inventory` lists the selected camera's advertised modes and input paths without starting capture; advertised does not mean stream-verified. `camera_body_status` returns only the App's existing Bluetooth discovery snapshot; it never scans, pairs, joins Wi-Fi, or writes camera settings. `camera_body_recording` accepts ordinary-Video `start`, `stop`, or one legal `resolution`/`fps` pair; pass the exact session, peer and generation from `camera_body_status`, leave `execute` false for a dry run, and require the returned ACK plus matching terminal readback before treating it as complete. Timelapse and panorama are outside this product tool. `camera_roll_status` reports UVC Roll capability only; it deliberately exposes no Roll write until independent physical moving-stop validation passes. CLI `ask`, media-file analysis and the evaluation endpoints are not new MCP wrapper tools.
 
 For MCP zoom, obtain `camera_status.capture.sessionID`, pass it as
 `expectedSessionID` to `camera_zoom_status`, and select an integer `rawValue`

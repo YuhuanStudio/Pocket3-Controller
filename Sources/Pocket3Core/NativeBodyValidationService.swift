@@ -34,17 +34,23 @@ public struct NativeBodyValidationRequest: Codable, Sendable, Equatable {
 /// of these observations.
 public struct NativeBodyValidationSnapshot: Codable, Sendable, Equatable {
     public let session: NativeCameraSessionStatus
+    /// Optional mode evidence keeps the original developer validation
+    /// snapshot source-compatible; the product Video service requires this to
+    /// be `.video` before it can submit a body record/format command.
+    public let videoMode: Pocket3ShootingMode?
     public let recordingBaseline: NativeBodyRecordingLifecycleSample?
     public let formatBaseline: NativeBodyFormatReadback?
     public let formatCapabilities: CameraVideoFormatCapabilities?
     public let nowUptime: TimeInterval
 
     public init(session: NativeCameraSessionStatus,
+                videoMode: Pocket3ShootingMode? = nil,
                 recordingBaseline: NativeBodyRecordingLifecycleSample? = nil,
                 formatBaseline: NativeBodyFormatReadback? = nil,
                 formatCapabilities: CameraVideoFormatCapabilities? = nil,
                 nowUptime: TimeInterval) {
         self.session = session
+        self.videoMode = videoMode
         self.recordingBaseline = recordingBaseline
         self.formatBaseline = formatBaseline
         self.formatCapabilities = formatCapabilities

@@ -19,6 +19,7 @@ preview, controls, Bluetooth, local AI, MCP and troubleshooting.
 | [USB pan/tilt full-range stress](USB_PAN_TILT_STRESS.md) | Developer-only 16-case raw pan/tilt collector, scalar evidence and safety fences |
 | [Bluetooth telemetry](BLUETOOTH_TELEMETRY.md) | Battery, charging, pose, freshness and device-association limits |
 | [Camera settings protocol](CAMERA_SETTINGS_PROTOCOL.md) | Read-only lens, white-balance and exposure reports; protocol evidence does not imply working setters |
+| [Camera body recording service](CAMERA_BODY_RECORDING.md) | Ordinary-Video start/stop and one legal format pair through the existing native owner |
 | [Focus readback](FOCUS_READBACK.md) | What focus information is available and why app-side tap-to-focus remains unfinished |
 | [Experimental USB Roll](USB_ROLL.md) | Raw device units, capability checks and the limited hardware acceptance |
 
