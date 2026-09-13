@@ -14,6 +14,93 @@ public struct USBRollCapabilities: Codable, Sendable, Equatable {
     }
 }
 
+/// Narrow release admission profile backed by the reviewed Pocket 3 moving
+/// Roll Stop evidence. It describes the USB identity and raw control shape;
+/// it does not calibrate a physical angle or direction.
+public struct USBRollReleaseCapabilityProfile: Codable, Sendable,
+    Equatable, Hashable, Identifiable {
+    public let id: String
+    public let vendorID: UInt16
+    public let productID: UInt16
+    public let uvcVersion: Int
+    public let rollMinimum: Int
+    public let rollMaximum: Int
+    public let rollStep: Int
+    public let rollDefault: Int
+
+    public init(id: String, vendorID: UInt16, productID: UInt16,
+                uvcVersion: Int, rollMinimum: Int, rollMaximum: Int,
+                rollStep: Int, rollDefault: Int) {
+        self.id = id
+        self.vendorID = vendorID
+        self.productID = productID
+        self.uvcVersion = uvcVersion
+        self.rollMinimum = rollMinimum
+        self.rollMaximum = rollMaximum
+        self.rollStep = rollStep
+        self.rollDefault = rollDefault
+    }
+
+    /// The exact VID/PID, UVC bcdVersion and signed Roll shape from the
+    /// completed development acceptance evidence.
+    public static let pocket3Verified = Self(
+        id: "pocket3-usb-roll-stop-v1", vendorID: 0x2CA3,
+        productID: 0x0023, uvcVersion: 0x0100,
+        rollMinimum: -30, rollMaximum: 30, rollStep: 1,
+        rollDefault: 0)
+
+    public var rawUnitsDescription: String {
+        "signed UVC raw units; physical Roll angle and direction remain unknown"
+    }
+
+    public func matchesIdentity(deviceID: String, uvcVersion: Int) -> Bool {
+        guard let identity = Self.vendorProduct(from: deviceID) else {
+            return false
+        }
+        return identity.vendorID == vendorID &&
+            identity.productID == productID && uvcVersion == self.uvcVersion
+    }
+
+    public func matches(deviceID: String, uvcVersion: Int,
+                        capabilities: USBRollCapabilities) -> Bool {
+        guard matchesIdentity(deviceID: deviceID, uvcVersion: uvcVersion),
+              let identity = Self.vendorProduct(from: deviceID) else {
+            return false
+        }
+        return matches(vendorID: identity.vendorID, productID: identity.productID,
+                       uvcVersion: uvcVersion, capabilities: capabilities)
+    }
+
+    public func matches(vendorID: UInt16, productID: UInt16,
+                        uvcVersion: Int,
+                        capabilities: USBRollCapabilities) -> Bool {
+        guard vendorID == self.vendorID, productID == self.productID,
+              uvcVersion == self.uvcVersion,
+              capabilities.writable,
+              capabilities.minimum == rollMinimum,
+              capabilities.maximum == rollMaximum,
+              capabilities.step == rollStep,
+              capabilities.defaultValue == rollDefault,
+              (rollMinimum...rollMaximum).contains(capabilities.current) else {
+            return false
+        }
+        return true
+    }
+
+    public static func vendorProduct(from deviceID: String)
+        -> (vendorID: UInt16, productID: UInt16)? {
+        guard deviceID.hasPrefix("0x"),
+              let raw = UInt64(deviceID.dropFirst(), radix: 16) else {
+            return nil
+        }
+        let usbIdentity = UInt32(truncatingIfNeeded: raw)
+        return (vendorID: UInt16((usbIdentity >> 16) & 0xffff),
+                productID: UInt16(usbIdentity & 0xffff))
+    }
+}
+
+public typealias Pocket3USBRollReleaseProfile = USBRollReleaseCapabilityProfile
+
 public struct USBRollResult: Codable, Sendable, Equatable {
     public let target: Int
     public let observed: Int

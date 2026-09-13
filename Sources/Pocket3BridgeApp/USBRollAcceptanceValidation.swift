@@ -9,14 +9,18 @@ import Pocket3Core
 enum USBRollAcceptanceAppPresentation {
     static func payload(report: USBRollAcceptanceReport,
                         evaluation: USBRollAcceptanceEvaluation,
-                        rollControlUnlocked: Bool = false) throws -> JSONValue {
+                        rollControlUnlocked: Bool = false,
+                        rollControlUnlockFailure: String? = nil) throws -> JSONValue {
         .object([
             "operation": .string(USBRollAcceptanceRequest.operation),
             "report": try .encode(report),
             "evaluation": try .encode(evaluation),
             "cameraImagesStored": .bool(report.cameraImagesStored),
             "physicalMotionVerified": .bool(report.physicalMotionVerified),
-            "rollControlUnlocked": .bool(rollControlUnlocked)
+            "rollControlProfile": try .encode(USBRollReleaseCapabilityProfile.pocket3Verified),
+            "rollUnits": .string(USBRollReleaseCapabilityProfile.pocket3Verified.rawUnitsDescription),
+            "rollControlUnlocked": .bool(rollControlUnlocked),
+            "rollControlUnlockFailure": rollControlUnlockFailure.map(JSONValue.string) ?? .null
         ])
     }
 }
@@ -152,17 +156,28 @@ extension AppModel {
             adapter: adapter)
         let evaluation = USBRollAcceptanceExecutor.evaluate(report)
         var unlocked = false
+        var unlockFailure: String?
         if evaluation.metricsPassed, report.completed,
            let old = report.initialBinding,
            let new = report.finalBinding {
-            try await service.admitRollStopValidation(old: old, new: new)
-            unlocked = true
+            do {
+                try await service.admitRollStopValidation(old: old, new: new)
+                unlocked = true
+            } catch let failure as BridgeFailure {
+                // A complete acceptance report remains useful evidence when
+                // its hardware shape is outside the narrowly reviewed release
+                // profile; the product Roll gate must stay closed.
+                unlockFailure = failure.code
+            } catch {
+                unlockFailure = "roll_acceptance_profile_mismatch"
+            }
         }
         return ServiceReply(id: request.id,
             result: try USBRollAcceptanceAppPresentation.payload(
                 report: report,
                 evaluation: evaluation,
-                rollControlUnlocked: unlocked))
+                rollControlUnlocked: unlocked,
+                rollControlUnlockFailure: unlockFailure))
     }
 }
 

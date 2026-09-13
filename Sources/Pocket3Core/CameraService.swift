@@ -625,6 +625,11 @@ public actor CameraService {
                 }
             }
             capabilities = current
+            if let selected,
+               !USBRollReleaseCapabilityProfile.pocket3Verified.matchesIdentity(
+                   deviceID: selected.id, uvcVersion: current.uvcVersion) {
+                rollStopValidated = false
+            }
             clearControlReadIssue()
             return current
         } catch {
@@ -867,6 +872,14 @@ public actor CameraService {
         guard lifecycle == lifecycleGeneration, self.uvc === uvc, capture.store.stats().sessionID == sessionID else {
             throw BridgeFailure("session_changed", "讀取 Roll 能力期間相機連線已改變")
         }
+        if let selected {
+            let profile = USBRollReleaseCapabilityProfile.pocket3Verified
+            if !profile.matches(deviceID: selected.id,
+                                uvcVersion: capabilities?.uvcVersion ?? -1,
+                                capabilities: result) {
+                rollStopValidated = false
+            }
+        }
         return result
     }
 
@@ -876,7 +889,7 @@ public actor CameraService {
     public func admitRollStopValidation(
         old: USBRollAcceptanceBinding,
         new: USBRollAcceptanceBinding
-    ) throws {
+    ) async throws {
         guard validationEnabled else {
             throw BridgeFailure("validation_disabled",
                 "Roll Stop validation is only available in a development session")
@@ -894,6 +907,16 @@ public actor CameraService {
               !rollNeedsHold else {
             throw BridgeFailure("roll_acceptance_session_changed",
                 "Roll acceptance evidence does not match the current attachment")
+        }
+        let profile = USBRollReleaseCapabilityProfile.pocket3Verified
+        guard let device = selected,
+              let uvcCapabilities = capabilities,
+              profile.matches(deviceID: device.id,
+                              uvcVersion: uvcCapabilities.uvcVersion,
+                              capabilities: try await rollCapabilities(
+                                  expectedSessionID: new.captureSessionID)) else {
+            throw BridgeFailure("roll_acceptance_profile_mismatch",
+                "Roll Stop evidence does not match the exact Pocket 3 release profile")
         }
         rollStopValidated = true
     }
@@ -918,6 +941,17 @@ public actor CameraService {
         let before = try await uvc.rollStatus()
         try USBRollPolicy.validate(rawValue, capabilities: before)
         try Task.checkCancellation()
+        if origin == .automation {
+            guard let selected,
+                  USBRollReleaseCapabilityProfile.pocket3Verified.matches(
+                      deviceID: selected.id,
+                      uvcVersion: capabilities?.uvcVersion ?? -1,
+                      capabilities: before) else {
+                rollStopValidated = false
+                throw BridgeFailure("roll_not_validated",
+                    "Roll Stop validation profile no longer matches this attachment")
+            }
+        }
         guard ProcessInfo.processInfo.systemUptime - readStarted <= 0.10,
               lifecycle == lifecycleGeneration, epoch == interactionEpoch, self.uvc === uvc,
               motionID == nil, phase == "ready", !connectionInProgress,
