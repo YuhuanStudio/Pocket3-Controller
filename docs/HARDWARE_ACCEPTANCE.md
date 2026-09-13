@@ -416,6 +416,10 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 同日單一`cam_video_param_v2`唯讀probe在BLE session `1ABFFBF2-5082-49CE-8CDB-78BB770827DD`送出一次00/99 subscription，收到相同sequence45492的ACK，接著收到00/99/06 named-property notification sequence623。10-byte raw完整保留，typed readback為resolutionRaw10、frameRateRaw3、compressionRaw1；outcome=`readback`。沒有00/01 GET、setter、fallback opcode或Wi-Fi。這證明property notification transport存在，也證明舊sequential reader不應因第一個property沒有notification而停止全部。[結果](../artifacts/hardware-complete-2026-09-13/video-parameters-readback-live.json)
 
+第26批Roll release profile修正matching admission後，全新App／全新capture session未執行developer acceptance，只做fresh`roll-status`即回`rollStopValidated=true`。暫時授權control後一般產品路徑raw1→1與raw0→0分別5／4筆exact verified，最後恢復manual。Profile只匹配VID/PID2CA3:0023、UVC1.00、Roll−30…30、step1、default0；任何不匹配或connection change仍清除admission。[raw1](../artifacts/hardware-complete-2026-09-13/roll-release-profile-raw1.json)、[restore0](../artifacts/hardware-complete-2026-09-13/roll-release-profile-restore0.json)
+
+新版independent settings reader在BLE session `9EC00B96-51B9-43BA-8FDC-B1045DBC6ADA`先成功讀到`cam_video_param_v2`，第二項`camcap_video_codec`取得ACK但兩秒內只有5筆wrong-property notifications並timeout。第三項進入前的preflight throw仍讓整批停止，立即status仍是同session paired；因此partial結果有效，但「所有11項獨立繼續」尚未實機通過，需把preflight failure也轉成per-property evidence。[結果](../artifacts/hardware-complete-2026-09-13/read-settings-independent-partial.json)
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。

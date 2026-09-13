@@ -874,11 +874,10 @@ public actor CameraService {
         }
         if let selected {
             let profile = USBRollReleaseCapabilityProfile.pocket3Verified
-            if !profile.matches(deviceID: selected.id,
-                                uvcVersion: capabilities?.uvcVersion ?? -1,
-                                capabilities: result) {
-                rollStopValidated = false
-            }
+            rollStopValidated = profile.matches(
+                deviceID: selected.id,
+                uvcVersion: capabilities?.uvcVersion ?? -1,
+                capabilities: result)
         }
         return result
     }
@@ -924,6 +923,12 @@ public actor CameraService {
     public func roll(rawValue: Int, expectedSessionID: String, origin: RequestOrigin = .manual) async throws -> USBRollResult {
         try Task.checkCancellation()
         try requireObservation(origin)
+        if origin == .automation && !rollStopValidated {
+            // A release profile is admitted only from a fresh, exact-session
+            // Roll capability read. This performs no UVC SET.
+            _ = try await rollCapabilities(
+                expectedSessionID: expectedSessionID)
+        }
         try USBRollPolicy.authorize(origin: origin, access: access, rollStopValidated: rollStopValidated)
         guard !rollNeedsHold, !zoomNeedsHold else { throw BridgeFailure("scalar_stop_required", "請先確認先前的 Roll 或縮放已停止") }
         guard !expectedSessionID.isEmpty, try capture.store.latest(maxAge: 1).info.sessionID == expectedSessionID else {

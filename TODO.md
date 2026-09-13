@@ -146,7 +146,7 @@
 ## 相機重新開啟後的新證據
 
 - [x] 恢復1080×1920@30 NV12，Roll原始值0→1→0有精確穩定回讀、不同的新影格與恢復結果。[單步實測](artifacts/hardware-roll-2026-09-09/one-step/result.json)
-- [ ] Roll移動中停止與session解鎖已實機完成：0→途中13 Stop，12筆／0.846秒exact hold，restore0、reconnect fence全過；新版再次途中2 Stop後回`rollControlUnlocked=true`且獨立status為`rollStopValidated=true`，一般control權限下raw1→0亦精確通過。仍缺操作者確認物理方向／角度與發布版verified profile，不能把raw當角度。[結果](artifacts/hardware-complete-2026-09-13/roll-stop-unlock.json)
+- [ ] Roll移動中停止、session解鎖與發布profile已實機完成：profile窄匹配VID/PID2CA3:0023、UVC1.00、−30…30/step1/default0；全新App未跑developer acceptance即`rollStopValidated=true`，一般control raw1→0精確通過。仍缺操作者確認物理方向／角度，不能把raw當角度；profile mismatch或後續connection change仍封鎖。[結果](artifacts/hardware-complete-2026-09-13/roll-stop-unlock.json)、[發布profile](artifacts/hardware-complete-2026-09-13/roll-release-profile-raw1.json)
 - [x] Roll metrics-only raw baseline：0→1→0精確readback、兩次Stop verified、manual cleanup完成且零影像輸出。這證明setter/readback/restore，不解除moving-stop、物理方向或angle calibration gate。
 - [x] 不改Mac網路，重新配對同一BLE peer，取得電池100%／未充電及新鮮姿態。[遙測](artifacts/hardware-roll-2026-09-09/live-telemetry.json)
 - [x] BLE `00/99`只讀通道取得實際相機回覆：AF-C、WB Auto、曝光Auto／EV0。[三項查詢](artifacts/hardware-roll-2026-09-09/properties/result.json)
