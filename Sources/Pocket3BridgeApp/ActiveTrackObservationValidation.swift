@@ -68,6 +68,17 @@ extension AppModel {
             arguments: request.arguments)
         switch input.action {
         case .start:
+            // The passive recorder owns the twenty-second deadline.  It can
+            // therefore become terminal between IPC lifecycle calls while
+            // the marker coordinator still says armed/observing.  Reap that
+            // stale coordinator before applying the single-window gate so a
+            // completed recorder cannot permanently wedge later trials.
+            if var existing = developerActiveTrackObservationWindow,
+               let recording = wireless.bluetooth.cameraEventRecordingSnapshot,
+               recording.end != nil {
+                _ = existing.finish(recording: recording)
+                developerActiveTrackObservationWindow = nil
+            }
             guard developerActiveTrackObservationWindow == nil else {
                 throw BridgeFailure("active_track_observation_busy",
                     "Finish or cancel the active ActiveTrack observation window first")
@@ -124,6 +135,12 @@ extension AppModel {
                     "Start an ActiveTrack observation window first")
             }
             try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
+            if let recording = wireless.bluetooth.cameraEventRecordingSnapshot,
+               recording.end != nil {
+                let status = coordinator.finish(recording: recording)
+                developerActiveTrackObservationWindow = nil
+                return ServiceReply(id: request.id, result: try .encode(status))
+            }
             let route = NativeActiveTrackObservationWindowRoute.evaluate(
                 status: wireless.bluetooth.status,
                 expectedSessionID: coordinator.expectedSessionID,
@@ -160,6 +177,12 @@ extension AppModel {
                     "Start an ActiveTrack observation window first")
             }
             try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
+            if let recording = wireless.bluetooth.cameraEventRecordingSnapshot,
+               recording.end != nil {
+                let status = coordinator.finish(recording: recording)
+                developerActiveTrackObservationWindow = nil
+                return ServiceReply(id: request.id, result: try .encode(status))
+            }
             let route = NativeActiveTrackObservationWindowRoute.evaluate(
                 status: wireless.bluetooth.status,
                 expectedSessionID: coordinator.expectedSessionID,
