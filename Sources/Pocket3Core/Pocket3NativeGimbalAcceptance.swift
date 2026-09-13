@@ -330,7 +330,18 @@ public struct Pocket3NativeGimbalAcceptanceExecutor: Sendable {
         var finalStatus: Pocket3NativeGimbalAcceptanceStatus? = initial
         do {
             for kind in Self.movementSteps {
-                try Task.checkCancellation()
+                do {
+                    try Task.checkCancellation()
+                } catch {
+                    // Cancellation can arrive between the exact readiness
+                    // snapshot and the first movement. Keep the attempted
+                    // step in the report so cancellation still carries
+                    // reviewable partial evidence alongside fail-stop.
+                    steps.append(.init(
+                        kind: kind, connectionChanged: true,
+                        failureCode: "station_acceptance_cancelled"))
+                    throw error
+                }
                 do {
                     let step = try await movement(kind: kind, request: request,
                                                   owner: owner)
@@ -346,7 +357,14 @@ public struct Pocket3NativeGimbalAcceptanceExecutor: Sendable {
 
             for kind in [Pocket3NativeGimbalAcceptanceStepKind.recenterFE08,
                          .flipFE09] {
-                try Task.checkCancellation()
+                do {
+                    try Task.checkCancellation()
+                } catch {
+                    steps.append(.init(
+                        kind: kind, connectionChanged: true,
+                        failureCode: "station_acceptance_cancelled"))
+                    throw error
+                }
                 do {
                     let step = try await preset(kind: kind, request: request,
                                                 owner: owner)
