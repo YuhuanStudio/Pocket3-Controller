@@ -36,6 +36,10 @@ public struct BluetoothGimbalProbeResult: Codable, Sendable {
 }
 
 enum BluetoothGimbalProbePlan {
+    /// This legacy BLE-only experiment keeps its original conservative pulse
+    /// even though the command-ready UDP product stick now exposes the
+    /// capture-confirmed Pocket 3 ±550 range.
+    static let conservativeYawOffset: UInt16 = 33
     static let offsets: [TimeInterval] = [0, 0.05, 0.10, 0.15]
     static let neutralOffset: TimeInterval = 0.20
     static let maximumLateness: TimeInterval = 0.020
@@ -47,7 +51,10 @@ enum BluetoothGimbalProbePlan {
     static let frameBytes = 23
 
     static func pulse(sequence: UInt16) throws -> Data {
-        try DUMLJoystickCommand.encode(x: 1, y: 0, speed: 0.1).encodedFrame(sequence: sequence)
+        try DUMLJoystickCommand(
+            pitch: DUMLJoystickCommand.center,
+            yaw: DUMLJoystickCommand.center + conservativeYawOffset
+        ).encodedFrame(sequence: sequence)
     }
     static func isOnTime(now: TimeInterval, planned: TimeInterval) -> Bool {
         now.isFinite && planned.isFinite && now >= planned && now - planned <= maximumLateness
