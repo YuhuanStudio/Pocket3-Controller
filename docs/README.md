@@ -28,6 +28,7 @@ preview, controls, Bluetooth, local AI, MCP and troubleshooting.
 | Document | What it covers |
 |---|---|
 | [Current Pocket 3 support matrix](POCKET3_SUPPORT_MATRIX.md) | Single current-state source for body capability, App UI/API, read/write evidence, transport, release boundaries and next probes |
+| [ActiveTrack coordinate gate](ACTIVE_TRACK_CALIBRATION.md) | Fixed source audit and local rotation/mirror calibration workflow before A6 writes |
 | [Direct UVC H.264 backend plan](DIRECT_UVC_H264_PLAN.md) | Public-API ownership, UVC 1.0 negotiation, bulk payload assembly, VideoToolbox decoding and staged validation |
 | [Osmo cross-device transport review](../research/2026-09-11/osmo-cross-device-transport.md) | Pocket 3/Pocket 4/other Osmo protocol comparisons, reusable boundaries and rejected shortcuts |
 | [Contributing](../CONTRIBUTING.md) | Scope, reproducible changes, design consistency and hardware-test reporting |
