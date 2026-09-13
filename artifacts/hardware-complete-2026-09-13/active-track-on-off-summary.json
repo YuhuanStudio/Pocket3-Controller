@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "active_track_operator_labeled_passive_comparison",
+  "privacy": {
+    "imagesStored": false,
+    "cameraCommandsSent": false,
+    "credentialsStored": false
+  },
+  "claimsTrackingCausality": false,
+  "assessment": "mixedDynamicTraffic",
+  "recordings": {
+    "on": {
+      "sessionID": "9386318D-B0DB-448C-8857-7CA83316208C",
+      "peripheralID": "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "startedUptime": 223168.46394416667,
+      "finishedUptime": 223188.46394416667,
+      "end": "windowElapsed",
+      "acceptedSampleCount": 307,
+      "rejectedFrameCount": 191,
+      "unchangedFrameCount": 196,
+      "rawEventCount": 307,
+      "routeCounts": {
+        "02/80": 1,
+        "02/89": 224,
+        "02/dc": 1,
+        "04/05": 78,
+        "04/1c": 1,
+        "04/27": 1,
+        "04/38": 1
+      },
+      "sourceArtifactSHA256": "184fc02fb8e81cb233b4e085364832a17798da34b9b6a6ca17c2d20875f77cd2"
+    },
+    "off": {
+      "sessionID": "9386318D-B0DB-448C-8857-7CA83316208C",
+      "peripheralID": "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+      "startedUptime": 223267.31663545835,
+      "finishedUptime": 223287.31663545835,
+      "end": "windowElapsed",
+      "acceptedSampleCount": 182,
+      "rejectedFrameCount": 265,
+      "unchangedFrameCount": 259,
+      "rawEventCount": 182,
+      "routeCounts": {
+        "02/80": 1,
+        "02/89": 70,
+        "02/dc": 1,
+        "04/05": 107,
+        "04/1c": 1,
+        "04/27": 1,
+        "04/38": 1
+      },
+      "sourceArtifactSHA256": "2997a8715d5d0395fa307b112422cc9de8984edb6f8fa453254a3b30c271e41e"
+    }
+  },
+  "observedDifferences": {
+    "02/89": {
+      "on": 224,
+      "off": 70
+    },
+    "04/05": {
+      "on": 78,
+      "off": 107
+    }
+  }
+}

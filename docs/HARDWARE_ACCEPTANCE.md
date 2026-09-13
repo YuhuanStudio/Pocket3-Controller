@@ -426,6 +426,12 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 第28批加入每項subscription前最多0.5秒readiness wait後，11項settings reader全部產生結果：9項typed readback，只有`camcap_video_codec`與`camcap_video_format`為ACK-only timeout，且無queryFailures。單一Lens probe保留47-byte raw並讀到focus mode2/raw178；Exposure probe保留44-byte raw並解析Auto、EV0、effective ISO430。同窗其他named-property push不再否定requested typed readback；沒有GET、setter或Wi-Fi。[9/11](../artifacts/hardware-complete-2026-09-13/read-settings-9-of-11.json)、[Lens](../artifacts/hardware-complete-2026-09-13/lens-readback-live.json)、[Exposure基線](../artifacts/hardware-complete-2026-09-13/exposure-readback-precedence-baseline.json)
 
+第29批比較使用者明確標示的ActiveTrack ON與OFF獨立20秒窗口。ON共307筆事件，其中`02/89` 224筆、`04/05` 78筆；OFF共182筆，其中`02/89` 70筆、`04/05` 107筆。新的scalar comparator核對同一session/peripheral、窗口速率、route counts、payload SHA-256、strict A89/A6 candidates及其他動態route，評估為`mixedDynamicTraffic`並固定`claimsTrackingCausality=false`。因此目前只能確認切換伴隨遙測分布改變，不能把`02/89`頻率當作可靠ActiveTrack狀態，也沒有送A6或其他writer。互動recorder到期後App會回傳partial/failed evidence並釋放coordinator，避免舊窗口阻擋後續觀測。[摘要](../artifacts/hardware-complete-2026-09-13/active-track-on-off-summary.json)
+
+同批新增16-case USB pan/tilt壓力驗收模型，覆蓋兩軸正負方向的near/middle/far/limit、endpoint coverage、輸入距離對raw rate單調性、fresh scalar frame、Stop穩定窗口、每案origin restore、重連session fence及最終回中。它目前是`hardwareExecutionEnabled=false`的純plan/evaluator，沒有執行全範圍真機動作，也不把UVC raw宣稱為物理角度。另新增`02/24` AF-mode可逆candidate gate：只有fresh B1/B2 raw baseline與exact identity/sequence才可產生dry-run及restore payload；因BLE-only setter wire evidence仍為0，`--execute`固定unsupported且零寫入。
+
+Phase 29完整Release gate通過Core 850、Intelligence 44、Evaluation 1、App 112與XCTest 6，共1,013項，零失敗。
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
