@@ -10,6 +10,8 @@ public enum DUMLJoystickError: Error, Equatable, Sendable {
 /// This is a joystick value, not an angular position or calibrated degrees/sec.
 /// Sender/receiver addressing is verified in the same pinned DumlTransport.swift
 /// sendDuml implementation; see research/2026-09-08/kaze/PROVENANCE.md.
+/// The Pocket 3 center/±550 and notify/no-ACK shape is cross-checked against
+/// OpenPocketCine Commands.swift at 9b30b93572797c94db5ad9236fb746410f8d761f.
 /// This does not include BLE/Wi-Fi routing, fragmentation, or a live connection.
 public struct DUMLJoystickCommand: Sendable, Equatable {
     public static let commandSet: UInt8 = 0x04
@@ -19,7 +21,10 @@ public struct DUMLJoystickCommand: Sendable, Equatable {
     public static let commandType: UInt8 = 0
     public static let sender: UInt8 = 0x02
     public static let center: UInt16 = 1024
-    public static let maximumOffset = 330
+    /// OpenPocketCine's Pocket 3 survey uses center 1024 with a signed
+    /// ±550 stick range. This is a native joystick unit, not degrees or a
+    /// calibrated physical speed.
+    public static let maximumOffset = 550
     public static let deadzone = 0.06
 
     public let pitch: UInt16

@@ -39,7 +39,8 @@ public struct Pocket3DatalinkActionResult: Codable, Sendable {
 /// Explicit-only Pocket 3 datalink. One queue owns sockets, ACKs, parsing and
 /// all writes. No network switching, CoreBluetooth initialization or live-view
 /// START commands are performed. Pairing/network selection belongs to the App.
-public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendable {
+public final class Pocket3Datalink: ContinuousGimbalTransport,
+    ContinuousGimbalInputTransport, @unchecked Sendable {
     public static let host = "192.168.2.1"
     public static let maximumTelemetryAge: TimeInterval = 0.35
     public static let maximumHeartbeatAge: TimeInterval = 3
@@ -279,6 +280,17 @@ public final class Pocket3Datalink: ContinuousGimbalTransport, @unchecked Sendab
             activeLease = lease.id
             lock.withLock { velocityPermit = permit }
         }
+    }
+
+    /// Adapter entry used by the native continuous-control scheduler. The
+    /// datalink remains the only UDP9004 owner and keeps sequence/cursor
+    /// allocation inside its queue.
+    public func send(_ input: ContinuousGimbalInput,
+                     lease: ContinuousGimbalLease,
+                     permit: OperationPermit) async throws {
+        let command = try DUMLJoystickCommand.encode(
+            x: input.x, y: input.y, speed: input.speed)
+        try await send(command, lease: lease, permit: permit)
     }
 
     /// Global Stop without constructing a scheduler lease. This completes a

@@ -49,6 +49,28 @@ struct WirelessGimbalConnectionView: View {
                 Text(loc("Pocket 3 identity and USB association are not verified."))
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
             }
+            if model.pairingStatus?.credentialsAvailable == true {
+                YunDivider()
+                Button {
+                    Task {
+                        if model.nativeConnected || model.nativeStatus != nil {
+                            await model.disconnectNative()
+                        } else {
+                            await model.connectNative()
+                        }
+                    }
+                } label: {
+                    Label(
+                        loc(model.nativeConnected
+                            ? "Disconnect wireless"
+                            : "Connect native camera control to move continuously."),
+                        systemImage: model.nativeConnected
+                            ? "xmark.circle" : "antenna.radiowaves.left.and.right")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(YunButtonStyle(.secondary, small: true))
+                .disabled(model.connecting || model.joiningNetwork)
+            }
             if let battery = model.freshBatteryAssessment {
                 YunDivider()
                 BluetoothBatteryView(assessment: battery)

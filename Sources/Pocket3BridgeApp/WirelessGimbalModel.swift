@@ -258,7 +258,7 @@ final class WirelessGimbalModel {
                 throw CancellationError()
             }
             publishNativeSessionStatus()
-            let scheduler = ContinuousGimbalScheduler(transport: link)
+            let scheduler = ContinuousGimbalScheduler(inputTransport: link)
             self.scheduler = scheduler
             try await service.reserveNativeControl(binding: newBinding, readStatus: { [weak self] in
                 await self?.controlStatus() ?? .disconnected

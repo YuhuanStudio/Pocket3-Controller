@@ -28,18 +28,20 @@ import Testing
     let down = try DUMLJoystickCommand.encode(x: 0, y: 1, speed: 1)
     let up = try DUMLJoystickCommand.encode(x: 0, y: -1, speed: 1)
     let left = try DUMLJoystickCommand.encode(x: -1, y: 0, speed: 0.5)
-    #expect(right.pitch == 1024 && right.yaw == 1354)
-    #expect(down.pitch == 694 && down.yaw == 1024)
-    #expect(up.pitch == 1354 && up.yaw == 1024)
-    #expect(left.pitch == 1024 && left.yaw == 859)
-    #expect(right.payload == Data([0,4,0,0,0x4a,5,0,0x80,0x22,0]))
+    #expect(DUMLJoystickCommand.maximumOffset == 550)
+    #expect(right.frame(sequence: 1).flags == 0)
+    #expect(right.pitch == 1024 && right.yaw == 1574)
+    #expect(down.pitch == 474 && down.yaw == 1024)
+    #expect(up.pitch == 1574 && up.yaw == 1024)
+    #expect(left.pitch == 1024 && left.yaw == 749)
+    #expect(right.payload == Data([0,4,0,0,0x26,0x06,0,0x80,0x22,0]))
 }
 
 @Test func joystickRadiallyClampsHugeFiniteDiagonalInputsWithoutOverflow() throws {
     let diagonal = try DUMLJoystickCommand.encode(x: 1, y: 1, speed: 1)
     let huge = try DUMLJoystickCommand.encode(x: .greatestFiniteMagnitude, y: .greatestFiniteMagnitude, speed: 1)
     #expect(diagonal == huge)
-    #expect(abs(Int(diagonal.pitch)-1024) <= 234 && abs(Int(diagonal.yaw)-1024) <= 234)
+    #expect(abs(Int(diagonal.pitch)-1024) <= 389 && abs(Int(diagonal.yaw)-1024) <= 389)
     #expect(try DUMLJoystickCommand.encode(x: 100, y: 0, speed: 1) == DUMLJoystickCommand.encode(x: 1, y: 0, speed: 1))
     for bad in [Double.nan, .infinity, -.infinity] {
         #expect(throws: DUMLJoystickError.self) { try DUMLJoystickCommand.encode(x: bad, y: 0, speed: 1) }

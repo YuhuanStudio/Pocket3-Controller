@@ -6,6 +6,14 @@
 
 使用者已明確要求 Mac 保留現有網路。主路徑改為 USB 取像＋藍牙原生控制；BLE 馬達控制需經實機 probe 確認後才能開放，不能因有遙測就當作可控。相機 Wi-Fi 不再是 App 使用前提，加入相機 Wi-Fi／UDP 連接操作已從主流程撤下，Mac 網路未變更。
 
+Phase31 的 native vertical slice 沿用單一 command-ready UDP 9004 owner：`04/01`
+stick 使用 center `1024`、每軸最多 `±550`、notify/no-ACK flags，scheduler 以
+50 ms 上限泵送。按住結束、失焦、取消或斷線仍送 `04/01` center neutral；
+`04/14` relative-zero timed-stop 只保留給未來的 timed-target coordinator，不能
+拿來替代 joystick release。`04/4C FE08` recenter 與 `FE09` front/selfie toggle
+共用同一條 exact session/generation/route owner，沒有 BLE-only fallback，也不會
+自動切換 Mac Wi-Fi。
+
 ## 先前研究的控制路徑（不作為目前 Mac 使用前提）
 
 - USB Webcam：本機對 pan/tilt relative 的 GET_INFO 得到 STALL；absolute position 仍可讀寫，但實測有正向 tilt 指令被忽略，不能視為完整搖桿控制。證據見 `artifacts/uvc-relative-support-readonly.json` 與 `docs/HARDWARE_ACCEPTANCE.md`。

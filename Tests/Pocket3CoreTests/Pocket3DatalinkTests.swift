@@ -173,6 +173,27 @@ private final class RecordingPocket3LiveViewSink: @unchecked Sendable,
         _ = await link.disconnect()
     }
 
+    @Test func inputTransportPumps04Slash01AndReleasesWithCenterNeutral() async throws {
+        let wire = FakePocket3Wire(), link = make(wire)
+        let binding = try await link.connect()
+        let lease = ContinuousGimbalLease(id: UUID(), binding: binding)
+        let input = try ContinuousGimbalInput(x: 1, y: 0, speed: 1)
+        try await link.send(input, lease: lease, permit: OperationPermit())
+        let beforeStop = wire.sentCommands.count
+        try await link.stop(lease: lease, permit: OperationPermit())
+        let commands = wire.sentCommands
+        #expect(commands.count == beforeStop + 1)
+        #expect(commands[beforeStop].commandSet == 0x04 &&
+                commands[beforeStop].commandID == 0x01)
+        #expect(commands[beforeStop].flags == 0)
+        #expect(commands[beforeStop].payload == DUMLJoystickCommand.neutral.payload)
+        #expect(commands[beforeStop].payload.count == 10)
+        #expect(!commands[beforeStop...].contains {
+            $0.commandSet == 0x04 && $0.commandID == 0x14
+        })
+        _ = await link.disconnect()
+    }
+
     @Test func globalNeutralRetiresOldLeaseAndStaleTelemetryDisarmsMotion() async throws {
         let wire = FakePocket3Wire(), link = make(wire), command = try DUMLJoystickCommand.encode(x: 1, y: 0, speed: 0.2)
         let binding = try await link.connect(), first = ContinuousGimbalLease(id: UUID(), binding: binding)
