@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "product_hevc_general_connect_lifecycle",
+  "sourceCommit": "df0cb19",
+  "privacy": {
+    "imagesStored": false,
+    "encodedPayloadStored": false,
+    "sampleDigestsOnly": true
+  },
+  "stages": {
+    "connect": {
+      "phase": "ready",
+      "requestedOutputPolicy": "hevc",
+      "captureSessionID": "ECBF7809-C668-4239-8AF3-8EBAC72C7F25",
+      "captureFPS": 14.167842889238631,
+      "hostPhase": "running",
+      "encodedFPS": null,
+      "sampleCount": 0,
+      "verified": false,
+      "sinkAttached": true,
+      "submittedFrames": 1,
+      "encodedFrames": 0,
+      "droppedBackpressure": 0,
+      "failureCode": null
+    },
+    "running": {
+      "phase": "ready",
+      "requestedOutputPolicy": "hevc",
+      "captureSessionID": "ECBF7809-C668-4239-8AF3-8EBAC72C7F25",
+      "captureFPS": 32.48601479739871,
+      "hostPhase": "running",
+      "encodedFPS": 29.996000533654215,
+      "sampleCount": 91,
+      "verified": true,
+      "sinkAttached": true,
+      "submittedFrames": 91,
+      "encodedFrames": 91,
+      "droppedBackpressure": 1,
+      "failureCode": null
+    },
+    "pause1": {
+      "phase": "paused",
+      "requestedOutputPolicy": "hevc",
+      "captureSessionID": "3CA4EEDD-0B3C-479C-953C-CAA53E8AF774",
+      "captureFPS": 0,
+      "hostPhase": null,
+      "encodedFPS": null,
+      "sampleCount": null,
+      "verified": null,
+      "sinkAttached": null,
+      "submittedFrames": null,
+      "encodedFrames": null,
+      "droppedBackpressure": null,
+      "failureCode": null
+    },
+    "reconnect": {
+      "phase": "ready",
+      "requestedOutputPolicy": "hevc",
+      "captureSessionID": "E2D84332-11B4-4A65-988F-590EADC73541",
+      "captureFPS": 42.421764241147265,
+      "hostPhase": "running",
+      "encodedFPS": null,
+      "sampleCount": 0,
+      "verified": false,
+      "sinkAttached": true,
+      "submittedFrames": 1,
+      "encodedFrames": 0,
+      "droppedBackpressure": 0,
+      "failureCode": null
+    },
+    "running2": {
+      "phase": "ready",
+      "requestedOutputPolicy": "hevc",
+      "captureSessionID": "E2D84332-11B4-4A65-988F-590EADC73541",
+      "captureFPS": 30.422979839440156,
+      "hostPhase": "running",
+      "encodedFPS": 29.94211191653564,
+      "sampleCount": 61,
+      "verified": true,
+      "sinkAttached": true,
+      "submittedFrames": 62,
+      "encodedFrames": 61,
+      "droppedBackpressure": 0,
+      "failureCode": null
+    },
+    "pause2": {
+      "phase": "paused",
+      "requestedOutputPolicy": "hevc",
+      "captureSessionID": "89617D17-5824-4B8D-BF86-F361CA2C65FF",
+      "captureFPS": 0,
+      "hostPhase": null,
+      "encodedFPS": null,
+      "sampleCount": null,
+      "verified": null,
+      "sinkAttached": null,
+      "submittedFrames": null,
+      "encodedFrames": null,
+      "droppedBackpressure": null,
+      "failureCode": null
+    }
+  }
+}

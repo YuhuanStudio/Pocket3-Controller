@@ -434,6 +434,12 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 Phase 29完整Release gate通過Core 850、Intelligence 44、Evaluation 1、App 112與XCTest 6，共1,013項，零失敗。
 
+第30–32批把一般App的HEVC選項從不可用的AVFoundation hvc1 request改為BGRA/NV12 capture加Mac VideoToolbox local encoder。以一般產品`connect --output-policy hevc`連接Pocket 3 1080p30後，capture為ready且BGRA preview維持；3秒status取得91個hvc1 samples、encoded FPS 29.996、verified=true、1筆有界backpressure drop。Pause後encoder service與sink釋放；第二個新capture session再取得61個samples、29.942fps、verified=true、零backpressure，第二次Pause亦清理。這證明一般產品local encoding lifecycle可用；consumer仍是bounded sample evidence，沒有保存影像／encoded payload，也沒有提供檔案或網路串流。[結果](../artifacts/hardware-complete-2026-09-13/host-hevc-general-product-lifecycle.json)
+
+同批外部專案deep research確認本機descriptor的H264 `FORMAT_FRAME_BASED` 3840×2160包含60/50/48/30/25/24fps。Orange Pi 4K50與OBS direct-UVC參考均以libuvc直接枚舉、PROBE/COMMIT及bulk stream，不走一般AVFoundation webcam path；因此4K50/60現分類為macOS direct ownership/backend待完成，而非Pocket 3未宣告。一般UDP9004雲台encoder也改用Pocket 3實測center1024±550，舊BLE probe仍維持33-unit保守脈衝，放開搖桿仍送04/01 neutral；本批沒有執行原生雲台真機命令。
+
+Phase 32 committed source的完整Release gate通過Core 872、Intelligence 44、Evaluation 1、App 113與XCTest 6，共1,036項，零失敗。Station-mode pure coordinator另有5項focused Release tests，涵蓋07/48後10秒settle再07/47、LAN 07/07 exact identity、single datalink owner、AP restore cleanup debt與validation contract不帶SSID/password。
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
