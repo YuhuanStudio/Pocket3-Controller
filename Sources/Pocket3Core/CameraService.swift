@@ -1571,6 +1571,7 @@ public actor CameraService {
             // TODO: Attach an explicit product file/stream consumer. Until
             // then the service retains only bounded sample digests.
             sink: { _ in })
+        try Task.checkCancellation()
         guard expectedLifecycle == lifecycleGeneration,
               capture.currentLifecycle() == binding.generation,
               selected?.id == expectedDeviceID else {
@@ -1650,6 +1651,10 @@ public actor CameraService {
                 switch evidence.disposition {
                 case .accepted, .droppedBackpressure:
                     break
+                case .stopped:
+                    // Preserve a terminal encoder failure for status and
+                    // diagnostics. Pause/reconnect retirement owns cleanup.
+                    return
                 default:
                     _ = await product.cancel()
                     return
