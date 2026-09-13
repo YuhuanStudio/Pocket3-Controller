@@ -58,6 +58,7 @@
 - [x] 第二十五批新增明確`host-hevc`產品輸出服務、單一`cam_video_param_v2` subscription→notification readback，以及developer Roll moving-stop/restore/reconnect驗收route。Release gate共972項通過（Core811、Intelligence44、Evaluation1、App110、XCTest6）；實機後續確認Roll session解鎖與video parameter readback均成功。
 - [x] 第二十六批將Roll發布admission限制為Pocket3 VID/PID、UVC1.00與已驗證−30…30/step1/default0 profile；settings reader改為11項獨立subscription並在單項失敗後繼續；新增被動ActiveTrack off→on→off marker window。Release gate共986項通過（Core823、Intelligence44、Evaluation1、App112、XCTest6）。
 - [x] 第二十七批補齊settings preflight failure逐項證據與空plan語意；ActiveTrack新增互動式start/mark/status/finish/cancel lifecycle；`host-hevc`加入明確本機產品start/status/stop服務與capability，保持opt-in/no-fallback/no-wire-claim。Release gate共992項通過（Core829、Intelligence44、Evaluation1、App112、XCTest6）。
+- [x] 第二十八批每次BLE property subscription前bounded等待write-without-response readiness且只送一次；ActiveTrack marker可由App以IPC receipt monotonic time即時戳記；新增`cam_lens_state`／`cam_expo_param`單一唯讀probe。Release gate共998項通過（Core835、Intelligence44、Evaluation1、App112、XCTest6）。
 - [x] 專案目錄統一為 `Pocket3-Controller`，Git linked worktrees 修復；保留依賴並重建含舊絕對路徑的編譯輸出，原簽署身分可用。
 - [x] 雲台驗證 v5 原始碼採失敗即停止、共用寫入 permit、部分報告及嚴格型別／範圍／完整序列判定；16項離線驗證器測試通過，未做 v5 真機驗收。
 - [x] [AI 深度研究](docs/AI_RESEARCH.md) 整理 macOS27、MLX／VLM／VLA、追蹤與產品架構；已找到權限導致不必要雙模型流程及自由文字座標契約問題。
