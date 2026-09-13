@@ -1711,7 +1711,10 @@
 "No independent accessory identity readback is exposed by current BLE/USB observations" = "当前 BLE／USB 观察未提供独立配件身份回读";
 "Pocket 3 station mode" = "Pocket 3 基站模式";
 "Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly." = "让 Mac 保持在当前局域网，明确输入相机地址和网络凭证。";
+"Keep the Mac on its current LAN. Enter network credentials explicitly; leave the address blank for a bounded current-LAN search." = "让 Mac 保持在当前局域网，明确输入网络凭证；留空地址即可在当前局域网有限搜索。";
 "Camera LAN IP" = "相机局域网 IP";
+"Camera LAN IP (optional)" = "相机局域网 IP（可选）";
+"Advanced explicit IP override" = "高级明确 IP 覆盖";
 "LAN SSID" = "局域网 SSID";
 "LAN password" = "局域网密码";
 "Connecting station mode…" = "正在连接基站模式⋯";

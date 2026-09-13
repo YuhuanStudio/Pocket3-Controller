@@ -1711,7 +1711,10 @@
 "No independent accessory identity readback is exposed by current BLE/USB observations" = "No independent accessory identity readback is exposed by current BLE/USB observations";
 "Pocket 3 station mode" = "Pocket 3 station mode";
 "Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly." = "Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly.";
+"Keep the Mac on its current LAN. Enter network credentials explicitly; leave the address blank for a bounded current-LAN search." = "Keep the Mac on its current LAN. Enter network credentials explicitly; leave the address blank for a bounded current-LAN search.";
 "Camera LAN IP" = "Camera LAN IP";
+"Camera LAN IP (optional)" = "Camera LAN IP (optional)";
+"Advanced explicit IP override" = "Advanced explicit IP override";
 "LAN SSID" = "LAN SSID";
 "LAN password" = "LAN password";
 "Connecting station mode…" = "Connecting station mode…";

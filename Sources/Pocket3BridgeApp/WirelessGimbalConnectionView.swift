@@ -52,18 +52,20 @@ struct WirelessGimbalConnectionView: View {
                 YunDivider()
                 Text(loc("Pocket 3 station mode"))
                     .font(Yun.Text.label)
-                Text(loc("Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly."))
+                Text(loc("Keep the Mac on its current LAN. Enter network credentials explicitly; leave the address blank for a bounded current-LAN search."))
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
-                TextField(loc("Camera LAN IP"), text: $model.stationHostInput)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(model.stationConnecting || model.nativeConnected)
                 TextField(loc("LAN SSID"), text: $model.stationSSIDInput)
                     .textFieldStyle(.roundedBorder)
                     .disabled(model.stationConnecting || model.nativeConnected)
                 SecureField(loc("LAN password"), text: $model.stationPasswordInput)
                     .textFieldStyle(.roundedBorder)
                     .disabled(model.stationConnecting || model.nativeConnected)
+                DisclosureGroup(loc("Advanced explicit IP override")) {
+                    TextField(loc("Camera LAN IP (optional)"), text: $model.stationHostInput)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(model.stationConnecting || model.nativeConnected)
+                }
                 Button {
                     Task {
                         if model.stationPhase == .commandReady || model.stationPhase == .cleanupDebt {

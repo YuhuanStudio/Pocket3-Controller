@@ -46,6 +46,9 @@ public enum Pocket3StationSessionError: Error, Codable, Sendable,
     case unsupportedReply
     case lanIdentityMismatch
     case lanTransportUnavailable
+    case lanDiscoveryNoCandidates
+    case lanDiscoveryNoTCPHits
+    case lanDiscoveryTimeout
     case cleanupRequired
 }
 
@@ -172,15 +175,29 @@ public struct Pocket3StationLANEvidence: Codable, Sendable, Equatable {
     /// The adapter must set this only after validating the complete 07/07
     /// reply envelope.  Unknown identity bytes remain in `identityRaw`.
     public let identityReplyValidated: Bool
+    public let discoveryMode: String
+    public let candidatesConsidered: Int
+    /// Number of candidates that reached the lightweight TCP stage. The
+    /// `candidatesConsidered` value is the number that reached full identity
+    /// verification, so a 254-host subnet is never reported as fully probed
+    /// when the overall deadline stopped earlier.
+    public let tcpCandidatesProbed: Int
 
     public init(host: String, tcp7001Connected: Bool,
                 udp9004Connected: Bool, identity: Pocket3StationIdentity,
                 identityRaw: Data, identityCommand: String = "07/07",
                 datalinkOwnerRetained: Bool = false,
-                identityReplyValidated: Bool = false) throws {
+                identityReplyValidated: Bool = false,
+                discoveryMode: String = "explicit_host",
+                candidatesConsidered: Int = 1,
+                tcpCandidatesProbed: Int? = nil) throws {
         guard !host.isEmpty, host.utf8.count <= 253,
               identityCommand == "07/07", !identityRaw.isEmpty,
-              identityRaw.count <= 128 else {
+              identityRaw.count <= 128,
+              !discoveryMode.isEmpty, discoveryMode.utf8.count <= 64,
+              (0...256).contains(candidatesConsidered),
+              (0...256).contains(tcpCandidatesProbed ??
+                (discoveryMode == "explicit_host" ? 0 : candidatesConsidered)) else {
             throw Pocket3StationSessionError.invalidHost
         }
         self.host = host
@@ -191,6 +208,10 @@ public struct Pocket3StationLANEvidence: Codable, Sendable, Equatable {
         self.identityCommand = identityCommand
         self.identityRaw = identityRaw
         self.identityReplyValidated = identityReplyValidated
+        self.discoveryMode = discoveryMode
+        self.candidatesConsidered = candidatesConsidered
+        self.tcpCandidatesProbed = tcpCandidatesProbed ??
+            (discoveryMode == "explicit_host" ? 0 : candidatesConsidered)
     }
 
     public var transportReady: Bool {
@@ -655,7 +676,9 @@ public struct Pocket3StationDryRunPlan: Codable, Sendable, Equatable {
             "07/48 01 → exact 00",
             "bounded station settle",
             "07/47 packed SSID/password → exact 0000",
-            "LAN discovery + TCP7001 + UDP9004",
+            "optional host override or bounded primary /24 discovery",
+            "TCP7001 preprobe ≤24 concurrent, keep ≤8 hits",
+            "full TCP7001 + UDP9004 + LAN 07/07 identity",
             "LAN 07/07 identity exact match",
             "07/48 00 cleanup"
         ]
@@ -959,6 +982,12 @@ public actor Pocket3StationSessionCoordinator {
         case Pocket3StationSessionError.unsupportedReply: return "station_reply_rejected"
         case Pocket3StationSessionError.lanIdentityMismatch: return "station_lan_identity_mismatch"
         case Pocket3StationSessionError.lanTransportUnavailable: return "station_lan_transport_unavailable"
+        case Pocket3StationSessionError.lanDiscoveryNoCandidates:
+            return "station_lan_discovery_no_candidates"
+        case Pocket3StationSessionError.lanDiscoveryNoTCPHits:
+            return "station_lan_discovery_no_tcp_hits"
+        case Pocket3StationSessionError.lanDiscoveryTimeout:
+            return "station_lan_discovery_timeout"
         case Pocket3StationSessionError.cleanupRequired: return "station_cleanup_debt"
         default: return String(String(describing: error).prefix(128))
         }

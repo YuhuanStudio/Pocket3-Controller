@@ -314,11 +314,11 @@ final class WirelessGimbalModel {
         if generation == attempt { connecting = false }
     }
 
-    /// Explicit station-mode path.  The user supplies the LAN SSID/password
-    /// and camera IPv4 address; the model keeps the credentials in memory and
-    /// passes them directly to the single FFF5/LAN owner.  This action is
-    /// developer-gated so opening the ordinary wireless panel cannot execute
-    /// a network transition by itself.
+    /// Station-mode path. The user supplies LAN credentials; the camera IPv4
+    /// address is optional and becomes an advanced explicit override. With no
+    /// address, the Core executor uses the bounded primary-subnet candidate
+    /// provider. This action is developer-gated so opening the panel cannot
+    /// execute a network transition by itself.
     func connectStationMode() async {
         applyDiscoveryStatus(bluetooth.status)
         guard CommandLine.arguments.contains("--hardware-validation") else {
@@ -337,7 +337,8 @@ final class WirelessGimbalModel {
                 "Pair the current Bluetooth peer before starting station mode."))
             return
         }
-        let host = stationHostInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hostText = stationHostInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let host: String? = hostText.isEmpty ? nil : hostText
         let stationCredentials: Pocket3StationCredentials
         do {
             stationCredentials = try Pocket3StationCredentials(
@@ -356,23 +357,41 @@ final class WirelessGimbalModel {
         }
 
         let routeProvider = SystemPocket3DatalinkNetworkObservationProvider()
-        let configuration = Pocket3DatalinkSocketConfiguration(
-            cameraHost: host, joinPolicy: .never)
-        let before = Pocket3DatalinkRouteCheckResult.check(
-            provider: routeProvider, configuration: configuration)
-        nativeRouteStatus = before.plan.status
-        guard before.plan.allowed else {
-            issue = AppErrorPresentation.message(BridgeFailure(
-                before.plan.failureCode ?? "station_route_invalid",
-                "The current LAN route cannot reach the supplied camera address."))
-            return
-        }
-        guard before.baseline.primaryInterfaceIndex != nil,
-              before.observation.currentPrimaryInterfaceIndex != nil else {
-            issue = AppErrorPresentation.message(BridgeFailure(
-                "station_default_route_unobserved",
-                "The current default LAN route could not be observed."))
-            return
+        let routeBaseline: Pocket3DatalinkRouteBaseline
+        let routeConfiguration: Pocket3DatalinkSocketConfiguration
+        if let host {
+            routeConfiguration = Pocket3DatalinkSocketConfiguration(
+                cameraHost: host, joinPolicy: .never)
+            let before = Pocket3DatalinkRouteCheckResult.check(
+                provider: routeProvider, configuration: routeConfiguration)
+            nativeRouteStatus = before.plan.status
+            guard before.plan.allowed else {
+                issue = AppErrorPresentation.message(BridgeFailure(
+                    before.plan.failureCode ?? "station_route_invalid",
+                    "The current LAN route cannot reach the supplied camera address."))
+                return
+            }
+            routeBaseline = before.baseline
+            guard before.baseline.primaryInterfaceIndex != nil,
+                  before.observation.currentPrimaryInterfaceIndex != nil else {
+                issue = AppErrorPresentation.message(BridgeFailure(
+                    "station_default_route_unobserved",
+                    "The current default LAN route could not be observed."))
+                return
+            }
+        } else {
+            routeConfiguration = .legacy
+            routeBaseline = routeProvider.captureBaseline()
+            guard routeBaseline.primaryInterfaceIndex != nil else {
+                issue = AppErrorPresentation.message(BridgeFailure(
+                    "station_default_route_unobserved",
+                    "The current default LAN route could not be observed."))
+                return
+            }
+            nativeRouteStatus = Pocket3DatalinkRouteStatus(
+                state: .legacyUnbound,
+                cameraHost: Pocket3DatalinkSocketConfiguration.defaultCameraHost,
+                evidence: "station_primary_subnet_bounded_discovery")
         }
 
         let readinessGeneration = nativeSessionStatus.generation
@@ -415,8 +434,8 @@ final class WirelessGimbalModel {
             return
         }
         let afterObservation = routeProvider.observe(
-            configuration: configuration, baseline: before.baseline)
-        guard let oldPrimary = before.baseline.primaryInterfaceIndex,
+            configuration: routeConfiguration, baseline: routeBaseline)
+        guard let oldPrimary = routeBaseline.primaryInterfaceIndex,
               let newPrimary = afterObservation.currentPrimaryInterfaceIndex else {
             let stopped = await coordinator.stop()
             stationSessionResult = stopped
