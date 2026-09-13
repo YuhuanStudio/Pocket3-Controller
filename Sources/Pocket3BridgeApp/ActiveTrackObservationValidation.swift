@@ -74,8 +74,12 @@ extension AppModel {
             // stale coordinator before applying the single-window gate so a
             // completed recorder cannot permanently wedge later trials.
             if var existing = developerActiveTrackObservationWindow,
-               let recording = wireless.bluetooth.cameraEventRecordingSnapshot,
-               recording.end != nil {
+               let snapshot = wireless.bluetooth.cameraEventRecordingSnapshot,
+               snapshot.end != nil || existing.isExpired(
+                   at: ProcessInfo.processInfo.systemUptime) {
+                let recording = snapshot.end == nil
+                    ? await wireless.bluetooth.finishCameraEventRecording()
+                    : snapshot
                 _ = existing.finish(recording: recording)
                 developerActiveTrackObservationWindow = nil
             }
@@ -135,8 +139,12 @@ extension AppModel {
                     "Start an ActiveTrack observation window first")
             }
             try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
-            if let recording = wireless.bluetooth.cameraEventRecordingSnapshot,
-               recording.end != nil {
+            if let snapshot = wireless.bluetooth.cameraEventRecordingSnapshot,
+               snapshot.end != nil || coordinator.isExpired(
+                   at: ProcessInfo.processInfo.systemUptime) {
+                let recording = snapshot.end == nil
+                    ? await wireless.bluetooth.finishCameraEventRecording()
+                    : snapshot
                 let status = coordinator.finish(recording: recording)
                 developerActiveTrackObservationWindow = nil
                 return ServiceReply(id: request.id, result: try .encode(status))
@@ -177,8 +185,12 @@ extension AppModel {
                     "Start an ActiveTrack observation window first")
             }
             try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
-            if let recording = wireless.bluetooth.cameraEventRecordingSnapshot,
-               recording.end != nil {
+            if let snapshot = wireless.bluetooth.cameraEventRecordingSnapshot,
+               snapshot.end != nil || coordinator.isExpired(
+                   at: ProcessInfo.processInfo.systemUptime) {
+                let recording = snapshot.end == nil
+                    ? await wireless.bluetooth.finishCameraEventRecording()
+                    : snapshot
                 let status = coordinator.finish(recording: recording)
                 developerActiveTrackObservationWindow = nil
                 return ServiceReply(id: request.id, result: try .encode(status))

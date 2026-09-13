@@ -412,6 +412,14 @@ public struct NativeActiveTrackObservationWindowLifecycleCoordinator: Sendable {
         }
     }
 
+    /// The operator window can be shorter than the shared passive recorder's
+    /// twenty-second cap, so recorder termination alone cannot define the
+    /// lifecycle deadline.
+    public func isExpired(at uptime: TimeInterval) -> Bool {
+        guard let startedUptime, uptime.isFinite else { return false }
+        return uptime > startedUptime + windowSeconds
+    }
+
     public func update(
         recording: BluetoothCameraEventRecording?,
         action: NativeActiveTrackObservationWindowLifecycleAction = .status

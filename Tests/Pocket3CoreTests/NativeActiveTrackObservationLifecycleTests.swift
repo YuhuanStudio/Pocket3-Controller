@@ -166,4 +166,20 @@ struct NativeActiveTrackObservationLifecycleTests {
         #expect(status.failureCode == "cancelled")
         #expect(status.recording?.end == .cancelled)
     }
+
+    @Test func coordinatorDeadlineIsIndependentFromRecorderDeadline() throws {
+        let request = try NativeActiveTrackObservationWindowLifecycleRequest(
+            action: .start,
+            expectedSessionID: session,
+            peripheralID: peer,
+            windowSeconds: 1)
+        let coordinator = try NativeActiveTrackObservationWindowLifecycleCoordinator(
+            start: request,
+            route: .available,
+            baseline: baseline(),
+            startedUptime: 100)
+        #expect(!coordinator.isExpired(at: 101))
+        #expect(coordinator.isExpired(at: 101.000_001))
+        #expect(!coordinator.isExpired(at: .infinity))
+    }
 }
