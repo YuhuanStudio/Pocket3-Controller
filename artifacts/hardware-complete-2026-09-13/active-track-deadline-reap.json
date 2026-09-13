@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "active_track_deadline_reap_hardware",
+  "sessionID": "733C3E13-2901-44C9-9055-CF898856BD8E",
+  "peripheralID": "DCA2FB6B-AF9C-422F-6C78-2ED0AD01971E",
+  "cameraCommandsSent": false,
+  "stages": {
+    "start1": {
+      "action": "start",
+      "phase": "armed",
+      "recordingActive": true,
+      "rawEventCount": 0,
+      "failureCode": null
+    },
+    "expired1": {
+      "action": "finish",
+      "phase": "failed",
+      "recordingActive": false,
+      "rawEventCount": 10,
+      "failureCode": "active_track_observation_markers_incomplete"
+    },
+    "start2": {
+      "action": "start",
+      "phase": "armed",
+      "recordingActive": true,
+      "rawEventCount": 0,
+      "failureCode": null
+    },
+    "cancel2": {
+      "action": "cancel",
+      "phase": "cancelled",
+      "recordingActive": false,
+      "rawEventCount": 0,
+      "failureCode": "cancelled"
+    }
+  }
+}

@@ -428,6 +428,8 @@ Direct UVC ownership在App `validation-suspend`（零frame）後、以及App程�
 
 第29批比較使用者明確標示的ActiveTrack ON與OFF獨立20秒窗口。ON共307筆事件，其中`02/89` 224筆、`04/05` 78筆；OFF共182筆，其中`02/89` 70筆、`04/05` 107筆。新的scalar comparator核對同一session/peripheral、窗口速率、route counts、payload SHA-256、strict A89/A6 candidates及其他動態route，評估為`mixedDynamicTraffic`並固定`claimsTrackingCausality=false`。因此目前只能確認切換伴隨遙測分布改變，不能把`02/89`頻率當作可靠ActiveTrack狀態，也沒有送A6或其他writer。互動recorder到期後App會回傳partial/failed evidence並釋放coordinator，避免舊窗口阻擋後續觀測。[摘要](../artifacts/hardware-complete-2026-09-13/active-track-on-off-summary.json)
 
+上述逾時回收另以最新build25真機驗證：1秒operator window啟動後，status在到期時主動結束仍處於20秒共用上限內的recorder，回傳`failed/active_track_observation_markers_incomplete`、10筆partial events與`recordingActive=false`；同一BLE session隨即能啟動第二個窗口，最後cancel後仍為inactive。這修正的是本機觀測生命週期，沒有送相機或追蹤命令。[結果](../artifacts/hardware-complete-2026-09-13/active-track-deadline-reap.json)
+
 同批新增16-case USB pan/tilt壓力驗收模型，覆蓋兩軸正負方向的near/middle/far/limit、endpoint coverage、輸入距離對raw rate單調性、fresh scalar frame、Stop穩定窗口、每案origin restore、重連session fence及最終回中。它目前是`hardwareExecutionEnabled=false`的純plan/evaluator，沒有執行全範圍真機動作，也不把UVC raw宣稱為物理角度。另新增`02/24` AF-mode可逆candidate gate：只有fresh B1/B2 raw baseline與exact identity/sequence才可產生dry-run及restore payload；因BLE-only setter wire evidence仍為0，`--execute`固定unsupported且零寫入。
 
 Phase 29完整Release gate通過Core 850、Intelligence 44、Evaluation 1、App 112與XCTest 6，共1,013項，零失敗。
