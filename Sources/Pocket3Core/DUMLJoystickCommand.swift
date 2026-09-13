@@ -10,8 +10,12 @@ public enum DUMLJoystickError: Error, Equatable, Sendable {
 /// This is a joystick value, not an angular position or calibrated degrees/sec.
 /// Sender/receiver addressing is verified in the same pinned DumlTransport.swift
 /// sendDuml implementation; see research/2026-09-08/kaze/PROVENANCE.md.
-/// The Pocket 3 center/±550 and notify/no-ACK shape is cross-checked against
+/// The Pocket 3 center/notify/no-ACK shape is cross-checked against
 /// OpenPocketCine Commands.swift at 9b30b93572797c94db5ad9236fb746410f8d761f.
+/// The conservative default range remains the small BLE probe range. The
+/// native UDP product path opts into `encodeNativeUDP`, whose wider range is
+/// kept explicit so a BLE probe cannot accidentally become a full-range
+/// motion command.
 /// This does not include BLE/Wi-Fi routing, fragmentation, or a live connection.
 public struct DUMLJoystickCommand: Sendable, Equatable {
     public static let commandSet: UInt8 = 0x04
@@ -21,10 +25,12 @@ public struct DUMLJoystickCommand: Sendable, Equatable {
     public static let commandType: UInt8 = 0
     public static let sender: UInt8 = 0x02
     public static let center: UInt16 = 1024
-    /// OpenPocketCine's Pocket 3 survey uses center 1024 with a signed
-    /// ±550 stick range. This is a native joystick unit, not degrees or a
-    /// calibrated physical speed.
-    public static let maximumOffset = 550
+    /// Conservative range used by the fixed BLE probe and legacy callers.
+    /// This is a native joystick unit, not degrees or a calibrated physical
+    /// speed.
+    public static let maximumOffset = 330
+    /// Full range reserved for the native UDP product control path.
+    public static let nativeUDPMaximumOffset = 550
     public static let deadzone = 0.06
 
     public let pitch: UInt16
@@ -48,6 +54,18 @@ public struct DUMLJoystickCommand: Sendable, Equatable {
     /// Screen coordinates: right is +x; down is +y. Values outside the unit
     /// circle are radially clamped. Speed is a normalized scale in 0...1.
     public static func encode(x: Double, y: Double, speed: Double) throws -> Self {
+        try encode(x: x, y: y, speed: speed, maximumOffset: maximumOffset)
+    }
+
+    /// Encodes the wider center±550 range used by the native UDP product
+    /// route. Keeping this opt-in prevents the BLE evidence probe from
+    /// silently changing amplitude when the shared value encoder evolves.
+    public static func encodeNativeUDP(x: Double, y: Double, speed: Double) throws -> Self {
+        try encode(x: x, y: y, speed: speed, maximumOffset: nativeUDPMaximumOffset)
+    }
+
+    private static func encode(x: Double, y: Double, speed: Double,
+                               maximumOffset: Int) throws -> Self {
         guard x.isFinite, y.isFinite, speed.isFinite else { throw DUMLJoystickError.nonFiniteInput }
         guard (0...1).contains(speed) else { throw DUMLJoystickError.invalidSpeed }
         var horizontal = x, vertical = y

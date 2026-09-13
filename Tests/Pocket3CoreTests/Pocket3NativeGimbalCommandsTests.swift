@@ -19,11 +19,12 @@ struct Pocket3NativeGimbalCommandsTests {
     }
 
     @Test func joystickUsesPocket3CenterAndSigned550NotifyRange() throws {
-        let right = try DUMLJoystickCommand.encode(x: 1, y: 0, speed: 1)
-        let left = try DUMLJoystickCommand.encode(x: -1, y: 0, speed: 1)
-        let up = try DUMLJoystickCommand.encode(x: 0, y: -1, speed: 1)
-        let down = try DUMLJoystickCommand.encode(x: 0, y: 1, speed: 1)
+        let right = try DUMLJoystickCommand.encodeNativeUDP(x: 1, y: 0, speed: 1)
+        let left = try DUMLJoystickCommand.encodeNativeUDP(x: -1, y: 0, speed: 1)
+        let up = try DUMLJoystickCommand.encodeNativeUDP(x: 0, y: -1, speed: 1)
+        let down = try DUMLJoystickCommand.encodeNativeUDP(x: 0, y: 1, speed: 1)
         #expect(DUMLJoystickCommand.center == 1024)
+        #expect(DUMLJoystickCommand.nativeUDPMaximumOffset == 550)
         #expect(right.yaw == 1574 && left.yaw == 474)
         #expect(up.pitch == 1574 && down.pitch == 474)
         #expect(right.frame(sequence: 1).flags == 0)

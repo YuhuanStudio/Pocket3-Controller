@@ -28,13 +28,17 @@ import Testing
     let down = try DUMLJoystickCommand.encode(x: 0, y: 1, speed: 1)
     let up = try DUMLJoystickCommand.encode(x: 0, y: -1, speed: 1)
     let left = try DUMLJoystickCommand.encode(x: -1, y: 0, speed: 0.5)
-    #expect(DUMLJoystickCommand.maximumOffset == 550)
+    #expect(DUMLJoystickCommand.maximumOffset == 330)
     #expect(right.frame(sequence: 1).flags == 0)
-    #expect(right.pitch == 1024 && right.yaw == 1574)
-    #expect(down.pitch == 474 && down.yaw == 1024)
-    #expect(up.pitch == 1574 && up.yaw == 1024)
-    #expect(left.pitch == 1024 && left.yaw == 749)
-    #expect(right.payload == Data([0,4,0,0,0x26,0x06,0,0x80,0x22,0]))
+    #expect(right.pitch == 1024 && right.yaw == 1354)
+    #expect(down.pitch == 694 && down.yaw == 1024)
+    #expect(up.pitch == 1354 && up.yaw == 1024)
+    #expect(left.pitch == 1024 && left.yaw == 859)
+    #expect(right.payload == Data([0,4,0,0,0x4A,0x05,0,0x80,0x22,0]))
+
+    let nativeRight = try DUMLJoystickCommand.encodeNativeUDP(x: 1, y: 0, speed: 1)
+    #expect(DUMLJoystickCommand.nativeUDPMaximumOffset == 550)
+    #expect(nativeRight.pitch == 1024 && nativeRight.yaw == 1574)
 }
 
 @Test func joystickRadiallyClampsHugeFiniteDiagonalInputsWithoutOverflow() throws {

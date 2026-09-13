@@ -288,7 +288,7 @@ public final class Pocket3Datalink: ContinuousGimbalTransport,
     public func send(_ input: ContinuousGimbalInput,
                      lease: ContinuousGimbalLease,
                      permit: OperationPermit) async throws {
-        let command = try DUMLJoystickCommand.encode(
+        let command = try DUMLJoystickCommand.encodeNativeUDP(
             x: input.x, y: input.y, speed: input.speed)
         try await send(command, lease: lease, permit: permit)
     }
