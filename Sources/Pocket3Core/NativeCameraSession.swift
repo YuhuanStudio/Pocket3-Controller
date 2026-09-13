@@ -44,6 +44,10 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
     // Credential use and datalink setup are represented explicitly so callers
     // cannot accidentally treat them as command-ready camera controls.
     case credentials
+    /// Station-mode LAN identity exchange (07/07). This is a setup
+    /// transaction, kept distinct from camera controls and read-only BLE
+    /// credential retrieval.
+    case stationIdentity
 
     // Camera/gimbal commands require the completed native datalink handshake.
     case whiteBalance
@@ -80,6 +84,8 @@ public enum NativeCameraSessionCommand: String, Codable, CaseIterable, Hashable,
             .paired
         case .credentials:
             .credentialsAvailable
+        case .stationIdentity:
+            .commandReady
         case .whiteBalance, .exposure, .focusMode, .colorProfile, .record,
              .tracking, .gimbal, .gimbalPreset, .zoom, .productShowcase, .audioDSP,
              .advancedSetting, .cameraCapture:

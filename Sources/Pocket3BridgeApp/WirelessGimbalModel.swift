@@ -30,6 +30,17 @@ final class WirelessGimbalModel {
     private(set) var nativeRouteStatus: Pocket3DatalinkRouteStatus = .unknown
     var connecting = false
     var joiningNetwork = false
+    /// Explicit station-mode inputs stay in this model only while the user
+    /// is working with the diagnostics connection. They are never written to
+    /// UserDefaults, status, IPC, or the pairing credential callback.
+    var stationSSIDInput = ""
+    var stationPasswordInput = ""
+    var stationHostInput = ""
+    private(set) var stationConnecting = false
+    private(set) var stationSessionResult: Pocket3StationSessionResult?
+    var stationPhase: Pocket3StationSessionPhase {
+        stationSessionResult?.phase ?? .idle
+    }
     private(set) var presetBusy = false
     private(set) var nativeBodyValidationBusy = false
     var issue: String?
@@ -111,6 +122,8 @@ final class WirelessGimbalModel {
     @ObservationIgnored private var joinTask: Task<Void, Error>?
     @ObservationIgnored private var joinRequest: CameraWiFiJoinRequest?
     @ObservationIgnored private var joinID: UUID?
+    @ObservationIgnored private var stationCoordinator: Pocket3StationSessionCoordinator?
+    @ObservationIgnored private var stationLANExecutor: Pocket3StationDatalinkLANExecutor?
     @ObservationIgnored private var presetTask: Task<Void, Never>?
     @ObservationIgnored private var presetPermit: OperationPermit?
     @ObservationIgnored private var presetID: UUID?
@@ -300,6 +313,214 @@ final class WirelessGimbalModel {
         }
         if generation == attempt { connecting = false }
     }
+
+    /// Explicit station-mode path.  The user supplies the LAN SSID/password
+    /// and camera IPv4 address; the model keeps the credentials in memory and
+    /// passes them directly to the single FFF5/LAN owner.  This action is
+    /// developer-gated so opening the ordinary wireless panel cannot execute
+    /// a network transition by itself.
+    func connectStationMode() async {
+        applyDiscoveryStatus(bluetooth.status)
+        guard CommandLine.arguments.contains("--hardware-validation") else {
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "validation_disabled",
+                "Station mode requires an explicit hardware-validation launch."))
+            return
+        }
+        guard !stationConnecting, !joiningNetwork, joinTask == nil,
+              !connecting, disconnectTask == nil, datalink == nil,
+              !nativeBodyValidationBusy,
+              pairingStatus?.peerReportedPaired == true,
+              let pairedCredentials = credentials else {
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "station_ble_not_ready",
+                "Pair the current Bluetooth peer before starting station mode."))
+            return
+        }
+        let host = stationHostInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stationCredentials: Pocket3StationCredentials
+        do {
+            stationCredentials = try Pocket3StationCredentials(
+                ssid: stationSSIDInput, password: stationPasswordInput)
+        } catch {
+            issue = AppErrorPresentation.message(error)
+            return
+        }
+        let stationBinding: Pocket3StationSessionBinding
+        do {
+            stationBinding = try bluetooth.stationSessionBinding(
+                expectedCameraSSID: pairedCredentials.ssid)
+        } catch {
+            issue = AppErrorPresentation.message(error)
+            return
+        }
+
+        let routeProvider = SystemPocket3DatalinkNetworkObservationProvider()
+        let configuration = Pocket3DatalinkSocketConfiguration(
+            cameraHost: host, joinPolicy: .never)
+        let before = Pocket3DatalinkRouteCheckResult.check(
+            provider: routeProvider, configuration: configuration)
+        nativeRouteStatus = before.plan.status
+        guard before.plan.allowed else {
+            issue = AppErrorPresentation.message(BridgeFailure(
+                before.plan.failureCode ?? "station_route_invalid",
+                "The current LAN route cannot reach the supplied camera address."))
+            return
+        }
+        guard before.baseline.primaryInterfaceIndex != nil,
+              before.observation.currentPrimaryInterfaceIndex != nil else {
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "station_default_route_unobserved",
+                "The current default LAN route could not be observed."))
+            return
+        }
+
+        let readinessGeneration = nativeSessionStatus.generation
+        if nativeSession.state == .paired {
+            _ = nativeSession.markCredentialsAvailable(
+                generation: readinessGeneration)
+        }
+        guard nativeSession.beginDatalinkHandshake(
+            generation: readinessGeneration) else {
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "station_session_not_ready",
+                "The Bluetooth session is not ready for station setup."))
+            return
+        }
+        publishNativeSessionStatus()
+        stationConnecting = true
+        stationSessionResult = nil
+        issue = nil
+        let lan = Pocket3StationDatalinkLANExecutor(
+            clientIdentifier: clientIdentifier)
+        let coordinator = Pocket3StationSessionCoordinator(
+            binding: stationBinding,
+            ble: bluetooth.stationBLEExecutor(), lan: lan)
+        stationLANExecutor = lan
+        stationCoordinator = coordinator
+        let result = await coordinator.start(
+            credentials: stationCredentials, host: host)
+        stationSessionResult = result
+        guard result.commandReady,
+              let link = await lan.connectedDatalink(for: stationBinding),
+              let nativeBinding = (await link.status()).binding else {
+            if result.cleanupDebt == nil {
+                stationCoordinator = nil; stationLANExecutor = nil
+            }
+            resetNativeSessionToPairingEvidence()
+            stationConnecting = false
+            issue = AppErrorPresentation.message(BridgeFailure(
+                result.failureCode ?? "station_command_not_ready",
+                "Station setup did not produce a matching LAN identity."))
+            return
+        }
+        let afterObservation = routeProvider.observe(
+            configuration: configuration, baseline: before.baseline)
+        guard let oldPrimary = before.baseline.primaryInterfaceIndex,
+              let newPrimary = afterObservation.currentPrimaryInterfaceIndex else {
+            let stopped = await coordinator.stop()
+            stationSessionResult = stopped
+            stationCoordinator = stopped.cleanupDebt == nil ? nil : coordinator
+            stationLANExecutor = stopped.cleanupDebt == nil ? nil : lan
+            resetNativeSessionToPairingEvidence()
+            stationConnecting = false
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "station_default_route_unobserved",
+                "The default LAN route could not be observed after setup."))
+            return
+        }
+        if oldPrimary != newPrimary {
+            let stopped = await coordinator.stop()
+            stationSessionResult = stopped
+            stationCoordinator = stopped.cleanupDebt == nil ? nil : coordinator
+            stationLANExecutor = stopped.cleanupDebt == nil ? nil : lan
+            resetNativeSessionToPairingEvidence()
+            stationConnecting = false
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "station_default_route_changed",
+                "Station setup changed the Mac's default route and was stopped."))
+            return
+        }
+
+        guard nativeSession.generation == readinessGeneration,
+              nativeSession.markCommandReady(generation: readinessGeneration) else {
+            let stopped = await coordinator.stop()
+            stationSessionResult = stopped
+            stationCoordinator = stopped.cleanupDebt == nil ? nil : coordinator
+            stationLANExecutor = stopped.cleanupDebt == nil ? nil : lan
+            stationConnecting = false
+            issue = AppErrorPresentation.message(BridgeFailure(
+                "station_session_changed",
+                "The Bluetooth session changed during station setup."))
+            return
+        }
+        let attempt = UUID()
+        generation = attempt
+        let scheduler = ContinuousGimbalScheduler(inputTransport: link)
+        do {
+            try await service.reserveNativeControl(binding: nativeBinding,
+                readStatus: { [weak self] in
+                    await self?.controlStatus() ?? .disconnected
+                }) { [weak self, controls] in
+                    await self?.invalidatePendingOperations()
+                    await controls.stop(reason: .cancelled)
+                    let state = await scheduler.status()
+                    if let lease = state.lease {
+                        let stopped = await scheduler.stop(lease, reason: .cancelled)
+                        guard stopped.neutralSent else {
+                            throw BridgeFailure("native_neutral_failed",
+                                "未能送出雲台中立指令")
+                        }
+                    }
+                    let result = await link.neutralAndVerify(
+                        binding: nativeBinding)
+                    let stopStatus = NativeControlStopStatus(result)
+                    return MotionResult(
+                        accepted: stopStatus.neutralSent,
+                        completed: stopStatus.stableTelemetry,
+                        verified: stopStatus.stableTelemetry,
+                        verification: result.verification, target: nil,
+                        observed: nil,
+                        message: stopStatus.stableTelemetry
+                            ? "中立指令後的雲台遙測已穩定；不是機械急停或物理角度校準"
+                            : "中立指令與停止遙測尚未完整確認",
+                        nativeStop: stopStatus)
+                }
+            self.datalink = link
+            self.scheduler = scheduler
+            self.binding = nativeBinding
+            nativeStatus = await link.status()
+            configureControls()
+        } catch {
+            _ = await coordinator.stop()
+            stationSessionResult = await coordinator.status()
+            stationCoordinator = stationSessionResult?.cleanupDebt == nil
+                ? nil : coordinator
+            stationLANExecutor = stationSessionResult?.cleanupDebt == nil
+                ? nil : lan
+            resetNativeSessionToPairingEvidence()
+            issue = AppErrorPresentation.message(error)
+        }
+        stationConnecting = false
+    }
+
+    /// Leaves station mode and lets the coordinator persist/return any
+    /// cleanup debt.  Clearing the SecureField value is independent of that
+    /// metadata and always happens after this explicit lifecycle stop.
+    private func stopStationMode() async {
+        guard let coordinator = stationCoordinator else {
+            stationPasswordInput = ""
+            return
+        }
+        let result = await coordinator.stop()
+        stationSessionResult = result
+        if result.cleanupDebt == nil {
+            stationCoordinator = nil
+            stationLANExecutor = nil
+        }
+        stationPasswordInput = ""
+    }
+
     func refresh() async {
         // CoreBluetooth notifications update the receive state at camera rate;
         // publish its scalar snapshot on the existing one-second App refresh.
@@ -524,6 +745,7 @@ final class WirelessGimbalModel {
     func disconnectNative() async {
         invalidatePendingOperations()
         _ = await bluetooth.stopNativeProbe()
+        await stopStationMode()
         let pendingJoin = joinTask
         await disconnectNativeOnly()
         _ = try? await pendingJoin?.value
@@ -561,6 +783,7 @@ final class WirelessGimbalModel {
         await disconnectNative()
         guard selectionOperationID == selection else { return }
         bluetooth.disconnect(); credentials = nil; networkName = nil; hasCredentials = false; selectedPeripheral = ""
+        stationSSIDInput = ""; stationHostInput = ""; stationPasswordInput = ""
         lastCameraSettingsQueryResults = []; lastCameraSettingsQueryFailures = []
         lastPairedTapFocusResult = nil
         invalidateNativeSession()
@@ -860,6 +1083,11 @@ final class WirelessGimbalModel {
                  "nativeRouteStatus": try .encode(nativeRouteStatus),
                  "nativeBodyValidationBusy": .bool(nativeBodyValidationBusy),
                  "capabilities": try .encode(capabilityGraph),
-                 "credentialsAvailable": .bool(credentials != nil)])
+                 "credentialsAvailable": .bool(credentials != nil),
+                 "stationPhase": .string(stationPhase.rawValue),
+                 "stationCommandReady": .bool(stationSessionResult?.commandReady == true),
+                 "stationSession": try stationSessionResult.map(JSONValue.encode) ?? .null,
+                 "stationCredentialsPersisted": .bool(false),
+                 "stationAutomaticWiFiAssociation": .bool(false)])
     }
 }

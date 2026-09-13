@@ -38,7 +38,7 @@ struct WirelessGimbalConnectionView: View {
                     }
                     if model.discovery.phase == .gattConnectedUnauthenticated {
                         Button(loc("Pair camera")) {
-                            do { try model.pair() } catch { model.issue = AppErrorPresentation.message(error) }
+                            do { try model.pair(pairOnly: false) } catch { model.issue = AppErrorPresentation.message(error) }
                         }.buttonStyle(YunButtonStyle(.primary, small: true))
                     }
                 }
@@ -48,6 +48,50 @@ struct WirelessGimbalConnectionView: View {
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textSecondary)
                 Text(loc("Pocket 3 identity and USB association are not verified."))
                     .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+
+                YunDivider()
+                Text(loc("Pocket 3 station mode"))
+                    .font(Yun.Text.label)
+                Text(loc("Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly."))
+                    .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                TextField(loc("Camera LAN IP"), text: $model.stationHostInput)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(model.stationConnecting || model.nativeConnected)
+                TextField(loc("LAN SSID"), text: $model.stationSSIDInput)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(model.stationConnecting || model.nativeConnected)
+                SecureField(loc("LAN password"), text: $model.stationPasswordInput)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(model.stationConnecting || model.nativeConnected)
+                Button {
+                    Task {
+                        if model.stationPhase == .commandReady || model.stationPhase == .cleanupDebt {
+                            await model.disconnectNative()
+                        } else {
+                            await model.connectStationMode()
+                        }
+                    }
+                } label: {
+                    Label(
+                        loc(model.stationConnecting
+                            ? "Connecting station mode…"
+                            : model.stationPhase == .commandReady
+                                ? "Disconnect station mode"
+                                : model.stationPhase == .cleanupDebt
+                                    ? "Retry station cleanup"
+                                : "Connect station mode"),
+                        systemImage: model.stationPhase == .commandReady
+                            ? "xmark.circle" : "network")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(YunButtonStyle(.secondary, small: true))
+                .disabled(model.connecting || model.joiningNetwork || model.stationConnecting)
+                if model.stationPhase == .cleanupDebt {
+                    Text(loc("Station cleanup is pending. Reconnect the paired camera to retry."))
+                        .font(Yun.Text.caption).foregroundStyle(Yun.Palette.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             if model.pairingStatus?.credentialsAvailable == true {
                 YunDivider()

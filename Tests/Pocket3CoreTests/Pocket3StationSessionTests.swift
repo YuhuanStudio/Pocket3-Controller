@@ -127,6 +127,24 @@ struct Pocket3StationSessionTests {
         }
     }
 
+    @Test func stationIdentityUsesPackedCameraSSIDDigestWithoutLeakingSSID() throws {
+        let payload = Data([0, 6]) + Data("Studio".utf8)
+        let identity = try #require(
+            Pocket3StationProtocol.cameraSSIDIdentity(from: payload))
+        let expected = try Pocket3StationIdentity(cameraSSID: "Studio")
+        #expect(identity == expected)
+        #expect(identity.raw.count == 32)
+        #expect(identity.raw != Data("Studio".utf8))
+        #expect(Pocket3StationProtocol.cameraSSIDIdentity(
+            from: Data([0, 6]) + Data("Stud".utf8)) == nil)
+        #expect(Pocket3StationProtocol.cameraSSIDIdentity(
+            from: Data([1, 6]) + Data("Studio".utf8)) == nil)
+        #expect(Pocket3StationProtocol.cameraSSIDIdentity(
+            from: Data([0, 6]) + Data("Studio".utf8) + Data([0])) == nil)
+        #expect(Pocket3StationProtocol.cameraSSIDIdentity(
+            from: Data([0, 2, 0x41, 0x0A])) == nil)
+    }
+
     @Test func commandReadyRequiresCapturedOrderIdentityAndRetainedOwner() async throws {
         let trace = StationTrace()
         let expected = try identity()

@@ -1709,3 +1709,13 @@
 "SD storage capacity fields are inconsistent" = "SD storage capacity fields are inconsistent";
 "No current SD storage readback" = "No current SD storage readback";
 "No independent accessory identity readback is exposed by current BLE/USB observations" = "No independent accessory identity readback is exposed by current BLE/USB observations";
+"Pocket 3 station mode" = "Pocket 3 station mode";
+"Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly." = "Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly.";
+"Camera LAN IP" = "Camera LAN IP";
+"LAN SSID" = "LAN SSID";
+"LAN password" = "LAN password";
+"Connecting station mode…" = "Connecting station mode…";
+"Disconnect station mode" = "Disconnect station mode";
+"Retry station cleanup" = "Retry station cleanup";
+"Connect station mode" = "Connect station mode";
+"Station cleanup is pending. Reconnect the paired camera to retry." = "Station cleanup is pending. Reconnect the paired camera to retry.";

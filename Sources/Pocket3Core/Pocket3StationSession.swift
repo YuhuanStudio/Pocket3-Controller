@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// The station-mode BLE operations reviewed for Pocket 3.  These frames are
 /// only constructed here; a caller must inject an executor for any write.
@@ -8,6 +9,14 @@ public enum Pocket3StationBLEOperation: String, Codable, Sendable,
     case enterStationMode = "07/48_enter"
     case joinNetwork = "07/47_join"
     case leaveStationMode = "07/48_leave"
+
+    public var commandID: UInt8 {
+        switch self {
+        case .networkModeProbe: 0x39
+        case .enterStationMode, .leaveStationMode: 0x48
+        case .joinNetwork: 0x47
+        }
+    }
 }
 
 public enum Pocket3StationSessionPhase: String, Codable, Sendable,
@@ -52,21 +61,25 @@ public struct Pocket3StationCredentials: Sendable, Equatable {
         let passwordBytes = Array(password.utf8)
         guard (1...32).contains(ssidBytes.count),
               (1...63).contains(passwordBytes.count),
-              Self.safe(ssidBytes), Self.safe(passwordBytes) else {
+              Self.safe(ssid, ssidBytes), Self.safe(password, passwordBytes) else {
             throw Pocket3StationSessionError.invalidCredentials
         }
         self.ssid = ssid
         self.password = password
     }
 
-    private static func safe(_ bytes: [UInt8]) -> Bool {
+    private static func safe(_ value: String, _ bytes: [UInt8]) -> Bool {
         bytes.allSatisfy { $0 >= 0x20 && $0 != 0x7f }
+            && !value.unicodeScalars.contains {
+                CharacterSet.controlCharacters.contains($0)
+            }
     }
 }
 
-/// Exact identity bytes are kept opaque.  Equality is byte-for-byte between
+/// Exact identity digests are kept opaque. Equality is byte-for-byte between
 /// the paired BLE identity and the LAN 07/07 identity; no model/serial guess
-/// or normalization is applied.
+/// or normalization is applied. Generic `raw` callers must provide their own
+/// privacy-safe bytes; station SSIDs use `init(cameraSSID:)` below.
 public struct Pocket3StationIdentity: Codable, Sendable, Equatable {
     public let raw: Data
     public let source: String
@@ -78,6 +91,22 @@ public struct Pocket3StationIdentity: Codable, Sendable, Equatable {
         }
         self.raw = raw
         self.source = source
+    }
+
+    /// Creates the privacy-safe identity used by station mode.  The camera's
+    /// AP SSID is compared in memory by its SHA-256 digest; neither the SSID
+    /// nor the 07/07 packed reply is placed in Codable status/evidence.
+    public init(cameraSSID: String) throws {
+        let bytes = Array(cameraSSID.utf8)
+        guard (1...32).contains(bytes.count),
+              bytes.allSatisfy({ $0 >= 0x20 && $0 != 0x7f }),
+              !cameraSSID.unicodeScalars.contains(where: {
+                  CharacterSet.controlCharacters.contains($0)
+              }) else {
+            throw Pocket3StationSessionError.invalidCredentials
+        }
+        try self.init(raw: Data(SHA256.hash(data: Data(bytes))),
+                      source: "camera-ssid-sha256")
     }
 
     public func matches(_ other: Self) -> Bool { raw == other.raw }
@@ -383,6 +412,59 @@ public enum Pocket3StationProtocol {
         }
     }
 
+    /// Extracts the only identity field currently evidenced for LAN 07/07:
+    /// a zero status followed by one bounded packed camera AP SSID.  Any
+    /// unknown/trailing envelope is rejected instead of being normalized.
+    public static func cameraSSIDIdentity(from replyPayload: Data)
+        -> Pocket3StationIdentity? {
+        guard replyPayload.first == 0 else { return nil }
+        let bytes = Array(replyPayload.dropFirst())
+        guard let count = bytes.first.map(Int.init),
+              (1...32).contains(count), bytes.count == count + 1,
+              let ssid = String(bytes: bytes.dropFirst(), encoding: .utf8),
+              let identity = try? Pocket3StationIdentity(cameraSSID: ssid) else {
+            return nil
+        }
+        return identity
+    }
+
+    /// Admits only the three reviewed request shapes.  The BLE adapter uses
+    /// this before writing, so an executor cannot smuggle an unreviewed
+    /// opcode or payload through the station coordinator.
+    public static func isValidRequest(_ command: Pocket3StationBLECommand)
+        -> Bool {
+        let frame = command.frame
+        guard frame.source == source, frame.destination == destination,
+              frame.flags == requestFlags, frame.commandSet == commandSet else {
+            return false
+        }
+        switch command.operation {
+        case .networkModeProbe:
+            return frame.commandID == 0x39 && frame.payload == Data([0x00])
+        case .enterStationMode:
+            return frame.commandID == 0x48 && frame.payload == Data([0x01])
+        case .leaveStationMode:
+            return frame.commandID == 0x48 && frame.payload == Data([0x00])
+        case .joinNetwork:
+            guard frame.commandID == 0x47,
+                  let first = unpackString(frame.payload, at: 0,
+                                           maximumBytes: 32),
+                  let second = unpackString(frame.payload, at: first.next,
+                                            maximumBytes: 63) else {
+                return false
+            }
+            return second.next == frame.payload.count
+        }
+    }
+
+    /// FFF5 is the reviewed outbound station writer. Reply notifications may
+    /// arrive on either subscribed DUML characteristic, so inbound admission
+    /// is limited to the existing FFF4/FFF5 pair.
+    public static func isValidReplyCharacteristic(_ characteristic: String)
+        -> Bool {
+        characteristic == "FFF4" || characteristic == "FFF5"
+    }
+
     private static func command(
         operation: Pocket3StationBLEOperation, commandID: UInt8,
         payload: Data, sequence: UInt16
@@ -398,6 +480,24 @@ public enum Pocket3StationProtocol {
         result.append(contentsOf: value.utf8)
         return result
     }
+
+    private static func unpackString(_ payload: Data, at offset: Int,
+                                     maximumBytes: Int)
+        -> (value: String, next: Int)? {
+        guard payload.indices.contains(offset) else { return nil }
+        let count = Int(payload[offset])
+        let start = offset + 1, end = start + count
+        guard count > 0, count <= maximumBytes,
+              end <= payload.count else { return nil }
+        let bytes = payload[start..<end]
+        guard let value = String(bytes: bytes, encoding: .utf8),
+              bytes.allSatisfy({ $0 >= 0x20 && $0 != 0x7f }),
+              !value.unicodeScalars.contains(where: {
+                  CharacterSet.controlCharacters.contains($0)
+              }) else { return nil }
+        return (value, end)
+    }
+
 }
 
 /// Safe App/CLI input.  It contains no SSID/password fields; a future UI

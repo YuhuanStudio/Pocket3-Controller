@@ -77,6 +77,9 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     private var cameraEventOperation: BluetoothCameraEventOperation?
     private var cameraEventTask: Task<BluetoothCameraEventRecording, Never>?
     private var completedCameraEventRecording: BluetoothCameraEventRecording?
+    private var stationTransaction: BluetoothStationTransaction?
+    private var stationTransactionTimeout: Task<Void, Never>?
+    private var stationGenerationCounter: UInt64 = 0
 
     public override init() { super.init() } // Does not create a CBCentralManager.
 
@@ -201,6 +204,8 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             throw BridgeFailure("bluetooth_selection_required", "Select a connectable candidate from the current Bluetooth scan.")
         }
         central.stopScan(); deadlineTask?.cancel()
+        stationGenerationCounter &+= 1
+        if stationGenerationCounter == 0 { stationGenerationCounter = 1 }
         poseStore.bind(sessionID: session, peripheralID: peripheralID)
         cameraSettingsStore.bind(sessionID: session, peripheralID: peripheralID)
         _ = activeTrackStore.bindBluetooth(sessionID: session, peripheralID: peripheralID)
@@ -217,6 +222,126 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     }
 
     public func disconnect() { close(phase: .disconnected, issue: nil) }
+
+    /// Returns the exact paired BLE session that a station transaction may
+    /// use. The camera AP SSID comes from the existing memory-only pairing
+    /// credential callback and is immediately reduced to a digest; it is
+    /// never placed in the binding/result or persisted as identity evidence.
+    public func stationSessionBinding(expectedCameraSSID: String)
+        throws -> Pocket3StationSessionBinding {
+        guard state.phase == .gattPaired, pairer?.paired == true,
+              [.paired, .credentialsReady].contains(pairer?.phase ?? .idle),
+              registrationAcknowledgmentSession == state.generation,
+              let central, central.state == .poweredOn,
+              let peripheral = selectedPeripheral,
+              peripheral.state == .connected,
+              fff4Notifying, fff5Notifying,
+              let fff5, fff5.isNotifying,
+              fff5.properties.contains(.writeWithoutResponse),
+              writeQueue.isEmpty, stationGenerationCounter != 0 else {
+            throw BridgeFailure("station_ble_not_ready",
+                "Pair and register the current FFF5 peer before station mode.")
+        }
+        let identity = try Pocket3StationIdentity(cameraSSID: expectedCameraSSID)
+        return try Pocket3StationSessionBinding(
+            bleSessionID: state.generation, peripheralID: peripheral.identifier,
+            generation: stationGenerationCounter, bleIdentity: identity)
+    }
+
+    /// Adapter factory for the one existing FFF5 owner.  It does not create
+    /// another CoreBluetooth manager or subscription.
+    public func stationBLEExecutor() -> Pocket3BluetoothStationBLEExecutor {
+        Pocket3BluetoothStationBLEExecutor(discovery: self)
+    }
+
+    /// Sends one reviewed 07/39, 07/48, or 07/47 frame on the currently paired
+    /// FFF5 owner and waits for the same command/sequence reply.  There is no
+    /// retry or fallback; cancellation tears down the pending transaction.
+    public func sendStationCommand(
+        _ command: Pocket3StationBLECommand,
+        binding: Pocket3StationSessionBinding
+    ) async throws -> Pocket3StationBLEReply {
+        try Task.checkCancellation()
+        guard CommandLine.arguments.contains("--hardware-validation") else {
+            throw BridgeFailure("validation_disabled",
+                "Station-mode BLE writes require an explicit validation launch.")
+        }
+        guard Pocket3StationProtocol.isValidRequest(command),
+              stationBindingIsCurrent(binding), stationTransaction == nil,
+              settingWriteOperation == nil, tapFocusOperation == nil,
+              probeOperation == nil, readinessOperation == nil,
+              nativePresetOperation == nil, lensStateOperation == nil,
+              cameraPropertyOperation == nil, lensPointOperation == nil,
+              writeQueue.isEmpty, let peripheral = selectedPeripheral,
+              let fff5, peripheral.canSendWriteWithoutResponse,
+              peripheral.maximumWriteValueLength(for: .withoutResponse) >=
+                DUMLCodec.minimumFrameLength else {
+            throw BridgeFailure("station_ble_not_ready",
+                "The exact paired FFF5 owner is unavailable for station mode.")
+        }
+        let packet = try DUMLCodec.encode(command.frame)
+        guard peripheral.maximumWriteValueLength(for: .withoutResponse) >= packet.count else {
+            throw BridgeFailure("station_ble_mtu",
+                "The station command does not fit the current FFF5 write size.")
+        }
+        let id = UUID(), session = state.generation
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<Pocket3StationBLEReply, Error>) in
+                guard !Task.isCancelled,
+                      stationBindingIsCurrent(binding), stationTransaction == nil else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                stationTransaction = BluetoothStationTransaction(
+                    id: id, operation: command.operation,
+                    sequence: command.frame.sequence, session: session,
+                    peripheral: peripheral, characteristic: fff5,
+                    continuation: continuation)
+                stationTransactionTimeout = Task { @MainActor [weak self] in
+                    do { try await Task.sleep(for: .seconds(3)) }
+                    catch { return }
+                    guard let self, self.stationTransaction?.id == id else { return }
+                    self.finishStationTransaction(error: BridgeFailure(
+                        "station_ble_timeout", "No correlated station reply arrived."))
+                }
+                peripheral.writeValue(packet, for: fff5, type: .withoutResponse)
+                recordHeader(command.frame, direction: "submitted_tx",
+                             characteristic: "FFF5")
+            }
+        } onCancel: { [weak self] in
+            Task { @MainActor in
+                self?.finishStationTransaction(error: CancellationError())
+            }
+        }
+    }
+
+    /// Cleanup revalidation is a fresh exact FFF5 session check.  A changed
+    /// peer/session is allowed only when its peripheral and opaque identity
+    /// still match and its generation has not moved backwards.
+    public func revalidateStationBinding(
+        _ expected: Pocket3StationSessionBinding
+    ) throws -> Pocket3StationSessionBinding {
+        guard state.phase == .gattPaired, pairer?.paired == true,
+              [.paired, .credentialsReady].contains(pairer?.phase ?? .idle),
+              registrationAcknowledgmentSession == state.generation,
+              let central, central.state == .poweredOn,
+              let peripheral = selectedPeripheral,
+              peripheral.state == .connected,
+              fff4Notifying, fff5Notifying,
+              let fff5, fff5.isNotifying,
+              fff5.properties.contains(.writeWithoutResponse),
+              writeQueue.isEmpty,
+              expected.peripheralID == peripheral.identifier,
+              expected.bleIdentity.source == "camera-ssid-sha256",
+              stationGenerationCounter >= expected.generation else {
+            throw Pocket3StationSessionError.staleBinding
+        }
+        return try Pocket3StationSessionBinding(
+            bleSessionID: state.generation, peripheralID: peripheral.identifier,
+            generation: stationGenerationCounter,
+            bleIdentity: expected.bleIdentity)
+    }
 
     /// The app supplies one persistent UUID32 identifier, also used by its
     /// wireless datalink. No shared/default vendor identifier is transmitted.
@@ -1237,7 +1362,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         // Lens recordings and single native presets keep session housekeeping
         // alive while collecting telemetry. The preset's one final write still
         // checks an empty queue, credit, MTU and its permit synchronously.
-        guard settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, pairer != nil, let peripheral = selectedPeripheral, let fff5,
+        guard stationTransaction == nil, settingWriteOperation == nil, tapFocusOperation == nil, probeOperation == nil, lensStateOperation == nil, cameraPropertyOperation == nil, pairer != nil, let peripheral = selectedPeripheral, let fff5,
               state.accepts(peripheral: peripheral.identifier, session: state.generation),
               peripheral.state == .connected else { return }
         do {
@@ -1311,6 +1436,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
 
     private func publish() { onStatus?(status) }
     private func close(phase: BluetoothDiscoveryPhase, issue: String?) {
+        finishStationTransaction(error: Pocket3StationSessionError.staleBinding)
         settingWriteOperation?.connectionChanged = true
         tapFocusOperation?.connectionChanged = true
         cameraEventOperation?.connectionChanged = true
@@ -1484,6 +1610,8 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
                 let hostReceivedAt = Date(), receivedUptime = ProcessInfo.processInfo.systemUptime
                 receivedFrames += 1
                 recordHeader(packet.frame, direction: "received", characteristic: key)
+                completeStationTransaction(packet.frame, characteristic: key,
+                                           peripheral: peripheral, session: session)
                 if let readinessOperation, readinessOperation.session == session {
                     _ = try? readinessOperation.permit.perform {
                         readinessOperation.query.receive(packet.frameData, characteristic: key, at: ProcessInfo.processInfo.systemUptime)
@@ -1582,6 +1710,49 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     }
     private func accepts(_ peripheral: CBPeripheral, session: UUID) -> Bool {
         peripheral === selectedPeripheral && state.accepts(peripheral: peripheral.identifier, session: session)
+    }
+
+    private func stationBindingIsCurrent(
+        _ binding: Pocket3StationSessionBinding
+    ) -> Bool {
+        guard binding.bleSessionID == state.generation,
+              binding.peripheralID == selectedPeripheral?.identifier,
+              binding.generation == stationGenerationCounter,
+              binding.bleIdentity.source == "camera-ssid-sha256" else {
+            return false
+        }
+        return true
+    }
+
+    private func completeStationTransaction(
+        _ frame: DUMLFrame, characteristic: String,
+        peripheral: CBPeripheral, session: UUID
+    ) {
+        guard Pocket3StationProtocol.isValidReplyCharacteristic(characteristic),
+              let transaction = stationTransaction,
+              transaction.session == session,
+              transaction.peripheral === peripheral,
+              frame.source == 0x07, frame.destination == 0x02,
+              frame.flags == 0x80 || frame.flags == 0xc0,
+              frame.commandSet == 0x07,
+              frame.commandID == transaction.operation.commandID,
+              frame.sequence == transaction.sequence else {
+            return
+        }
+        finishStationTransaction(reply: Pocket3StationBLEReply(
+            operation: transaction.operation, sequence: frame.sequence,
+            payload: frame.payload))
+    }
+
+    private func finishStationTransaction(
+        reply: Pocket3StationBLEReply? = nil, error: Error? = nil
+    ) {
+        guard let transaction = stationTransaction else { return }
+        stationTransaction = nil
+        stationTransactionTimeout?.cancel(); stationTransactionTimeout = nil
+        if let reply { transaction.continuation.resume(returning: reply) }
+        else { transaction.continuation.resume(throwing: error ?? CancellationError()) }
+        drainWrites()
     }
 }
 
@@ -1727,6 +1898,26 @@ private final class BluetoothNativePresetOperation {
         guard packet.count == BluetoothNativePresetProbe.frameBytes else {
             throw BridgeFailure("bluetooth_recenter_packet", "The recenter command must fit one exact 15-byte frame.")
         }
+    }
+}
+
+@MainActor
+private final class BluetoothStationTransaction {
+    let id: UUID
+    let operation: Pocket3StationBLEOperation
+    let sequence: UInt16
+    let session: UUID
+    let peripheral: CBPeripheral
+    let characteristic: CBCharacteristic
+    let continuation: CheckedContinuation<Pocket3StationBLEReply, Error>
+
+    init(id: UUID, operation: Pocket3StationBLEOperation, sequence: UInt16,
+         session: UUID, peripheral: CBPeripheral,
+         characteristic: CBCharacteristic,
+         continuation: CheckedContinuation<Pocket3StationBLEReply, Error>) {
+        self.id = id; self.operation = operation; self.sequence = sequence
+        self.session = session; self.peripheral = peripheral
+        self.characteristic = characteristic; self.continuation = continuation
     }
 }
 

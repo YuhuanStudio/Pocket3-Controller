@@ -1709,3 +1709,13 @@
 "SD storage capacity fields are inconsistent" = "SD 存储容量字段不一致";
 "No current SD storage readback" = "没有当前 SD 存储回读";
 "No independent accessory identity readback is exposed by current BLE/USB observations" = "当前 BLE／USB 观察未提供独立配件身份回读";
+"Pocket 3 station mode" = "Pocket 3 基站模式";
+"Keep the Mac on its current LAN. Enter the camera address and network credentials explicitly." = "让 Mac 保持在当前局域网，明确输入相机地址和网络凭证。";
+"Camera LAN IP" = "相机局域网 IP";
+"LAN SSID" = "局域网 SSID";
+"LAN password" = "局域网密码";
+"Connecting station mode…" = "正在连接基站模式⋯";
+"Disconnect station mode" = "断开基站模式";
+"Retry station cleanup" = "重试基站清理";
+"Connect station mode" = "连接基站模式";
+"Station cleanup is pending. Reconnect the paired camera to retry." = "基站清理尚未完成。请重新连接已配对的相机后重试。";
