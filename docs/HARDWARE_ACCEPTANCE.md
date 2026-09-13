@@ -442,6 +442,10 @@ Phase 32 committed source的完整Release gate通過Core 872、Intelligence 44�
 
 第33批完成station-mode App垂直切片但未執行硬體：使用者在SecureField明確輸入既有LAN SSID/password與camera LAN IPv4，App本身不呼叫CoreWLAN、不切換Mac Wi-Fi、不保存明文；BLE command只由既有FFF5 owner提交，reply可由FFF4或FFF5進入但需exact session/peer/generation/sequence/opcode。LAN 07/07先嚴格解析camera SSID，再與BLE階段SSID的SHA-256 identity匹配；default route前後任一無法觀察或改變都fail-closed。成功的同一Pocket3Datalink owner才交給ContinuousGimbalScheduler、FE08與FE09。Core station/transport 8項及App presentation 2項focused tests通過；完整Release gate為Core875、Intelligence44、Evaluation1、App115、XCTest6，共1,041項零失敗。
 
+第34批取消一般使用者必須自行查相機LAN IPv4的要求：Station連線只從目前primary IPv4介面的`/24`產生候選，排除本機、network與broadcast address；TCP7001第一階段最多24並發、每候選不超過0.8秒、最多保留8個hit，且socket以`IP_BOUND_IF`固定在相同介面。只有hit才依序建立完整Pocket3Datalink並送LAN `07/07`，錯誤identity立即關閉，僅保留與BLE階段camera SSID SHA-256完全相同的owner；明確IP仍是可選進階override。這一批只完成離線transport與UI接線，尚未提交真實station join或雲台命令。
+
+同批Direct UVC不再建立第二套重複session狀態：既有`DirectUVCNegotiator`固定執行GET_MAX PROBE、SET_CUR PROBE、GET_CUR PROBE、SET_CUR COMMIT，保留每一步有界raw bytes，最後COMMIT逐byte回送GET_CUR取得的26-byte block；取消、I/O錯誤與亂序全部停止且不重試。它已從成功協商結果導出bulk reader admission，但仍維持`streamReady=false`，沒有切alternate setting或讀0x82 pipe。完整Release gate為Core883、Intelligence44、Evaluation1、App115、XCTest6，共1,049項零失敗。
+
 ## Build 25：direct UVC VS interface read-only inventory（2026-09-11）
 
 以IORegistry只讀檢查目前USB topology，確認同一Pocket 3 location下存在`Video Streaming@1` interface；其下已有系統AVFoundation/UVCAssistant framework client。這是目前真正的VS ownership狀態，不是descriptor猜測。direct backend因此必須先完成AVFoundation stop、delegate解除與frame queue drain，才可嘗試一般owned VS access；不得與現有client並行、不得seize interface。本檢查沒有開interface、pipe或control request，也沒有中斷取像。
