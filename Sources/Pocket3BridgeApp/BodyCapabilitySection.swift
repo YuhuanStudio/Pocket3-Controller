@@ -2,9 +2,9 @@ import SwiftUI
 import Pocket3Core
 import YunDesign
 
-/// Full, read-only body capability inventory for Settings > Camera. The
-/// native command path remains developer-gated; this view never offers a
-/// candidate writer to a normal user.
+/// Full body capability inventory for Settings > Camera. Product controls are
+/// added only inside the compact native-readiness disclosure after the same
+/// command and readback admission gates used by the service.
 struct BodyCapabilitySection: View {
     @Bindable var model: AppModel
     let developerMode: Bool
@@ -124,6 +124,11 @@ private struct BodyCapabilityDetails: View {
 
             Text(loc("Current body recording")).font(Yun.Text.label)
             bodyLifecycle(graph: graph)
+
+            if model.nativeSettingProductControlsVisible {
+                BodyProductControls(model: model)
+                    .accessibilityIdentifier("Pocket3NativeProductControls")
+            }
 
             YunDisclosure(loc("ActiveTrack (read-only)"),
                           subtitle: CapabilityPresentation.activeTrackState(currentActiveTrack),
@@ -499,7 +504,7 @@ private struct BodyCapabilityDetails: View {
                           availability: .unavailable(reason: readiness.availability.reason),
                           evidence: readiness.evidence)
         }
-        Text(loc("The UI is read-only; candidate writers stay hidden from normal users."))
+        Text(loc("Product controls appear only after verified writer admission."))
             .font(Yun.Text.caption).foregroundStyle(Yun.Palette.textTertiary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -595,5 +600,242 @@ private struct BodyCapabilityDetails: View {
             return nil
         }
         return observation
+    }
+}
+
+private struct BodyProductControls: View {
+    @Bindable var model: AppModel
+    @State private var expanded = false
+    @State private var formatID = ""
+    @State private var nativeOptionID = ""
+
+    var body: some View {
+        let formats = model.legalBodyRecordingProductFormats
+        let nativeOptions = model.nativeSettingProductOptions
+        YunDisclosure(
+            loc("Native camera controls"),
+            subtitle: subtitle(formats: formats, nativeOptions: nativeOptions),
+            isExpanded: $expanded) {
+                VStack(alignment: .leading, spacing: Yun.Space.sm) {
+                    bodyRecordingControls(formats: formats)
+                    nativeSettingControls(options: nativeOptions)
+                    progress
+                }
+            }
+            .accessibilityIdentifier("Pocket3NativeCameraControlsDisclosure")
+    }
+
+    private func subtitle(
+        formats: [CameraBodyRecordingFormatCommand],
+        nativeOptions: [NativeSettingProductOption]
+    ) -> String {
+        let body = model.bodyRecordingProductWriterUnlocked
+            ? (formats.isEmpty ? loc("Waiting for a fresh legal format table") :
+                String(format: loc("%d legal formats"), formats.count))
+            : loc("Body recording writer unavailable")
+        let native = nativeOptions.isEmpty
+            ? loc("Native setting writers unavailable")
+            : String(format: loc("%d native options"), nativeOptions.count)
+        return "\(body) · \(native)"
+    }
+
+    @ViewBuilder private func bodyRecordingControls(
+        formats: [CameraBodyRecordingFormatCommand]
+    ) -> some View {
+        Text(loc("Camera body recording")).font(Yun.Text.label)
+        if !model.bodyRecordingProductWriterUnlocked {
+            productRow(
+                loc("Writer"), loc("Unavailable until verified"),
+                availability: model.productWriterEntry(for: .bodyRecording)?.availability
+                    ?? .unavailable(reason: writerReason(.bodyRecording)),
+                evidence: writerEvidence(.bodyRecording))
+        } else if formats.isEmpty {
+            productRow(
+                loc("Legal formats"), loc("Waiting for a fresh readback"),
+                availability: .unavailable(reason: "No current legal format table"),
+                evidence: .localReadOnly)
+        } else {
+            Picker(loc("Format"), selection: $formatID) {
+                ForEach(Array(formats.enumerated()), id: \.offset) { _, format in
+                    Text(formatTitle(format)).tag(formatID(format))
+                }
+            }
+            .onAppear {
+                if !formats.contains(where: { formatID($0) == formatID }) {
+                    formatID = formatID(formats[0])
+                }
+            }
+            HStack(spacing: Yun.Space.sm) {
+                Button(loc("Start recording")) {
+                    model.performBodyRecordingProductWrite(action: .start)
+                }
+                .buttonStyle(YunButtonStyle(.secondary, small: true))
+                Button(loc("Stop recording")) {
+                    model.performBodyRecordingProductWrite(action: .stop)
+                }
+                .buttonStyle(YunButtonStyle(.secondary, small: true))
+                Button(loc("Set format")) {
+                    guard let selected = formats.first(where: {
+                        formatID($0) == formatID
+                    }) else { return }
+                    model.performBodyRecordingProductWrite(
+                        action: .format, format: selected)
+                }
+                .buttonStyle(YunButtonStyle(.secondary, small: true))
+            }
+            .disabled(model.bodyRecordingProductBusy)
+        }
+    }
+
+    @ViewBuilder private func nativeSettingControls(
+        options: [NativeSettingProductOption]
+    ) -> some View {
+        Text(loc("Native camera settings")).font(Yun.Text.label)
+        if options.isEmpty {
+            ForEach(model.nativeSettingProductWriterEntries) { entry in
+                productRow(
+                    writerTitle(entry.id), loc("Unavailable until verified"),
+                    availability: entry.availability,
+                    evidence: entry.evidenceLevel)
+            }
+        } else {
+            Picker(loc("Setting"), selection: $nativeOptionID) {
+                ForEach(options) { option in
+                    Text("\(writerTitle(option.action)) · \(option.title)")
+                        .tag(option.id)
+                }
+            }
+            .onAppear {
+                if !options.contains(where: { $0.id == nativeOptionID }) {
+                    nativeOptionID = options[0].id
+                }
+            }
+            Button(loc("Apply and restore baseline")) {
+                guard let option = options.first(where: {
+                    $0.id == nativeOptionID
+                }) else { return }
+                model.performNativeSettingProductWrite(option)
+            }
+            .buttonStyle(YunButtonStyle(.secondary, small: true))
+            .disabled(model.nativeSettingProductBusy)
+        }
+    }
+
+    @ViewBuilder private var progress: some View {
+        if model.bodyRecordingProductBusy || model.nativeSettingProductBusy {
+            HStack(spacing: Yun.Space.sm) {
+                ProgressView().controlSize(.mini)
+                Text(loc("Sending command and waiting for readback…"))
+                    .font(Yun.Text.caption)
+                    .foregroundStyle(Yun.Palette.textSecondary)
+            }
+        }
+        if let result = model.bodyRecordingProductResult {
+            Text(loc("Last body recording operation")).font(Yun.Text.caption)
+            stages([
+                (loc("Requested"), true),
+                (loc("Submitted"), result.submitted),
+                (loc("Acknowledged"), result.acknowledged),
+                (loc("Readback"), result.observed),
+                (loc("Completed"), result.completed)
+            ])
+            if let failure = result.failureCode {
+                Text(failure).font(Yun.Text.caption)
+                    .foregroundStyle(Yun.Palette.textTertiary)
+            }
+        }
+        if let result = model.nativeSettingProductResult {
+            Text(loc("Last native setting operation")).font(Yun.Text.caption)
+            stages([
+                (loc("Requested"), result.requested),
+                (loc("Target ACK"), result.targetResult.acknowledged),
+                (loc("Target readback"), result.targetResult.observed),
+                (loc("Restore ACK"), result.restoreResult?.acknowledged == true),
+                (loc("Restore readback"), result.restored),
+                (loc("Completed"), result.completed)
+            ])
+            if let failure = result.failureCode {
+                Text(failure).font(Yun.Text.caption)
+                    .foregroundStyle(Yun.Palette.textTertiary)
+            }
+        }
+        if let error = model.bodyRecordingProductError ??
+            model.nativeSettingProductError {
+            Text(error).font(Yun.Text.caption)
+                .foregroundStyle(Yun.Palette.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func stages(_ values: [(String, Bool)]) -> some View {
+        YunWrap(spacing: 4, lineSpacing: 4) {
+            ForEach(Array(values.enumerated()), id: \.offset) { _, value in
+                YunBadge("\(value.0) \(value.1 ? "✓" : "—")")
+            }
+        }
+    }
+
+    private func productRow(
+        _ label: String, _ value: String,
+        availability: CapabilityAvailability,
+        evidence: CapabilityEvidenceLevel
+    ) -> some View {
+        HStack(alignment: .top, spacing: Yun.Space.sm) {
+            Text(label).foregroundStyle(Yun.Palette.textSecondary)
+            Spacer(minLength: Yun.Space.sm)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(value).foregroundStyle(Yun.Palette.textPrimary)
+                    .multilineTextAlignment(.trailing)
+                HStack(spacing: 4) {
+                    YunBadge(CapabilityPresentation.access(availability))
+                    YunBadge("\(loc("Evidence")) \(CapabilityPresentation.evidence(evidence))")
+                }
+            }
+        }
+        .font(Yun.Text.caption)
+    }
+
+    private func formatTitle(
+        _ format: CameraBodyRecordingFormatCommand
+    ) -> String {
+        "\(CameraBodyRecordingRequest.resolutionName(format.resolution)) · \(CameraBodyRecordingRequest.frameRateName(format.frameRate)) fps"
+    }
+
+    private func formatID(
+        _ format: CameraBodyRecordingFormatCommand
+    ) -> String {
+        "\(format.resolution.rawValue):\(format.frameRate.rawValue)"
+    }
+
+    private func writerTitle(_ id: Pocket3WriterCandidateID) -> String {
+        switch id {
+        case .whiteBalance: loc("White balance")
+        case .focusMode: loc("Focus mode")
+        case .colorProfile: loc("Color profile")
+        case .productShowcase: loc("Product Showcase")
+        default: id.rawValue
+        }
+    }
+
+    private func writerTitle(
+        _ action: NativeSettingValidationOperation
+    ) -> String {
+        switch action {
+        case .whiteBalance: loc("White balance")
+        case .focusMode: loc("Focus mode")
+        case .colorProfile: loc("Color profile")
+        case .productShowcase: loc("Product Showcase")
+        }
+    }
+
+    private func writerReason(_ id: Pocket3WriterCandidateID) -> String? {
+        model.productWriterEntry(for: id)?.reason
+    }
+
+    private func writerEvidence(
+        _ id: Pocket3WriterCandidateID
+    ) -> CapabilityEvidenceLevel {
+        model.productWriterEntry(for: id)?.evidenceLevel
+            ?? .softwareFixture
     }
 }

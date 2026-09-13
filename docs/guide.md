@@ -124,6 +124,12 @@ independently; candidates without accepted evidence remain rejected. The
 writer does not create another transport, retry an uncertain command, or
 expose a regular UI control.
 
+When the native session is command-ready, Settings > Camera shows these
+operations inside the compact body-capability disclosure. Format choices come
+from the fresh legal table; the setting picker comes from the fresh typed
+readback and admitted writer entries. The disclosure shows command progress,
+ACK, readback, restore and failure state.
+
 ## Manual gimbal control
 
 Hold a direction button or drag the joystick to move pan or tilt. Drag farther

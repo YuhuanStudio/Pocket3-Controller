@@ -202,7 +202,7 @@ public struct CameraBodyRecordingRequest: Codable, Sendable, Equatable {
         try arguments.encode(to: encoder)
     }
 
-    static func resolutionName(_ value: CameraVideoResolution) -> String {
+    public static func resolutionName(_ value: CameraVideoResolution) -> String {
         switch value {
         case .p1080: "1080p"
         case .p2_7K: "2.7K"
@@ -216,7 +216,7 @@ public struct CameraBodyRecordingRequest: Codable, Sendable, Equatable {
         }
     }
 
-    static func frameRateName(_ value: CameraFrameRate) -> String {
+    public static func frameRateName(_ value: CameraFrameRate) -> String {
         switch value {
         case .fps24: "24"
         case .fps25: "25"

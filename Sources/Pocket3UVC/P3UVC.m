@@ -330,10 +330,12 @@ struct P3UVCStreamSession {
     UInt8 interfaceNumber;
     UInt8 alternateSetting;
     UInt8 endpointAddress;
+    UInt8 endpointPipe;
     IOUSBInterfaceInterface220 **interface;
     NSArray *endpoints;
     NSString *registryID;
     NSString *bootSessionID;
+    NSLock *ioLock;
     BOOL invalidated;
     BOOL ownsOpen;
 };
@@ -646,10 +648,20 @@ char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
         session->interfaceNumber = interfaceNumber;
         session->alternateSetting = alternateSetting;
         session->endpointAddress = endpointAddress;
+        session->endpointPipe = 0;
+        for (NSDictionary *endpoint in endpoints) {
+            if ([endpoint[@"address"] unsignedIntValue] == endpointAddress &&
+                [endpoint[@"direction"] unsignedIntValue] == kUSBIn &&
+                [endpoint[@"transferType"] unsignedIntValue] == kUSBBulk) {
+                session->endpointPipe = (UInt8)[endpoint[@"pipe"] unsignedIntValue];
+                break;
+            }
+        }
         session->interface = interface;
         session->endpoints = endpoints;
         session->registryID = registryID;
         session->bootSessionID = bootSessionID;
+        session->ioLock = [[NSLock alloc] init];
         session->ownsOpen = YES;
         *outSession = session;
         return json(@{
@@ -661,7 +673,7 @@ char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
             @"endpointCount": @(endpointCount), @"endpoints": endpoints,
             @"openIOReturn": @((uint32_t)opened),
             @"registryID": registryID, @"bootSessionID": bootSessionID,
-            @"result": @"opened", @"access": @"normal_open_no_seize_no_pipe"
+            @"result": @"opened", @"access": @"normal_open_no_seize"
         });
     }
 }
@@ -691,13 +703,208 @@ char *p3_uvc_stream_session_status(P3UVCStreamSession *session) {
     }
 }
 
+static NSString *streamControlError(IOReturn result) {
+    if (result == kIOReturnNoDevice || result == kIOReturnNotResponding)
+        return @"uvc_stream_detached";
+    if (result == kIOReturnTimeout || result == kIOUSBTransactionTimeout)
+        return @"uvc_stream_control_timeout";
+    if (result == kIOReturnNotOpen || result == kIOReturnExclusiveAccess)
+        return @"uvc_stream_not_owned";
+    return @"uvc_stream_control_failed";
+}
+
+static BOOL validStreamControlRequest(P3UVCStreamSession *session,
+                                      UInt8 bmRequestType, UInt8 bRequest,
+                                      UInt16 wValue, UInt16 wIndex,
+                                      const UInt8 *payload, UInt16 length) {
+    if (!session || wIndex != session->interfaceNumber ||
+        length != 26 || !length) return NO;
+    const BOOL isGet = (bmRequestType & 0x80) != 0;
+    if (isGet) {
+        if (bmRequestType != 0xa1 ||
+            (bRequest != 0x81 && bRequest != 0x83) || payload) return NO;
+    } else {
+        if (bmRequestType != 0x21 || bRequest != 0x01 || !payload ||
+            length != 26) return NO;
+    }
+    return wValue == 0x0100 || wValue == 0x0200;
+}
+
+char *p3_uvc_stream_session_control(P3UVCStreamSession *session,
+                                     uint8_t bmRequestType, uint8_t bRequest,
+                                     uint16_t wValue, uint16_t wIndex,
+                                     const uint8_t *payload, uint16_t length,
+                                     uint32_t timeoutMilliseconds) {
+    @autoreleasepool {
+        if (!session || !streamSessionIsCurrent(session) ||
+            !session->interface || !session->ownsOpen ||
+            timeoutMilliseconds == 0 || timeoutMilliseconds > 5000 ||
+            !validStreamControlRequest(session, bmRequestType, bRequest,
+                                       wValue, wIndex, payload, length)) {
+            return json(@{ @"error": @"uvc_stream_control_invalid_argument",
+                           @"result": @"invalid_argument" });
+        }
+
+        const BOOL isGet = (bmRequestType & 0x80) != 0;
+        UInt8 *buffer = calloc(length, sizeof(UInt8));
+        if (!buffer) return json(@{ @"error": @"uvc_memory",
+                                    @"result": @"memory_unavailable" });
+        if (!isGet) memcpy(buffer, payload, length);
+
+        IOUSBDevRequestTO request = {
+            .bmRequestType = bmRequestType,
+            .bRequest = bRequest,
+            .wValue = wValue,
+            .wIndex = wIndex,
+            .wLength = length,
+            .pData = buffer,
+            .wLenDone = 0,
+            .noDataTimeout = timeoutMilliseconds,
+            .completionTimeout = timeoutMilliseconds
+        };
+        IOReturn result;
+        [session->ioLock lock];
+        if (!streamSessionIsCurrent(session) || !session->interface ||
+            !session->ownsOpen || !(*session->interface)->ControlRequestTO) {
+            result = kIOReturnNotOpen;
+        } else {
+            result = (*session->interface)->ControlRequestTO(
+                session->interface, 0, &request);
+        }
+        [session->ioLock unlock];
+
+        if (result != kIOReturnSuccess || request.wLenDone != length) {
+            NSString *error = result == kIOReturnSuccess
+                ? @"uvc_stream_control_underrun" : streamControlError(result);
+            char *value = json(@{
+                @"error": error, @"result": @"control_failed",
+                @"ioReturn": @((uint32_t)result),
+                @"requestedByteCount": @(length),
+                @"actualByteCount": @(request.wLenDone)
+            });
+            free(buffer);
+            return value;
+        }
+
+        NSData *data = [NSData dataWithBytes:buffer length:request.wLenDone];
+        NSString *encoded = [data base64EncodedStringWithOptions:0];
+        char *value = json(@{
+            @"result": @"complete", @"data": encoded ?: @"",
+            @"requestedByteCount": @(length),
+            @"actualByteCount": @(request.wLenDone),
+            @"ioReturn": @((uint32_t)result)
+        });
+        free(buffer);
+        return value;
+    }
+}
+
+static NSString *streamBulkError(IOReturn result) {
+    if (result == kIOReturnNoDevice || result == kIOReturnNotResponding)
+        return @"uvc_stream_detached";
+    if (result == kIOReturnTimeout || result == kIOUSBTransactionTimeout)
+        return @"uvc_stream_bulk_timeout";
+    if (result == kIOReturnNotOpen || result == kIOReturnExclusiveAccess)
+        return @"uvc_stream_not_owned";
+    return @"uvc_stream_bulk_failed";
+}
+
+char *p3_uvc_stream_session_read_bulk(P3UVCStreamSession *session,
+                                       uint8_t endpointAddress,
+                                       uint32_t maximumBytes,
+                                       uint32_t noDataTimeoutMilliseconds,
+                                       uint32_t completionTimeoutMilliseconds) {
+    @autoreleasepool {
+        if (!session || !streamSessionIsCurrent(session) ||
+            !session->interface || !session->ownsOpen ||
+            endpointAddress != 0x82 || endpointAddress != session->endpointAddress ||
+            session->endpointPipe == 0 || maximumBytes < 3 ||
+            maximumBytes > (4 * 1024 * 1024) ||
+            noDataTimeoutMilliseconds == 0 || noDataTimeoutMilliseconds > 5000 ||
+            completionTimeoutMilliseconds == 0 ||
+            completionTimeoutMilliseconds > 5000) {
+            return json(@{ @"error": @"uvc_stream_bulk_invalid_argument",
+                           @"result": @"invalid_argument" });
+        }
+        UInt8 *buffer = malloc(maximumBytes);
+        if (!buffer) return json(@{ @"error": @"uvc_memory",
+                                    @"result": @"memory_unavailable" });
+        UInt32 actual = maximumBytes;
+        IOReturn result;
+        [session->ioLock lock];
+        if (!streamSessionIsCurrent(session) || !session->interface ||
+            !session->ownsOpen) {
+            result = kIOReturnNotOpen;
+        } else {
+            result = (*session->interface)->ReadPipeTO(
+                session->interface, session->endpointPipe, buffer, &actual,
+                noDataTimeoutMilliseconds, completionTimeoutMilliseconds);
+        }
+        [session->ioLock unlock];
+        if (result != kIOReturnSuccess) {
+            char *value = json(@{
+                @"error": streamBulkError(result),
+                @"result": @"bulk_failed",
+                @"ioReturn": @((uint32_t)result),
+                @"requestedByteCount": @(maximumBytes),
+                @"actualByteCount": @(actual)
+            });
+            free(buffer);
+            return value;
+        }
+        NSData *data = [NSData dataWithBytes:buffer length:actual];
+        NSString *encoded = [data base64EncodedStringWithOptions:0];
+        char *value = json(@{
+            @"result": @"complete", @"status": @"complete",
+            @"data": encoded ?: @"",
+            @"requestedByteCount": @(maximumBytes),
+            @"actualByteCount": @(actual),
+            @"ioReturn": @((uint32_t)result)
+        });
+        free(buffer);
+        return value;
+    }
+}
+
+char *p3_uvc_stream_session_abort_bulk(P3UVCStreamSession *session,
+                                        uint8_t endpointAddress) {
+    @autoreleasepool {
+        if (!session || !streamSessionIsCurrent(session) ||
+            !session->interface || !session->ownsOpen ||
+            endpointAddress != 0x82 || endpointAddress != session->endpointAddress ||
+            session->endpointPipe == 0) {
+            return json(@{ @"error": @"uvc_stream_bulk_invalid_argument",
+                           @"result": @"invalid_argument" });
+        }
+        IOReturn result = (*session->interface)->AbortPipe(
+            session->interface, session->endpointPipe);
+        if (result != kIOReturnSuccess && result != kIOReturnNoDevice) {
+            return json(@{ @"error": streamBulkError(result),
+                           @"result": @"abort_failed",
+                           @"ioReturn": @((uint32_t)result) });
+        }
+        return json(@{ @"result": @"aborted",
+                       @"ioReturn": @((uint32_t)result) });
+    }
+}
+
 char *p3_uvc_stream_session_close(P3UVCStreamSession *session) {
     if (!session) return json(@{ @"error": @"uvc_stream_not_open" });
     @autoreleasepool {
         BOOL current = streamSessionIsCurrent(session);
         IOReturn closed = kIOReturnNotOpen;
-        if (session->interface && session->ownsOpen)
-            closed = (*session->interface)->USBInterfaceClose(session->interface);
+        if (session->interface && session->ownsOpen) {
+            // Abort an in-flight bounded ReadPipeTO before taking the close
+            // lock. This never seizes or closes a foreign interface owner.
+            if (session->endpointPipe)
+                (*session->interface)->AbortPipe(session->interface,
+                                                 session->endpointPipe);
+            [session->ioLock lock];
+            if (session->interface && session->ownsOpen)
+                closed = (*session->interface)->USBInterfaceClose(
+                    session->interface);
+            [session->ioLock unlock];
+        }
         BOOL interfaceReleased = closed == kIOReturnSuccess ||
             closed == kIOReturnNotOpen || closed == kIOReturnNoDevice;
         BOOL detached = !current || closed == kIOReturnNoDevice;
@@ -707,10 +914,11 @@ char *p3_uvc_stream_session_close(P3UVCStreamSession *session) {
             @"closed": @(interfaceReleased),
             @"interfaceReleased": @(interfaceReleased),
             @"objectsReleased": @YES,
-            // No pipe or reader was claimed by this scalar-only boundary.
+            // The selected pipe belongs to this normally-opened interface and
+            // has been aborted before the interface is released.
             @"readerStopped": @YES, @"pipeReleased": @YES,
             @"closeIOReturn": @((uint32_t)closed), @"result": result,
-            @"access": @"normal_open_no_seize_no_pipe"
+            @"access": @"normal_open_no_seize"
         });
         if (session->interface) {
             (*session->interface)->Release(session->interface);
@@ -719,6 +927,7 @@ char *p3_uvc_stream_session_close(P3UVCStreamSession *session) {
         [session->endpoints release];
         [session->registryID release];
         [session->bootSessionID release];
+        [session->ioLock release];
         free(session);
         return value;
     }

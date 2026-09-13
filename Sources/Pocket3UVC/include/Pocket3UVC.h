@@ -43,14 +43,35 @@ char *p3_uvc_stream_interfaces(uint32_t location);
 char *p3_uvc_stream_open_diagnostic(uint32_t location);
 // Retained VideoStreaming interface lifecycle boundary. It performs one
 // normal USBInterfaceOpen for the requested VS interface/alternate/endpoint
-// and never seizes, changes the alternate setting, claims a pipe, sends a
-// control request, or reads payload bytes. The close function consumes the
-// session exactly once, including after detach.
+// and never seizes or changes the alternate setting. The retained session may
+// issue the reviewed VS controls and use the selected bulk pipe through the
+// functions below. Close consumes the session exactly once, including after
+// detach.
 char *p3_uvc_stream_session_open(uint32_t location, uint8_t interfaceNumber,
                                   uint8_t alternateSetting, uint8_t endpointAddress,
                                   P3UVCStreamSession **outSession);
 char *p3_uvc_stream_session_status(P3UVCStreamSession *session);
 char *p3_uvc_stream_session_close(P3UVCStreamSession *session);
+// UVC VideoStreaming class-interface controls over the already-owned normal
+// open. These functions never seize, change the alternate setting, or open a
+// second interface. Returned JSON owns a bounded base64 `data` string; callers
+// must p3_uvc_free the returned value.
+char *p3_uvc_stream_session_control(P3UVCStreamSession *session,
+                                    uint8_t bmRequestType, uint8_t bRequest,
+                                    uint16_t wValue, uint16_t wIndex,
+                                    const uint8_t *payload, uint16_t length,
+                                    uint32_t timeoutMilliseconds);
+// One bounded synchronous bulk-IN completion from the endpoint selected at
+// normal open (Pocket 3 direct H.264 uses descriptor-confirmed 0x82).
+char *p3_uvc_stream_session_read_bulk(P3UVCStreamSession *session,
+                                      uint8_t endpointAddress,
+                                      uint32_t maximumBytes,
+                                      uint32_t noDataTimeoutMilliseconds,
+                                      uint32_t completionTimeoutMilliseconds);
+// Abort only the selected owned bulk pipe. This is used by cancellation before
+// the normal close fence; it never terminates a foreign owner.
+char *p3_uvc_stream_session_abort_bulk(P3UVCStreamSession *session,
+                                       uint8_t endpointAddress);
 char *p3_uvc_status(uint32_t location);
 char *p3_uvc_set_position(uint32_t location, int32_t pan, int32_t tilt, const char *expectedRegistryID);
 void p3_uvc_free(char *value);

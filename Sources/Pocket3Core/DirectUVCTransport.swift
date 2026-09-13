@@ -194,6 +194,17 @@ public protocol DirectUVCNormalOpenHandle: AnyObject, Sendable {
     func close() throws -> DirectCaptureReleaseEvidence
 }
 
+/// Native extension of a normal-open handle. It remains bound to the same
+/// already-owned VS interface and exposes only the reviewed UVC probe/commit
+/// controls and selected bulk-IN pipe. It has no seize or alternate-setting
+/// operation.
+public protocol DirectUVCNativeOpenHandle: DirectUVCNormalOpenHandle {
+    func controlTransfer(_ request: UVCVideoStreamingRequest,
+                         payload: Data?) throws -> Data?
+    func readBulkIn(maximumBytes: Int) throws -> DirectUVCBulkTransfer
+    func cancelBulkIn() throws
+}
+
 public protocol DirectUVCNormalOpenBridge: Sendable {
     func openVS(plan: DirectUVCStreamPlan) throws
         -> any DirectUVCNormalOpenHandle
@@ -202,8 +213,9 @@ public protocol DirectUVCNormalOpenBridge: Sendable {
 /// A public-API-only transport owner for one normal VS interface open.
 ///
 /// The actor serializes acquire/release and publishes no borrowed or seized
-/// interface. The returned stream handle deliberately rejects UVC control
-/// and bulk operations until a later, separately reviewed transport slice.
+/// interface. Native controls/bulk are exposed only when the injected bridge
+/// returns a `DirectUVCNativeOpenHandle`; scalar-only fake bridges remain
+/// read-only.
 public actor DirectUVCNormalOpenTransport: DirectUVCStreamTransport {
     private let bridge: any DirectUVCNormalOpenBridge
     private var activeHandle: ManagedDirectUVCStreamHandle?
@@ -294,8 +306,35 @@ public protocol DirectUVCScalarDiagnosticsHandle: DirectUVCStreamHandle {
     func scalarStatus() async throws -> DirectUVCOpenObservation
 }
 
+/// Handle returned by the native adapter. `readBulkIn` is one bounded
+/// completion; H.264 assembly and lifecycle fences remain in the existing
+/// `DirectUVCH264BulkReader` actor.
+public protocol DirectUVCNativeStreamHandle: DirectUVCScalarDiagnosticsHandle {
+    func readBulkIn(maximumBytes: Int) async throws -> DirectUVCBulkTransfer
+    func cancelBulkIn() async
+}
+
+/// Bridges the owned native stream handle to the existing bounded H.264 reader
+/// without adding another pipe owner or a second transport object.
+public struct DirectUVCNativeBulkReaderIO: DirectUVCBulkReaderIO {
+    private let handle: any DirectUVCNativeStreamHandle
+
+    public init(handle: any DirectUVCNativeStreamHandle) {
+        self.handle = handle
+    }
+
+    public func readBulkIn(maximumBytes: Int) async throws
+        -> DirectUVCBulkTransfer {
+        try await handle.readBulkIn(maximumBytes: maximumBytes)
+    }
+
+    public func cancelBulkIn() async {
+        await handle.cancelBulkIn()
+    }
+}
+
 private final class ManagedDirectUVCStreamHandle: @unchecked Sendable,
-    DirectUVCScalarDiagnosticsHandle {
+    DirectUVCNativeStreamHandle {
     let id = UUID()
     let openObservation: DirectUVCOpenObservation
     private weak var owner: DirectUVCNormalOpenTransport?
@@ -310,10 +349,14 @@ private final class ManagedDirectUVCStreamHandle: @unchecked Sendable,
         self.openObservation = bridgeHandle.openObservation
     }
 
-    func control(_: UVCVideoStreamingRequest, payload _: Data?) async throws
+    func control(_ request: UVCVideoStreamingRequest,
+                 payload: Data?) async throws
         -> Data? {
         try ensureOpen()
-        throw DirectUVCTransportError.controlUnavailable
+        guard let native = bridgeHandle as? any DirectUVCNativeOpenHandle else {
+            throw DirectUVCTransportError.controlUnavailable
+        }
+        return try native.controlTransfer(request, payload: payload)
     }
 
     func scalarStatus() async throws -> DirectUVCOpenObservation {
@@ -326,6 +369,23 @@ private final class ManagedDirectUVCStreamHandle: @unchecked Sendable,
             throw DirectUVCTransportError.bridgeFailure(
                 String(String(describing: error).prefix(128)))
         }
+    }
+
+    func readBulkIn(maximumBytes: Int) async throws -> DirectUVCBulkTransfer {
+        try ensureOpen()
+        guard let native = bridgeHandle as? any DirectUVCNativeOpenHandle else {
+            throw DirectUVCTransportError.controlUnavailable
+        }
+        return try native.readBulkIn(maximumBytes: maximumBytes)
+    }
+
+    func cancelBulkIn() async {
+        let isReleased = lock.withLock { released }
+        guard !isReleased,
+              let native = bridgeHandle as? any DirectUVCNativeOpenHandle else {
+            return
+        }
+        _ = try? native.cancelBulkIn()
     }
 
     func release() async throws -> DirectCaptureReleaseEvidence {
@@ -483,6 +543,17 @@ public struct LegacyIOUSBLibDirectUVCBridge: DirectUVCNormalOpenBridge {
         }
     }
 
+    fileprivate static func mapStreamError(code: String, value: JSONValue)
+        -> DirectUVCTransportError {
+        switch code {
+        case "uvc_stream_detached", "uvc_attachment_changed": return .detached
+        case "uvc_stream_control_timeout", "uvc_stream_bulk_timeout":
+            return .timeout
+        case "uvc_stream_not_owned": return .controlUnavailable
+        default: return .bridgeFailure(String(code.prefix(128)))
+        }
+    }
+
     fileprivate static func uint8(_ value: JSONValue) -> UInt8? {
         guard let number = value.number, number.isFinite,
               number.rounded() == number, number >= 0,
@@ -497,16 +568,26 @@ public struct LegacyIOUSBLibDirectUVCBridge: DirectUVCNormalOpenBridge {
         return UInt32(number)
     }
 
+    fileprivate static func intValue(_ value: JSONValue) -> Int? {
+        guard let number = value.number, number.isFinite,
+              number.rounded() == number, number >= 0,
+              number <= Double(Int.max) else { return nil }
+        return Int(number)
+    }
+
     private static func closeUnexpected(_ pointer: OpaquePointer) {
         if let raw = p3_uvc_stream_session_close(pointer) { p3_uvc_free(raw) }
     }
 }
 
 private final class LegacyIOUSBLibDirectUVCHandle: @unchecked Sendable,
-    DirectUVCNormalOpenHandle {
+    DirectUVCNativeOpenHandle {
     let openObservation: DirectUVCOpenObservation
     private let pointer: OpaquePointer
     private let lock = NSLock()
+    /// Serializes status/control/read/close calls. Cancellation deliberately
+    /// bypasses this lock so it can abort a blocking ReadPipeTO.
+    private let operationLock = NSLock()
     private var closed = false
 
     init(pointer: OpaquePointer, observation: DirectUVCOpenObservation) {
@@ -515,15 +596,104 @@ private final class LegacyIOUSBLibDirectUVCHandle: @unchecked Sendable,
     }
 
     func scalarStatus() throws -> DirectUVCOpenObservation {
-        try lock.withLock {
-            guard !closed else { throw DirectUVCTransportError.alreadyReleased }
-            let value = try LegacyIOUSBLibDirectUVCBridge.consume(
-                p3_uvc_stream_session_status(pointer))
-            if let code = value["error"].string {
-                throw LegacyIOUSBLibDirectUVCBridge.mapStatusError(
-                    code: code, value: value)
+        try ensureOpen()
+        operationLock.lock()
+        defer { operationLock.unlock() }
+        let value = try LegacyIOUSBLibDirectUVCBridge.consume(
+            p3_uvc_stream_session_status(pointer))
+        if let code = value["error"].string {
+            throw LegacyIOUSBLibDirectUVCBridge.mapStatusError(
+                code: code, value: value)
+        }
+        return try LegacyIOUSBLibDirectUVCBridge.observation(value)
+    }
+
+    func controlTransfer(_ request: UVCVideoStreamingRequest,
+                         payload: Data?) throws -> Data? {
+        try ensureOpen()
+        let metadata = request.metadata
+        let length = metadata.wLength
+        if request == .getMaxProbe || request == .getCurProbe {
+            guard payload == nil else {
+                throw DirectUVCTransportError.bridgeFailure(
+                    "uvc_stream_control_invalid_payload")
             }
-            return try LegacyIOUSBLibDirectUVCBridge.observation(value)
+        } else {
+            guard payload?.count == Int(length) else {
+                throw DirectUVCTransportError.bridgeFailure(
+                    "uvc_stream_control_invalid_payload")
+            }
+        }
+        operationLock.lock()
+        defer { operationLock.unlock() }
+        let raw: UnsafeMutablePointer<CChar>?
+        if let payload {
+            raw = payload.withUnsafeBytes { bytes in
+                p3_uvc_stream_session_control(
+                    pointer, metadata.bmRequestType, metadata.bRequest,
+                    metadata.wValue, metadata.wIndex,
+                    bytes.bindMemory(to: UInt8.self).baseAddress,
+                    length, 1000)
+            }
+        } else {
+            raw = p3_uvc_stream_session_control(
+                pointer, metadata.bmRequestType, metadata.bRequest,
+                metadata.wValue, metadata.wIndex, nil, length, 1000)
+        }
+        let value = try LegacyIOUSBLibDirectUVCBridge.consume(raw)
+        if let code = value["error"].string {
+            throw LegacyIOUSBLibDirectUVCBridge.mapStreamError(
+                code: code, value: value)
+        }
+        if request == .setCurProbe || request == .setCurCommit {
+            return nil
+        }
+        guard let encoded = value["data"].string,
+              let data = Data(base64Encoded: encoded) else {
+            throw DirectUVCTransportError.bridgeFailure(
+                "uvc_stream_control_data_invalid")
+        }
+        return data
+    }
+
+    func readBulkIn(maximumBytes: Int) throws -> DirectUVCBulkTransfer {
+        try ensureOpen()
+        guard maximumBytes > 2,
+              maximumBytes <= DirectUVCH264BulkReader.defaultMaximumTransferBytes else {
+            throw DirectUVCTransportError.bridgeFailure(
+                "uvc_stream_bulk_invalid_size")
+        }
+        operationLock.lock()
+        defer { operationLock.unlock() }
+        let raw = p3_uvc_stream_session_read_bulk(
+            pointer, openObservation.endpointAddress ?? 0,
+            UInt32(maximumBytes), 1000, 1500)
+        let value = try LegacyIOUSBLibDirectUVCBridge.consume(raw)
+        if let code = value["error"].string {
+            throw LegacyIOUSBLibDirectUVCBridge.mapStreamError(
+                code: code, value: value)
+        }
+        guard let encoded = value["data"].string,
+              let data = Data(base64Encoded: encoded) else {
+            throw DirectUVCTransportError.bridgeFailure(
+                "uvc_stream_bulk_data_invalid")
+        }
+        let requested = LegacyIOUSBLibDirectUVCBridge.intValue(
+            value["requestedByteCount"]) ?? maximumBytes
+        let status: DirectUVCBulkTransferStatus =
+            value["status"].string == "complete" ? .complete : .short
+        return DirectUVCBulkTransfer(requestedByteCount: requested,
+                                     data: data, status: status)
+    }
+
+    func cancelBulkIn() throws {
+        try ensureOpen()
+        let raw = p3_uvc_stream_session_abort_bulk(
+            pointer, openObservation.endpointAddress ?? 0)
+        let value = try LegacyIOUSBLibDirectUVCBridge.consume(raw)
+        if let code = value["error"].string {
+            throw LegacyIOUSBLibDirectUVCBridge.mapStreamError(
+                code: code, value: value)
         }
     }
 
@@ -531,15 +701,23 @@ private final class LegacyIOUSBLibDirectUVCHandle: @unchecked Sendable,
         try lock.withLock {
             guard !closed else { throw DirectUVCTransportError.alreadyReleased }
             closed = true
-            let value = try LegacyIOUSBLibDirectUVCBridge.consume(
-                p3_uvc_stream_session_close(pointer))
-            if let code = value["error"].string {
-                throw DirectUVCTransportError.closeFailed(
-                    code: String(code.prefix(128)),
-                    ioReturn: LegacyIOUSBLibDirectUVCBridge.uint32(
-                        value["closeIOReturn"]))
-            }
-            return LegacyIOUSBLibDirectUVCBridge.releaseEvidence(value)
+        }
+        operationLock.lock()
+        defer { operationLock.unlock() }
+        let value = try LegacyIOUSBLibDirectUVCBridge.consume(
+            p3_uvc_stream_session_close(pointer))
+        if let code = value["error"].string {
+            throw DirectUVCTransportError.closeFailed(
+                code: String(code.prefix(128)),
+                ioReturn: LegacyIOUSBLibDirectUVCBridge.uint32(
+                    value["closeIOReturn"]))
+        }
+        return LegacyIOUSBLibDirectUVCBridge.releaseEvidence(value)
+    }
+
+    private func ensureOpen() throws {
+        guard !lock.withLock({ closed }) else {
+            throw DirectUVCTransportError.alreadyReleased
         }
     }
 }

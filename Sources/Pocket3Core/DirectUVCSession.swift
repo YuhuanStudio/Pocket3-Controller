@@ -742,6 +742,9 @@ public actor DirectUVCSessionCoordinator {
     private var generation: UInt64 = 0
     private var stopEvidence: AVFoundationStopEvidence?
     private var handle: (any DirectUVCStreamHandle)?
+    private var bulkReader: DirectUVCH264BulkReader?
+    private var bulkReaderOwnerID: UUID?
+    private var bulkReadReady = false
     private var negotiation: DirectUVCNegotiationResult?
     private var releaseEvidence: DirectCaptureReleaseEvidence?
     private var activePermit: CaptureOwnershipPermit?
@@ -785,6 +788,9 @@ public actor DirectUVCSessionCoordinator {
         failureCode = nil
         negotiation = nil
         releaseEvidence = nil
+        bulkReader = nil
+        bulkReaderOwnerID = nil
+        bulkReadReady = false
         restartPermit = nil
         let attempt = UUID()
         attemptID = attempt
@@ -816,6 +822,22 @@ public actor DirectUVCSessionCoordinator {
             if negotiated.completed {
                 phase = .directNegotiated
                 failureCode = nil
+                if let native = acquired as? any DirectUVCNativeStreamHandle {
+                    do {
+                        let ownerID = UUID()
+                        let readerBinding = try negotiated.bulkReaderBinding(
+                            ownerID: ownerID, generation: generation)
+                        bulkReader = try DirectUVCH264BulkReader(
+                            binding: readerBinding,
+                            io: DirectUVCNativeBulkReaderIO(handle: native))
+                        bulkReaderOwnerID = ownerID
+                        bulkReadReady = true
+                    } catch {
+                        // Negotiation remains useful as control evidence, but
+                        // do not claim a bulk reader when its admission fails.
+                        failureCode = Self.errorCode(error)
+                    }
+                }
             } else {
                 phase = .failed
                 failureCode = negotiated.failureCode ??
@@ -849,6 +871,12 @@ public actor DirectUVCSessionCoordinator {
         phase = .releasingDirect
         do {
             let permit = try await ownership.beginAVFoundationRestart()
+            if let bulkReader {
+                _ = await bulkReader.stop()
+                self.bulkReader = nil
+                bulkReaderOwnerID = nil
+                bulkReadReady = false
+            }
             let evidence = try await handle!.release()
             releaseEvidence = evidence
             let restart = try await ownership.directReleased(
@@ -902,6 +930,12 @@ public actor DirectUVCSessionCoordinator {
             do {
                 if ownershipState == .directRunning {
                     let permit = try await ownership.beginAVFoundationRestart()
+                    if let bulkReader {
+                        _ = await bulkReader.cancel()
+                        self.bulkReader = nil
+                        bulkReaderOwnerID = nil
+                        bulkReadReady = false
+                    }
                     let evidence = try await handle.release()
                     releaseEvidence = evidence
                     restartPermit = try await ownership.directReleased(
@@ -910,6 +944,12 @@ public actor DirectUVCSessionCoordinator {
                     // A handle can arrive after a stale acquire callback. The
                     // policy has already fenced that path, so only release
                     // the transport object and retain the policy failure.
+                    if let bulkReader {
+                        _ = await bulkReader.cancel()
+                        self.bulkReader = nil
+                        bulkReaderOwnerID = nil
+                        bulkReadReady = false
+                    }
                     releaseEvidence = try await handle.release()
                 }
             } catch {
@@ -929,6 +969,25 @@ public actor DirectUVCSessionCoordinator {
         await cancel()
     }
 
+    /// Reads exactly one bounded bulk completion from the reader admitted by
+    /// the last successful normal-open negotiation. Owner and generation
+    /// fences stay inside this coordinator; a missing reader means that
+    /// control negotiation did not provide a native bulk handle.
+    public func readBulk() async -> DirectUVCH264BulkReaderResult? {
+        guard let bulkReader, let bulkReaderOwnerID, bulkReadReady else {
+            return nil
+        }
+        let result = await bulkReader.readNext(
+            ownerID: bulkReaderOwnerID, generation: generation)
+        switch result.state {
+        case .stopped, .cancelled, .generationChanged, .failed:
+            bulkReadReady = false
+        default:
+            break
+        }
+        return result
+    }
+
     private func result(failure: String? = nil) async
         -> DirectUVCSessionResult {
         let ownership = await ownership.snapshot()
@@ -940,7 +999,7 @@ public actor DirectUVCSessionCoordinator {
             transportAcquired: handle != nil || negotiation != nil,
             negotiation: negotiation,
             negotiated: negotiation?.completed == true,
-            bulkReadReady: false,
+            bulkReadReady: bulkReadReady,
             releaseEvidence: releaseEvidence,
             failureCode: failureCode ?? ownershipFailure(ownership))
     }

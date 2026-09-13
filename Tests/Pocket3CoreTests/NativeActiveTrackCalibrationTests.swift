@@ -35,7 +35,8 @@ struct NativeActiveTrackCalibrationTests {
         let box = try Pocket3TrackingBox(
             centerX: 0.5, centerY: 0.5, width: 0.2, height: 0.3)
         let mapped = try #require(result.transform?.map(box))
-        #expect(mapped.width == 0.3 && mapped.height == 0.2)
+        #expect(abs(mapped.width - 0.3) < 1e-6)
+        #expect(abs(mapped.height - 0.2) < 1e-6)
     }
 
     @Test func insufficientOrSymmetricSamplesCannotUnlockWriter() throws {
@@ -56,13 +57,12 @@ struct NativeActiveTrackCalibrationTests {
             try symmetric.append(displayX: value.0, displayY: value.1,
                                  cameraX: value.0, cameraY: value.1)
         }
-        let result = try symmetric.finish()
-        #expect(!result.verified)
-        #expect(result.failureCode ==
-                "active_track_calibration_transform_unverified" ||
-                result.failureCode ==
+        #expect(throws: NativeActiveTrackCalibrationError.asymmetricPointsRequired) {
+            try symmetric.finish()
+        }
+        #expect(symmetric.result?.failureCode ==
                 "active_track_calibration_asymmetric_points_required")
-        #expect(result.validationCalibration == .unverified)
+        #expect(symmetric.result?.validationCalibration == .unverified)
     }
 
     @Test func workflowIdentityAndPointLimitsAreFenced() throws {

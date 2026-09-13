@@ -33,6 +33,11 @@ extension AppModel {
             throw BridgeFailure("camera_body_recording_session_changed",
                 "The requested native session, peer or generation is no longer current")
         }
+        if input.execute && !bodyRecordingProductWriterUnlocked {
+            throw BridgeFailure(
+                "camera_body_recording_product_locked",
+                "Body recording remains locked until its command-ready ACK/readback evidence is accepted")
+        }
 
         let now = ProcessInfo.processInfo.systemUptime
         let snapshot = try cameraBodyRecordingSnapshot(

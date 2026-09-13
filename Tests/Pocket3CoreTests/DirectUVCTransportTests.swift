@@ -61,6 +61,52 @@ private final class FakeNormalOpenBridge: @unchecked Sendable,
     }
 }
 
+private final class FakeNativeOpenHandle: @unchecked Sendable,
+    DirectUVCNativeOpenHandle {
+    let openObservation: DirectUVCOpenObservation
+    private let lock = NSLock()
+    private var controls: [UVCVideoStreamingRequest] = []
+    private var reads = 0
+    private var aborts = 0
+    private var closes = 0
+
+    init(observation: DirectUVCOpenObservation) {
+        openObservation = observation
+    }
+
+    var controlRequests: [UVCVideoStreamingRequest] {
+        lock.withLock { controls }
+    }
+    var readCount: Int { lock.withLock { reads } }
+    var abortCount: Int { lock.withLock { aborts } }
+    var closeCount: Int { lock.withLock { closes } }
+
+    func scalarStatus() throws -> DirectUVCOpenObservation { openObservation }
+    func controlTransfer(_ request: UVCVideoStreamingRequest,
+                         payload _: Data?) throws -> Data? {
+        lock.withLock { controls.append(request) }
+        return request == .getMaxProbe || request == .getCurProbe
+            ? Data(repeating: 0, count: 26) : nil
+    }
+    func readBulkIn(maximumBytes: Int) throws -> DirectUVCBulkTransfer {
+        lock.withLock { reads += 1 }
+        return DirectUVCBulkTransfer(
+            requestedByteCount: maximumBytes,
+            data: Data([2, 0x02, 0x65]), status: .complete)
+    }
+    func cancelBulkIn() throws { lock.withLock { aborts += 1 } }
+    func close() throws -> DirectCaptureReleaseEvidence {
+        lock.withLock { closes += 1 }
+        return .complete
+    }
+}
+
+private struct FakeNativeOpenBridge: DirectUVCNormalOpenBridge {
+    let handle: FakeNativeOpenHandle
+    func openVS(plan _: DirectUVCStreamPlan) throws
+        -> any DirectUVCNormalOpenHandle { handle }
+}
+
 @Suite("Direct UVC normal-open transport")
 struct DirectUVCTransportTests {
     private func plan() throws -> DirectUVCStreamPlan {
@@ -149,6 +195,30 @@ struct DirectUVCTransportTests {
         await #expect(throws: DirectUVCTransportError.alreadyReleased) {
             try await handle.release()
         }
+    }
+
+    @Test func nativeNormalOpenForwardsReviewedControlsAndOneBoundedBulkRead()
+        async throws {
+        let bridgeHandle = FakeNativeOpenHandle(
+            observation: openedObservation())
+        let transport = DirectUVCNormalOpenTransport(
+            bridge: FakeNativeOpenBridge(handle: bridgeHandle))
+        let handle = try await transport.acquire(plan: try plan())
+        let get = try await handle.control(.getMaxProbe, payload: nil)
+        #expect(get?.count == 26)
+        let set = try await handle.control(
+            .setCurProbe, payload: Data(repeating: 0, count: 26))
+        #expect(set == nil)
+        let native = try #require(handle as? any DirectUVCNativeStreamHandle)
+        let transfer = try await native.readBulkIn(maximumBytes: 4096)
+        #expect(transfer.requestedByteCount == 4096)
+        #expect(transfer.data == Data([2, 0x02, 0x65]))
+        await native.cancelBulkIn()
+        #expect(bridgeHandle.controlRequests == [.getMaxProbe, .setCurProbe])
+        #expect(bridgeHandle.readCount == 1)
+        #expect(bridgeHandle.abortCount == 1)
+        _ = try await handle.release()
+        #expect(bridgeHandle.closeCount == 1)
     }
 
     @Test func nonOwnedObservationIsRejectedAndReleasedOnce() async throws {

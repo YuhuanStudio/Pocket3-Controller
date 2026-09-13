@@ -80,6 +80,14 @@ final class AppModel {
     /// Diagnostics and never exposed to normal users or persisted as a
     /// command replay surface.
     var developerBodyValidationResult: NativeBodyValidationResult?
+    /// Product body-setting result is retained only as bounded scalar
+    /// progress evidence for the existing Body capability disclosure.
+    var bodyRecordingProductResult: CameraBodyRecordingResult?
+    var bodyRecordingProductError: String?
+    var bodyRecordingProductBusy = false
+    var nativeSettingProductResult: NativeSettingProductWriteResult?
+    var nativeSettingProductError: String?
+    var nativeSettingProductBusy = false
     /// Metadata-only camera media library projection used by developer
     /// Diagnostics. It never stores media bytes, thumbnails or credentials.
     var mediaLibrary = Pocket3MediaLibraryModel()

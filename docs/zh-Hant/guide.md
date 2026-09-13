@@ -65,6 +65,11 @@ Showcase 各自的寫入 admission。`camera_set_native_setting` 與
 readback 恢復剛才的 baseline。每項設定分開解鎖，未有接受證據的候選項仍會拒絕；
 不建立第二個 transport、不重試不確定的命令，也不在一般 UI 顯示控制。
 
+原生工作階段進入 command-ready 後，「設定 > 相機」會在精簡的機身能力
+disclosure 內顯示這些操作。格式選項來自新鮮的合法格式表；設定選單來自
+新鮮的型別化回讀與已通過 admission 的寫入器。disclosure 會顯示命令進度、
+ACK、回讀、恢復及錯誤狀態。
+
 ## 手動雲台控制
 
 按住方向按鈕或拖曳搖桿，移動 pan／tilt；離中心越遠，要求的移動越快。放開輸入、失焦或按停止都會結束手勢。手動操作優先於 AI，透過 USB 位置目標控制，Mac 保留原有網路。
