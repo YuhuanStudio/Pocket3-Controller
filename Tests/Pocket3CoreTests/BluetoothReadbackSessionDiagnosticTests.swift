@@ -170,6 +170,23 @@ struct BluetoothReadbackSessionDiagnosticTests {
         #expect(report.summary?.complete == false)
     }
 
+    @Test func preflightFailureIsVisibleOnThePrioritizedPropertyEntry() throws {
+        let failure = BluetoothCameraSettingsQueryFailure(
+            index: 0, property: .videoParameters,
+            expectedSessionID: sessionID, expectedPeripheralID: peripheralID,
+            code: "bluetooth_probe_busy")
+        let report = BluetoothReadbackSessionDiagnostic.make(
+            request: try request(), bluetooth: readyStatus(),
+            settingsQueries: [], settingsFailures: [failure],
+            pairedTapFocus: nil, nativeSession: nativeSession(),
+            nativeTapFocus: nil)
+        let entry = try #require(report.entries.first)
+        #expect(entry.key == CameraSettingsProperty.videoParameters.rawValue)
+        #expect(entry.outcome == .noReply)
+        #expect(entry.reason == "query_preflight_failed:bluetooth_probe_busy")
+        #expect(report.summary?.noReply == CameraSettingsProperty.allCases.count)
+    }
+
     @Test func wrongEnvelopeRetainsSequenceAndPropertyCorrelation() throws {
         let result = try query(wrongEnvelope: true, readback: false)
         let report = BluetoothReadbackSessionDiagnostic.make(

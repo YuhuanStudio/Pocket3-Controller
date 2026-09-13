@@ -57,6 +57,9 @@ public struct ServiceStatus: Codable, Sendable {
     public var requestedMode: CaptureMode? = nil
     public var requestedPixelFormat: CapturePixelFormat? = nil
     public var requestedOutputPolicy: CaptureOutputPolicy? = nil
+    /// Explicit local Mac host HEVC output lifecycle. Optional for backwards
+    /// compatibility; the ordinary BGRA preview path remains independent.
+    public var hostHEVCOutput: HostHEVCProductOutputStatus? = nil
     public var lastCaptureAttempt: CaptureSampleDiagnostics? = nil
     public var power: USBPowerStatus? = nil
     public var controlTransport: String? = nil
@@ -184,6 +187,9 @@ public actor CameraService {
     private var validationReport: HardwareValidationReport?
     private var validationError: String?
     private var hostHEVCValidationService: HostHEVCValidationService?
+    private var hostHEVCProductOutputService: HostHEVCProductOutputService?
+    private var hostHEVCProductFeedTask: Task<Void, Never>?
+    private var hostHEVCProductFeedBinding: HostHEVCFrameSourceBinding?
     private var nativeControl: NativeControlReservation?
     /// Context supplied by the App's already-running wireless observer. It is
     /// a scalar projection only; updating it never starts Bluetooth or Wi-Fi.
@@ -416,6 +422,7 @@ public actor CameraService {
             throw BridgeFailure("invalid_startup_timeout", "較長啟動等待只供開發驗證，須為 1–30 秒")
         }
         guard !connectionInProgress else { throw BridgeFailure("connection_busy", "正在處理另一個連接請求") }
+        await retireHostHEVCProduct()
         connectionInProgress = true
         nativeControl?.writePermit?.invalidate()
         defer { connectionInProgress = false }
@@ -488,6 +495,7 @@ public actor CameraService {
         }
     }
     public func pause() async {
+        await retireHostHEVCProduct()
         nativeControl?.writePermit?.invalidate()
         lifecycleGeneration += 1; let generation = lifecycleGeneration; access = .manual
         _ = try? await stop()
@@ -533,6 +541,9 @@ public actor CameraService {
         let captureStats = capture.store.stats()
         let reportedPhase = phase == "ready" && (captureStats.age ?? .infinity) > 1 ? "stalled" : phase
         var result = ServiceStatus(phase: reportedPhase, devices: devices, selected: selected, access: access, permission: CaptureEngine.permission(), capture: captureStats, gimbal: capabilities, motionActive: motionID != nil, stopValidated: stopValidated, lastError: lastError, activities: activities, requestedMode: requestedMode, requestedPixelFormat: requestedPixelFormat, requestedOutputPolicy: requestedOutputPolicy, lastCaptureAttempt: lastCaptureAttempt, power: selected?.location.map { USBPowerMonitor.read(location: $0) })
+        if let hostHEVCProductOutputService {
+            result.hostHEVCOutput = await hostHEVCProductOutputService.status()
+        }
         result.uvcControlDisabledForCapture = uvcControlDisabledForCapture
         result.rollStopValidated = rollStopValidated
         result.controlTransport = uvcControlDisabledForCapture ? "capture_only" : "usb_position"
@@ -547,7 +558,9 @@ public actor CameraService {
         result.capabilities = Pocket3CapabilityGraph.from(
             phase: reportedPhase, capture: captureStats,
             requestedMode: requestedMode, requestedPixelFormat: requestedPixelFormat,
-            requestedOutputPolicy: requestedOutputPolicy, nativeControl: nativeSnapshot,
+            requestedOutputPolicy: requestedOutputPolicy,
+            hostHEVCProduct: result.hostHEVCOutput?.capability,
+            nativeControl: nativeSnapshot,
             nativeSession: nativeSnapshot == nil ? nativeSessionCapability : nil,
             bodyRecordingFormats: bodyRecordingCapabilities)
         if nativeControl != nil {
@@ -663,6 +676,7 @@ public actor CameraService {
     }
 
     private func invalidateAttachment() async {
+        await retireHostHEVCProduct()
         nativeControl?.writePermit?.invalidate()
         resetZoomHoldForConnectionChange()
         resetRollHoldForConnectionChange()
@@ -1446,6 +1460,150 @@ public actor CameraService {
         return result
     }
 
+    /// Starts the explicit product-level host HEVC output while retaining the
+    /// ordinary BGRA CaptureEngine preview. The caller must provide the exact
+    /// current device/session; no output-policy switch or USB write occurs.
+    public func startHostHEVCProduct(
+        _ request: HostHEVCProductStartRequest
+    ) async throws -> HostHEVCProductOutputStatus {
+        guard validationEnabled else {
+            throw BridgeFailure("validation_disabled",
+                "Host HEVC product output requires developer validation mode")
+        }
+        guard request.execute,
+              let expectedDeviceID = request.expectedDeviceID,
+              let expectedSessionID = request.expectedCaptureSessionID else {
+            throw BridgeFailure("host_hevc_execute_required",
+                "Host HEVC product output requires explicit execute and exact IDs")
+        }
+        guard !connectionInProgress, phase == "ready", !motionActiveForHostOutput,
+              selected?.id == expectedDeviceID else {
+            throw BridgeFailure("host_hevc_capture_not_ready",
+                "Host HEVC product output requires the current ready camera")
+        }
+        let source = CaptureEngineHostHEVCFrameSource(capture: capture)
+        guard let binding = source.currentBinding(),
+              binding.deviceID == expectedDeviceID,
+              binding.captureSessionID == expectedSessionID,
+              request.expectedGeneration.map({ $0 == binding.generation }) ?? true,
+              binding.inputPixelFormat == .bgra else {
+            throw BridgeFailure("host_hevc_bgra_required",
+                "Host HEVC product output requires a fresh BGRA preview frame")
+        }
+        guard let age = capture.store.stats().age,
+              age.isFinite, age >= 0, age <= request.maximumInputAge else {
+            throw BridgeFailure("host_hevc_no_fresh_frame",
+                "Host HEVC product output requires a fresh BGRA preview frame")
+        }
+        if let existing = hostHEVCProductOutputService {
+            let current = await existing.status()
+            guard !current.isRunning else {
+                throw BridgeFailure("host_hevc_product_busy",
+                    "Host HEVC product output is already running")
+            }
+            _ = await existing.stop()
+        }
+        let frameRate = requestedMode?.frameRate ?? 30
+        let configuration = try HostVideoEncoderConfiguration(
+            width: binding.width, height: binding.height,
+            frameRate: frameRate, keyFrameInterval: 30,
+            maximumPendingFrames: 2)
+        let product = try HostHEVCProductOutputService(
+            configuration: configuration,
+            maximumInputAgeSeconds: request.maximumInputAge,
+            backendFactory: { VideoToolboxHostHEVCEncoderBackend() })
+        _ = try await product.select(.hostHEVC)
+        _ = try await product.startHostHEVC(
+            sessionID: binding.captureSessionID,
+            generation: binding.generation,
+            sink: { _ in })
+        hostHEVCProductOutputService = product
+        hostHEVCProductFeedBinding = binding
+        let expectedLifecycle = lifecycleGeneration
+        hostHEVCProductFeedTask = Task { [weak self, product, source, binding] in
+            await self?.feedHostHEVCProduct(
+                product: product, source: source, binding: binding,
+                lifecycle: expectedLifecycle,
+                maximumInputAge: request.maximumInputAge)
+        }
+        return await product.status()
+    }
+
+    public func hostHEVCProductStatus() async -> HostHEVCProductOutputStatus? {
+        guard let hostHEVCProductOutputService else { return nil }
+        return await hostHEVCProductOutputService.status()
+    }
+
+    @discardableResult
+    public func stopHostHEVCProduct() async
+        -> HostHEVCProductOutputStatus? {
+        hostHEVCProductFeedTask?.cancel()
+        hostHEVCProductFeedTask = nil
+        hostHEVCProductFeedBinding = nil
+        guard let hostHEVCProductOutputService else { return nil }
+        return await hostHEVCProductOutputService.stop()
+    }
+
+    private func retireHostHEVCProduct() async {
+        hostHEVCProductFeedTask?.cancel()
+        hostHEVCProductFeedTask = nil
+        hostHEVCProductFeedBinding = nil
+        if let hostHEVCProductOutputService {
+            _ = await hostHEVCProductOutputService.cancel()
+        }
+        hostHEVCProductOutputService = nil
+    }
+
+    private var motionActiveForHostOutput: Bool {
+        motionID != nil || nativeControl != nil || nativeControlPending ||
+            zoomNeedsHold || rollNeedsHold
+    }
+
+    private func feedHostHEVCProduct(
+        product: HostHEVCProductOutputService,
+        source: CaptureEngineHostHEVCFrameSource,
+        binding: HostHEVCFrameSourceBinding,
+        lifecycle: Int,
+        maximumInputAge: Double
+    ) async {
+        var afterReceivedUptime = 0.0
+        while !Task.isCancelled {
+            guard lifecycle == lifecycleGeneration,
+                  capture.currentLifecycle() == binding.generation,
+                  capture.store.stats().sessionID == binding.captureSessionID,
+                  hostHEVCProductOutputService === product else {
+                _ = await product.cancel()
+                return
+            }
+            do {
+                let fresh = try source.freshFrame(
+                    expected: binding, maxAgeSeconds: maximumInputAge,
+                    afterReceivedUptime: afterReceivedUptime)
+                guard fresh.frame.inputPixelFormat == .bgra else {
+                    _ = await product.cancel()
+                    return
+                }
+                let evidence = await product.submit(
+                    fresh.frame,
+                    receivedUptime: fresh.receivedUptime,
+                    nowUptime: ProcessInfo.processInfo.systemUptime)
+                afterReceivedUptime = fresh.receivedUptime
+                switch evidence.disposition {
+                case .accepted, .droppedBackpressure:
+                    break
+                default:
+                    _ = await product.cancel()
+                    return
+                }
+            } catch HostHEVCFrameSourceError.noFreshFrame {
+                try? await Task.sleep(for: .milliseconds(16))
+            } catch {
+                _ = await product.cancel()
+                return
+            }
+        }
+    }
+
     public func audioTest(seconds: Double = 3) async throws -> AudioStats {
         try AudioTestPolicy.validateDuration(seconds)
         try requireObservation(.manual)
@@ -1515,6 +1673,65 @@ public actor CameraService {
                 guard validationEnabled else { throw BridgeFailure("validation_disabled", "串流驗證只供開發工作階段使用") }
                 streamValidationTask?.cancel()
                 return ServiceReply(id: request.id, result: .object(["cancelRequested": .bool(true)]))
+            case HostHEVCProductStartRequest.startOperation:
+                guard validationEnabled else {
+                    throw BridgeFailure("validation_disabled",
+                        "Host HEVC product output requires developer validation mode")
+                }
+                let productRequest: HostHEVCProductStartRequest
+                do {
+                    productRequest = try HostHEVCProductStartRequest(
+                        arguments: request.arguments)
+                } catch HostHEVCProductStartRequestError.identityRequired {
+                    throw BridgeFailure("host_hevc_identity_required",
+                        "Host HEVC product execution requires exact device and session IDs")
+                } catch {
+                    throw BridgeFailure("host_hevc_invalid_arguments",
+                        "Host HEVC product start arguments are invalid")
+                }
+                guard productRequest.execute else {
+                    return ServiceReply(id: request.id, result: .object([
+                        "operation": .string(HostHEVCProductStartRequest.startOperation),
+                        "selection": .string(HostHEVCProductSelection.hostHEVC.rawValue),
+                        "dryRun": .bool(true),
+                        "requiresBGRA": .bool(true),
+                        "automaticFallback": .bool(false),
+                        "cameraImagesStored": .bool(false),
+                        "usbWireCodecClaim": .null,
+                        "request": try .encode(productRequest)
+                    ]))
+                }
+                let started = try await startHostHEVCProduct(productRequest)
+                return ServiceReply(id: request.id, result: .object([
+                    "operation": .string(HostHEVCProductStartRequest.startOperation),
+                    "selection": .string(HostHEVCProductSelection.hostHEVC.rawValue),
+                    "dryRun": .bool(false),
+                    "requiresBGRA": .bool(true),
+                    "automaticFallback": .bool(false),
+                    "cameraImagesStored": .bool(false),
+                    "usbWireCodecClaim": .null,
+                    "status": try .encode(started)
+                ]))
+            case HostHEVCProductStartRequest.statusOperation:
+                guard validationEnabled else {
+                    throw BridgeFailure("validation_disabled",
+                        "Host HEVC product output requires developer validation mode")
+                }
+                return ServiceReply(id: request.id,
+                    result: try .encode(await hostHEVCProductStatus()))
+            case HostHEVCProductStartRequest.stopOperation:
+                guard validationEnabled else {
+                    throw BridgeFailure("validation_disabled",
+                        "Host HEVC product output requires developer validation mode")
+                }
+                let stopped = await stopHostHEVCProduct()
+                return ServiceReply(id: request.id, result: .object([
+                    "operation": .string(HostHEVCProductStartRequest.stopOperation),
+                    "status": try .encode(stopped),
+                    "automaticFallback": .bool(false),
+                    "cameraImagesStored": .bool(false),
+                    "usbWireCodecClaim": .null
+                ]))
             case HostHEVCValidationRequest.operation:
                 guard validationEnabled else {
                     throw BridgeFailure("validation_disabled",

@@ -38,6 +38,10 @@ final class WirelessGimbalModel {
     /// read-settings pass. This is diagnostic state only; it never drives a
     /// setter or is published as a capability claim.
     private(set) var lastCameraSettingsQueryResults: [BluetoothCameraPropertyQueryResult] = []
+    /// Preflight failures are kept separately from query results so a
+    /// property that could not submit still has bounded, session-bound
+    /// evidence in the developer response.
+    private(set) var lastCameraSettingsQueryFailures: [BluetoothCameraSettingsQueryFailure] = []
     private(set) var lastPairedTapFocusResult: BluetoothTapFocusResult?
     @ObservationIgnored private var settingsReadTask: Task<Void, Never>?
     @ObservationIgnored private var settingsReadID: UUID?
@@ -437,7 +441,7 @@ final class WirelessGimbalModel {
               let peer = discovery.selectedPeripheralID else { return }
         let id = UUID(), session = discovery.sessionID
         settingsReadID = id; readingCameraSettings = true; issue = nil
-        lastCameraSettingsQueryResults = []
+        lastCameraSettingsQueryResults = []; lastCameraSettingsQueryFailures = []
         settingsReadTask = Task { @MainActor [weak self] in
             guard let self else { return }
             defer {
@@ -450,21 +454,43 @@ final class WirelessGimbalModel {
                     BluetoothCameraSettingsReadPlan.maximumDuration
                 var failedProperties: [CameraSettingsProperty] = []
                 var reachedTotalDeadline = false
-                for property in BluetoothCameraSettingsReadPlan.orderedProperties {
+                for (index, property) in BluetoothCameraSettingsReadPlan.orderedProperties.enumerated() {
                     try Task.checkCancellation()
                     guard ProcessInfo.processInfo.systemUptime < deadline else {
                         reachedTotalDeadline = true
                         break
                     }
                     guard self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
-                    let result = try await self.bluetooth.queryCameraProperty(
-                        property: property, expectedSessionID: session,
-                        expectedPeripheralID: peer)
-                    try Task.checkCancellation()
-                    guard BluetoothCameraSettingsReadPlan.shouldContinue(after: result),
-                          self.discovery.sessionID == session, self.discovery.selectedPeripheralID == peer else { throw CancellationError() }
-                    self.lastCameraSettingsQueryResults.append(result)
-                    if !BluetoothCameraSettingsReadPlan.hasTypedReadback(result) {
+                    do {
+                        let result = try await self.bluetooth.queryCameraProperty(
+                            property: property, expectedSessionID: session,
+                            expectedPeripheralID: peer)
+                        try Task.checkCancellation()
+                        guard self.discovery.sessionID == session,
+                              self.discovery.selectedPeripheralID == peer else {
+                            throw CancellationError()
+                        }
+                        self.lastCameraSettingsQueryResults.append(result)
+                        if !BluetoothCameraSettingsReadPlan.hasTypedReadback(result) {
+                            failedProperties.append(property)
+                        }
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        // A preflight error belongs to this property. Keep
+                        // the exact fence and continue while the session/peer
+                        // remains unchanged; cancellation above still stops.
+                        guard self.discovery.sessionID == session,
+                              self.discovery.selectedPeripheralID == peer else {
+                            throw CancellationError()
+                        }
+                        let code = (error as? BridgeFailure)?.code ??
+                            "bluetooth_property_query_failed"
+                        self.lastCameraSettingsQueryFailures.append(
+                            BluetoothCameraSettingsQueryFailure(
+                                index: index, property: property,
+                                expectedSessionID: session,
+                                expectedPeripheralID: peer, code: code))
                         failedProperties.append(property)
                     }
                     await self.refresh()
@@ -535,7 +561,8 @@ final class WirelessGimbalModel {
         await disconnectNative()
         guard selectionOperationID == selection else { return }
         bluetooth.disconnect(); credentials = nil; networkName = nil; hasCredentials = false; selectedPeripheral = ""
-        lastCameraSettingsQueryResults = []; lastPairedTapFocusResult = nil
+        lastCameraSettingsQueryResults = []; lastCameraSettingsQueryFailures = []
+        lastPairedTapFocusResult = nil
         invalidateNativeSession()
     }
     func preset(flip: Bool) async {

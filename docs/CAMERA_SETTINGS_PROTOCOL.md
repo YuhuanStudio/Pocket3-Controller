@@ -161,6 +161,12 @@ Phase26 的 `validation-wireless-read-settings` 會先嘗試已知可讀回的
 統計 submitted、readback、no-reply、wrong-envelope 與 no-route，因此 partial
 readback 不會被誤報為 complete，也不會被成功 property 隱藏。
 
+Phase27 另外保留每項 subscription 的 preflight failure（例如 busy、not-ready、
+MTU 或 backpressure）於 `queryFailures`；這些 failure 不會把整輪 read abort。
+空的未配對計畫回 `readbackState=not_started`／`completed=false`，有至少一項
+嘗試但未全數讀回才是 `partial`。所有 failure 都帶 expected session、peer、
+property 與 bounded error code；沒有 retry、GET、setter 或 Wi-Fi。
+
 每個 property 要獨立帶接收時間與 connection generation。收到未改變的有效值仍須更新 freshness；上游 session 只在 value change 時 publish，不能用那個 UI publish 時間取代接收時間。`hasCoreReadback` 只代表「曾收到至少一種 property」，不足以啟用全部設定。未知 enum 值、斷線或某 property 停止推送時，保留 unknown/stale，而不是沿用 `lastSent*` 當真實相機值。[session push handling][session]、[上游 UI fallback][screen]
 
 ## 尚未納入的項目

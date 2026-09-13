@@ -180,7 +180,11 @@ public enum IPCClient {
             "validation-wireless-read-settings",
             "move", BluetoothCameraEventRecordingRequest.operation,
             NativeActiveTrackObservationWindowRequest.operation,
+            NativeActiveTrackObservationWindowLifecycleRequest.operation,
             HostHEVCValidationRequest.operation,
+            HostHEVCProductStartRequest.startOperation,
+            HostHEVCProductStartRequest.statusOperation,
+            HostHEVCProductStartRequest.stopOperation,
             NativeCaptureFormatValidationRequest.operation].contains(operation) { return 120 }
         return 20
     }

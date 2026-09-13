@@ -383,7 +383,11 @@ public struct NativeActiveTrackObservationWindowResult: Codable, Sendable,
     public var routeAvailable: Bool { route.isAvailable }
     public var eventsObserved: Bool { outcome == .eventsObserved }
     public var noEvents: Bool { outcome == .noEvents }
-    public var completed: Bool { eventsObserved || noEvents }
+    /// A live recorder snapshot may have no events yet, but it is not a
+    /// completed window until the owner has produced a terminal recording.
+    public var completed: Bool {
+        (eventsObserved || noEvents) && recordingEnd != nil
+    }
     public var rawEvents: [BluetoothCameraEvent] {
         events.map(\.rawEnvelope)
     }

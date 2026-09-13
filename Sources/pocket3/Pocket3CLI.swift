@@ -79,6 +79,32 @@ import MCP
                 print(reply.result?.pretty ?? "{}")
                 return
             }
+            if [HostHEVCProductStartRequest.startOperation,
+                HostHEVCProductStartRequest.statusOperation,
+                HostHEVCProductStartRequest.stopOperation].contains(command) {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled",
+                        "Host HEVC product output requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter {
+                    $0 != "--hardware-validation"
+                })
+                let request: JSONValue
+                if command == HostHEVCProductStartRequest.startOperation {
+                    request = try HostHEVCProductStartRequest(
+                        cliArguments: requestArguments).arguments
+                } else {
+                    guard requestArguments.isEmpty else {
+                        throw BridgeFailure("usage",
+                            "\(command) accepts no arguments")
+                    }
+                    request = .object([:])
+                }
+                let reply = try await IPCClient.call(
+                    command, arguments: request, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}")
+                return
+            }
             if command == BluetoothReadbackSessionDiagnosticRequest.operation {
                 guard args.contains("--hardware-validation") else {
                     throw BridgeFailure("validation_disabled",
@@ -189,6 +215,15 @@ import MCP
                 }
                 let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
                 let request = try NativeActiveTrackObservationWindowRequest(cliArguments: requestArguments)
+                let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
+                print(reply.result?.pretty ?? "{}"); return
+            }
+            if command == NativeActiveTrackObservationWindowLifecycleRequest.operation {
+                guard args.contains("--hardware-validation") else {
+                    throw BridgeFailure("validation_disabled", "ActiveTrack observation requires --hardware-validation")
+                }
+                let requestArguments = Array(args.dropFirst().filter { $0 != "--hardware-validation" })
+                let request = try NativeActiveTrackObservationWindowLifecycleRequest(cliArguments: requestArguments)
                 let reply = try await IPCClient.call(command, arguments: request.arguments, address: bridgeAddress)
                 print(reply.result?.pretty ?? "{}"); return
             }
@@ -579,12 +614,20 @@ import MCP
           Developer only: dry-run by default. Execute runs six bounded NV12/BGRA, portrait H.264, 4K30 H.264 and UYVY/4K60 scalar trials sequentially, pauses between cases, never falls back or stores images, and restores the initial mode when safe.
         pocket3 validation-host-hevc --device DEVICE-ID --session CAPTURE-SESSION-ID [--generation N] [--max-frames N] [--max-age-seconds N] [--execute] --hardware-validation
           Developer only: dry-run by default. Execute consumes fresh BGRA/NV12 frames and returns bounded copied hvc1 hashes; it reports macVideoToolboxHost provenance, never stores images and never claims USB wire HEVC.
+        pocket3 host-hevc-start [--device DEVICE-ID --session CAPTURE-SESSION-ID] [--generation N] [--max-age-seconds N] [--execute] --hardware-validation
+          Developer only: dry-run by default. Execute explicitly starts the local Mac host-hevc product output from the current BGRA preview; status reports bounded hvc1 hashes/count/provenance and never stores images or claims USB wire HEVC.
+        pocket3 host-hevc-status --hardware-validation
+          Developer only: read the current local host-hevc selection/session/hash status.
+        pocket3 host-hevc-stop --hardware-validation
+          Developer only: stop the local host-hevc encoder and release its bounded sink; BGRA preview remains the capture source.
         pocket3 validation-wireless-lens-series --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID
           Developer only: one read subscription, up to 12 seconds/64 lens samples. No pairing or AF setter.
         pocket3 validation-wireless-camera-events --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID --hardware-validation
           Developer only: passively record up to 20 seconds/512 bounded camera/gimbal telemetry changes. No writes or tracking claims.
         pocket3 validation-wireless-tracking-window --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID [--window SECONDS] --marker off:SECONDS --marker on:SECONDS --marker off:SECONDS --hardware-validation
           Developer only: passively correlate an explicit off/on/off operator window with A5/A6/A89 and 02/80 status events. No tracking command, pairing, Wi-Fi, credentials or images.
+        pocket3 validation-wireless-tracking-window-lifecycle --action start|marker|status|finish|cancel --session BLE-SESSION-UUID --peripheral PERIPHERAL-UUID [--window SECONDS | --state off|on --at UPTIME] --hardware-validation
+          Developer only: start one bounded passive window, submit separate off/on/off operator markers, inspect status, then finish or cancel. No tracking command, pairing, Wi-Fi, credentials or images.
         pocket3 validation-wireless-pair [--read-connection-details]
           Developer only: optionally complete the existing wake/information handshake. Never joins camera Wi-Fi.
         pocket3 validation-wireless-read-settings

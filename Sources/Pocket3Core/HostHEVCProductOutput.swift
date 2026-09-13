@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Explicit product output selection for the Mac capture path.
@@ -12,6 +13,193 @@ public enum HostHEVCProductSelection: String, Codable, CaseIterable, Sendable,
     case hostHEVC = "host-hevc"
 
     public var id: String { rawValue }
+}
+
+/// Local developer IPC contract for the persistent product host-output
+/// lifecycle. Start is dry-run unless `execute` is explicit; status and stop
+/// only address an already-created local host-output service.
+public struct HostHEVCProductStartRequest: Codable, Sendable, Equatable {
+    public static let startOperation = "host-hevc-start"
+    public static let statusOperation = "host-hevc-status"
+    public static let stopOperation = "host-hevc-stop"
+    public static let maximumInputAgeSeconds = 5.0
+
+    public let expectedDeviceID: String?
+    public let expectedCaptureSessionID: String?
+    public let expectedGeneration: UInt64?
+    public let maximumInputAge: Double
+    public let execute: Bool
+
+    public init(expectedDeviceID: String? = nil,
+                expectedCaptureSessionID: String? = nil,
+                expectedGeneration: UInt64? = nil,
+                maximumInputAge: Double = 1,
+                execute: Bool = false) throws {
+        if let expectedDeviceID {
+            guard !expectedDeviceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw HostHEVCProductStartRequestError.invalidArguments
+            }
+        }
+        if let expectedCaptureSessionID {
+            guard !expectedCaptureSessionID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw HostHEVCProductStartRequestError.invalidArguments
+            }
+        }
+        if execute {
+            guard let expectedDeviceID, !expectedDeviceID.isEmpty,
+                  let expectedCaptureSessionID, !expectedCaptureSessionID.isEmpty else {
+                throw HostHEVCProductStartRequestError.identityRequired
+            }
+        }
+        guard maximumInputAge.isFinite, maximumInputAge > 0,
+              maximumInputAge <= Self.maximumInputAgeSeconds,
+              expectedGeneration.map({ $0 > 0 }) ?? true else {
+            throw HostHEVCProductStartRequestError.invalidArguments
+        }
+        self.expectedDeviceID = expectedDeviceID
+        self.expectedCaptureSessionID = expectedCaptureSessionID
+        self.expectedGeneration = expectedGeneration
+        self.maximumInputAge = maximumInputAge
+        self.execute = execute
+    }
+
+    public init(arguments: JSONValue) throws {
+        guard case .object(let fields) = arguments,
+              Set(fields.keys).isSubset(of: [
+                  "deviceID", "session", "generation", "maxAgeSeconds",
+                  "execute"
+              ]) else {
+            throw HostHEVCProductStartRequestError.invalidArguments
+        }
+        let device = try Self.string(fields["deviceID"])
+        let session = try Self.string(fields["session"])
+        let generation: UInt64?
+        if let value = fields["generation"] {
+            guard let number = value.number, number.isFinite,
+                  number.rounded() == number, number > 0,
+                  number <= Double(UInt64.max) else {
+                throw HostHEVCProductStartRequestError.invalidArguments
+            }
+            generation = UInt64(number)
+        } else {
+            generation = nil
+        }
+        let maxAge = fields["maxAgeSeconds"]?.number ?? 1
+        let execute: Bool
+        if let value = fields["execute"] {
+            guard let parsed = value.bool else {
+                throw HostHEVCProductStartRequestError.invalidArguments
+            }
+            execute = parsed
+        } else {
+            execute = false
+        }
+        try self.init(expectedDeviceID: device,
+                      expectedCaptureSessionID: session,
+                      expectedGeneration: generation,
+                      maximumInputAge: maxAge, execute: execute)
+    }
+
+    public init(cliArguments: [String]) throws {
+        var device: String?
+        var session: String?
+        var generation: UInt64?
+        var maxAge = 1.0
+        var execute = false
+        var index = 0
+        while index < cliArguments.count {
+            let argument = cliArguments[index]
+            if argument == "--execute" {
+                guard !execute else {
+                    throw HostHEVCProductStartRequestError.invalidArguments
+                }
+                execute = true
+                index += 1
+                continue
+            }
+            guard index + 1 < cliArguments.count else {
+                throw HostHEVCProductStartRequestError.invalidArguments
+            }
+            let value = cliArguments[index + 1]
+            switch argument {
+            case "--device":
+                guard device == nil else { throw HostHEVCProductStartRequestError.invalidArguments }
+                device = value
+            case "--session":
+                guard session == nil else { throw HostHEVCProductStartRequestError.invalidArguments }
+                session = value
+            case "--generation":
+                guard generation == nil, let parsed = UInt64(value), parsed > 0 else {
+                    throw HostHEVCProductStartRequestError.invalidArguments
+                }
+                generation = parsed
+            case "--max-age-seconds":
+                guard let parsed = Double(value) else {
+                    throw HostHEVCProductStartRequestError.invalidArguments
+                }
+                maxAge = parsed
+            default:
+                throw HostHEVCProductStartRequestError.invalidArguments
+            }
+            index += 2
+        }
+        try self.init(expectedDeviceID: device,
+                      expectedCaptureSessionID: session,
+                      expectedGeneration: generation,
+                      maximumInputAge: maxAge, execute: execute)
+    }
+
+    public var arguments: JSONValue {
+        var fields: [String: JSONValue] = [
+            "maxAgeSeconds": .number(maximumInputAge),
+            "execute": .bool(execute)
+        ]
+        if let expectedDeviceID { fields["deviceID"] = .string(expectedDeviceID) }
+        if let expectedCaptureSessionID { fields["session"] = .string(expectedCaptureSessionID) }
+        if let expectedGeneration { fields["generation"] = .number(Double(expectedGeneration)) }
+        return .object(fields)
+    }
+
+    public static let schema: JSONValue = .object([
+        "type": .string("object"),
+        "properties": .object([
+            "deviceID": .object(["type": .string("string"), "minLength": .number(1)]),
+            "session": .object(["type": .string("string"), "minLength": .number(1)]),
+            "generation": .object(["type": .string("integer"), "minimum": .number(1)]),
+            "maxAgeSeconds": .object(["type": .string("number"), "exclusiveMinimum": .number(0), "maximum": .number(maximumInputAgeSeconds)]),
+            "execute": .object(["type": .string("boolean")])
+        ]),
+        "additionalProperties": .bool(false)
+    ])
+
+    public init(from decoder: Decoder) throws {
+        try self.init(arguments: JSONValue(from: decoder))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        try arguments.encode(to: encoder)
+    }
+
+    private static func string(_ value: JSONValue?) throws -> String? {
+        guard let value else { return nil }
+        guard let result = value.string, !result.isEmpty else {
+            throw HostHEVCProductStartRequestError.invalidArguments
+        }
+        return result
+    }
+}
+
+public enum HostHEVCProductStartRequestError: Error, LocalizedError,
+    Codable, Sendable, Equatable {
+    case invalidArguments
+    case identityRequired
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidArguments: "invalid host HEVC product arguments"
+        case .identityRequired: "host HEVC product execution requires exact device and session IDs"
+        }
+    }
 }
 
 /// Immutable provenance and fallback contract for one product selection.
@@ -86,6 +274,50 @@ public struct HostHEVCProductCapability: Codable, Sendable, Equatable {
     }
 }
 
+/// Hash-only provenance for one product hvc1 sample. The encoded access unit
+/// and parameter-set bytes are released after hashing; this value never keeps
+/// an image, sample buffer or encoded payload.
+public struct HostHEVCProductSampleDigest: Codable, Sendable, Equatable {
+    public let transport: HostVideoEncodingTransport
+    public let codec: VideoToolboxCodec
+    public let codecIdentifier: String
+    public let sessionID: String
+    public let generation: UInt64
+    public let sequence: UInt64
+    public let width: Int
+    public let height: Int
+    public let parameterSetByteCount: Int
+    public let accessUnitByteCount: Int
+    public let parameterSetSHA256: String
+    public let accessUnitSHA256: String
+    public let isKeyFrame: Bool
+    public let usbWireCodecClaim: String?
+
+    public init(sample: HostHEVCEncodedSample) {
+        let parameterBytes = sample.parameterSets.parameterSets.reduce(into: Data()) {
+            $0.append($1)
+        }
+        self.transport = sample.transport
+        self.codec = sample.codec
+        self.codecIdentifier = "hvc1"
+        self.sessionID = sample.sessionID
+        self.generation = sample.generation
+        self.sequence = sample.sequence
+        self.width = Int(sample.dimensions.width)
+        self.height = Int(sample.dimensions.height)
+        self.parameterSetByteCount = parameterBytes.count
+        self.accessUnitByteCount = sample.accessUnit.count
+        self.parameterSetSHA256 = Self.hex(SHA256.hash(data: parameterBytes))
+        self.accessUnitSHA256 = Self.hex(SHA256.hash(data: sample.accessUnit))
+        self.isKeyFrame = sample.isKeyFrame
+        self.usbWireCodecClaim = sample.usbWireCodecClaim
+    }
+
+    private static func hex(_ digest: SHA256.Digest) -> String {
+        digest.map { String(format: "%02x", $0) }.joined()
+    }
+}
+
 public enum HostHEVCProductOutputPhase: String, Codable, Sendable, Equatable {
     case bgraPreview
     case idle
@@ -104,6 +336,7 @@ public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
     public let session: HostHEVCOutputSessionSnapshot?
     public let sinkAttached: Bool
     public let failureCode: String?
+    public let samples: [HostHEVCProductSampleDigest]
 
     public var isRunning: Bool { phase == .running || phase == .reconnecting }
     public var isVerified: Bool { capability.verified }
@@ -112,7 +345,8 @@ public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
                      phase: HostHEVCProductOutputPhase,
                      session: HostHEVCOutputSessionSnapshot?,
                      sinkAttached: Bool,
-                     failureCode: String?) {
+                     failureCode: String?,
+                     samples: [HostHEVCProductSampleDigest] = []) {
         self.selection = selection
         self.phase = phase
         self.capability = HostHEVCProductCapability(
@@ -121,7 +355,49 @@ public struct HostHEVCProductOutputStatus: Codable, Sendable, Equatable {
         self.session = session
         self.sinkAttached = sinkAttached
         self.failureCode = failureCode ?? session?.failureCode
+        self.samples = Array(samples.prefix(16))
     }
+}
+
+private extension HostHEVCProductOutputStatus {
+    enum CodingKeys: String, CodingKey {
+        case selection, phase, capability, session, sinkAttached,
+             failureCode, samples
+    }
+}
+
+extension HostHEVCProductOutputStatus {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        selection = try container.decode(HostHEVCProductSelection.self,
+            forKey: .selection)
+        phase = try container.decode(HostHEVCProductOutputPhase.self,
+            forKey: .phase)
+        capability = try container.decode(HostHEVCProductCapability.self,
+            forKey: .capability)
+        session = try container.decodeIfPresent(
+            HostHEVCOutputSessionSnapshot.self, forKey: .session)
+        sinkAttached = try container.decode(Bool.self, forKey: .sinkAttached)
+        failureCode = try container.decodeIfPresent(String.self,
+            forKey: .failureCode)
+        samples = try container.decodeIfPresent(
+            [HostHEVCProductSampleDigest].self, forKey: .samples) ?? []
+    }
+}
+
+private final class HostHEVCProductDigestStore: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [HostHEVCProductSampleDigest] = []
+
+    func append(_ sample: HostHEVCEncodedSample) {
+        lock.withLock {
+            guard values.count < 16 else { return }
+            values.append(HostHEVCProductSampleDigest(sample: sample))
+        }
+    }
+
+    func reset() { lock.withLock { values.removeAll(keepingCapacity: true) } }
+    func snapshot() -> [HostHEVCProductSampleDigest] { lock.withLock { values } }
 }
 
 public enum HostHEVCProductSubmissionDisposition: String, Codable, Sendable,
@@ -220,6 +496,7 @@ public actor HostHEVCProductOutputService {
     private var selection: HostHEVCProductSelection = .bgraPreview
     private var outputSession: HostHEVCOutputSession?
     private var lastSessionSnapshot: HostHEVCOutputSessionSnapshot?
+    private let digestStore = HostHEVCProductDigestStore()
 
     public init(
         configuration: HostVideoEncoderConfiguration,
@@ -266,6 +543,7 @@ public actor HostHEVCProductOutputService {
         }
         self.selection = selection
         self.lastSessionSnapshot = nil
+        digestStore.reset()
         return await status()
     }
 
@@ -291,13 +569,20 @@ public actor HostHEVCProductOutputService {
             self.outputSession = nil
         }
 
+        digestStore.reset()
+        let digestStore = self.digestStore
+        let downstreamSink: SampleSink = sink
+        let combinedSink: SampleSink = { sample in
+            digestStore.append(sample)
+            downstreamSink(sample)
+        }
         let session = try HostHEVCOutputSession(
             sessionID: sessionID,
             generation: generation,
             configuration: configuration,
             backend: backendFactory(),
             maximumInputAgeSeconds: maximumInputAgeSeconds,
-            sink: sink)
+            sink: combinedSink)
         self.outputSession = session
         self.lastSessionSnapshot = nil
         return await status()
@@ -353,6 +638,7 @@ public actor HostHEVCProductOutputService {
         }
         _ = await outputSession.reconnect(
             sessionID: newSessionID, generation: newGeneration)
+        digestStore.reset()
         return await status()
     }
 
@@ -397,7 +683,8 @@ public actor HostHEVCProductOutputService {
                 phase = .idle
                 return HostHEVCProductOutputStatus(
                     selection: selection, phase: phase, session: nil,
-                    sinkAttached: false, failureCode: nil)
+                    sinkAttached: false, failureCode: nil,
+                    samples: digestStore.snapshot())
             }
             switch snapshot.phase {
             case .running: phase = .running
@@ -410,7 +697,8 @@ public actor HostHEVCProductOutputService {
         }
         return HostHEVCProductOutputStatus(
             selection: selection, phase: phase, session: snapshot,
-            sinkAttached: sinkAttached, failureCode: snapshot?.failureCode)
+            sinkAttached: sinkAttached, failureCode: snapshot?.failureCode,
+            samples: digestStore.snapshot())
     }
 
     private func validateIdentity(sessionID: String, generation: UInt64) throws {

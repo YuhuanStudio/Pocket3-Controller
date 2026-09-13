@@ -284,6 +284,7 @@ public enum BluetoothReadbackSessionDiagnostic {
         request: BluetoothReadbackSessionDiagnosticRequest,
         bluetooth: BluetoothDiscoveryStatus,
         settingsQueries: [BluetoothCameraPropertyQueryResult],
+        settingsFailures: [BluetoothCameraSettingsQueryFailure] = [],
         pairedTapFocus: BluetoothTapFocusResult?,
         nativeSession: NativeCameraSessionStatus,
         nativeTapFocus: NativeTapFocusValidationResult?
@@ -292,7 +293,8 @@ public enum BluetoothReadbackSessionDiagnostic {
         var entries: [BluetoothReadbackDiagnosticEntry] = []
         if request.path == .settings || request.path == .all {
             entries.append(contentsOf: settingsEntries(
-                request: request, route: route, queries: settingsQueries))
+                request: request, route: route, queries: settingsQueries,
+                failures: settingsFailures))
         }
         if request.path == .pairedTapFocus || request.path == .all {
             entries.append(contentsOf: pairedTapFocusEntries(
@@ -314,7 +316,8 @@ public enum BluetoothReadbackSessionDiagnostic {
     private static func settingsEntries(
         request: BluetoothReadbackSessionDiagnosticRequest,
         route: BluetoothReadbackRouteSnapshot,
-        queries: [BluetoothCameraPropertyQueryResult]
+        queries: [BluetoothCameraPropertyQueryResult],
+        failures: [BluetoothCameraSettingsQueryFailure]
     ) -> [BluetoothReadbackDiagnosticEntry] {
         guard route.available,
               route.sessionID == request.expectedSessionID,
@@ -324,6 +327,11 @@ public enum BluetoothReadbackSessionDiagnostic {
         }
         return BluetoothCameraSettingsReadPlan.orderedProperties.map { property in
             guard let query = queries.last(where: { $0.property == property }) else {
+                if let failure = failures.last(where: { $0.property == property }) {
+                    return entry(path: .settings, key: property.rawValue,
+                                 request: request, outcome: .noReply,
+                                 reason: "query_preflight_failed:\(failure.code)")
+                }
                 return entry(path: .settings, key: property.rawValue,
                              request: request, outcome: .noReply,
                              reason: "no_query_result")

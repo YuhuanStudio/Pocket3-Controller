@@ -499,6 +499,9 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
     public let version: Int
     public let uvcCaptureFormats: [UVCCaptureFormat]
     public let hostOutputCodecs: [HostOutputCodecCapability]
+    /// Explicit local host HEVC product selection/session. This stays
+    /// separate from AVFoundation's requested output codec list.
+    public let hostHEVCProduct: HostHEVCProductCapability?
     public let bodyRecordingFormats: [BodyRecordingFormatCapability]
     public let nativeSession: NativeSessionCapability
     public let liveSession: LiveSessionCapability
@@ -510,6 +513,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
     public init(version: Int = 1,
                 uvcCaptureFormats: [UVCCaptureFormat] = [],
                 hostOutputCodecs: [HostOutputCodecCapability] = [],
+                hostHEVCProduct: HostHEVCProductCapability? = nil,
                 bodyRecordingFormats: [BodyRecordingFormatCapability] = Pocket3BodyRecordingCatalog.knownResolutionFamilies,
                 nativeSession: NativeSessionCapability = .disconnected,
                 liveSession: LiveSessionCapability = .unavailable,
@@ -517,6 +521,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
         self.version = version
         self.uvcCaptureFormats = uvcCaptureFormats
         self.hostOutputCodecs = hostOutputCodecs
+        self.hostHEVCProduct = hostHEVCProduct
         self.bodyRecordingFormats = bodyRecordingFormats
         self.nativeSession = nativeSession
         self.liveSession = liveSession
@@ -545,6 +550,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
                             requestedMode: CaptureMode? = nil,
                             requestedPixelFormat: CapturePixelFormat? = nil,
                             requestedOutputPolicy: CaptureOutputPolicy? = nil,
+                            hostHEVCProduct: HostHEVCProductCapability? = nil,
                             nativeControl: NativeControlStatus? = nil,
                             nativeSession: NativeSessionCapability? = nil,
                             bodyRecordingFormats: [BodyRecordingFormatCapability]? = nil,
@@ -576,6 +582,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
         let output = Self.outputCapabilities(capture: capture, phase: phase,
                                              requestedPolicy: requestedOutputPolicy)
         return Self(uvcCaptureFormats: uvc, hostOutputCodecs: output,
+                    hostHEVCProduct: hostHEVCProduct,
                     bodyRecordingFormats: bodyRecordingFormats.map(Pocket3BodyRecordingCatalog.merging)
                         ?? Pocket3BodyRecordingCatalog.knownResolutionFamilies,
                     nativeSession: nativeSession ?? .from(nativeControl),
@@ -587,6 +594,7 @@ public struct Pocket3CapabilityGraph: Codable, Sendable, Equatable {
     public func adding(deviceInventory: Pocket3DeviceSystemInventory?) -> Self {
         Self(version: version, uvcCaptureFormats: uvcCaptureFormats,
              hostOutputCodecs: hostOutputCodecs,
+             hostHEVCProduct: hostHEVCProduct,
              bodyRecordingFormats: bodyRecordingFormats,
              nativeSession: nativeSession, liveSession: liveSession,
              deviceInventory: deviceInventory)

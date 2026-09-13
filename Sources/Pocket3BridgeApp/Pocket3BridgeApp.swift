@@ -95,6 +95,11 @@ final class AppModel {
     var developerUSBManualAcceptanceDiagnostics: USBManualAcceptanceDiagnostics?
     var developerUSBManualAcceptanceStage: String?
     var developerUSBManualAcceptanceFailure: String?
+    /// Developer-only interactive passive ActiveTrack observation owner. It
+    /// stores marker/baseline state only; BLE recording remains owned by the
+    /// selected Pocket3BluetoothDiscovery instance.
+    @ObservationIgnored var developerActiveTrackObservationWindow:
+        NativeActiveTrackObservationWindowLifecycleCoordinator?
     @ObservationIgnored private var powerChargingReducer = Pocket3PowerChargingDiagnosisReducer()
     var powerChargingDiagnosis: Pocket3PowerChargingDiagnosis?
     var modelStatus: IntelligenceStatus?
@@ -266,7 +271,10 @@ final class AppModel {
                         throw BridgeFailure("invalid_focus_point", "Pass normalized x and y with an active camera")
                     }
                     return ServiceReply(id: request.id, result: try .encode(try await service.capture.focus(at: CGPoint(x: x, y: y), sessionToken: token)))
-                case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", BluetoothCameraEventRecordingRequest.operation, NativeActiveTrackObservationWindowRequest.operation, "validation-wireless-tap-focus", NativeTapFocusValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-setting", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect":
+                case "validation-wireless-status", "validation-wireless-scan", "validation-wireless-connect", "validation-wireless-pair", "validation-wireless-read-settings", BluetoothVideoParametersReadbackRequest.operation, "validation-wireless-datalink", "validation-wireless-join", "validation-wireless-probe", "validation-wireless-readiness", "validation-wireless-recenter", "validation-wireless-lens", "validation-wireless-lens-series", BluetoothCameraEventRecordingRequest.operation, NativeActiveTrackObservationWindowRequest.operation, NativeActiveTrackObservationWindowLifecycleRequest.operation, "validation-wireless-tap-focus", NativeTapFocusValidationRequest.operation, NativeMotionValidationRequest.operation, NativeSettingValidationRequest.operation, NativeAudioDSPValidationRequest.operation, NativeCameraCaptureValidationRequest.operation, NativeMediaValidationRequest.operation, NativeAdvancedSettingValidationRequest.operation, NativeExposureValidationRequest.operation, Pocket3LiveViewValidationRequest.operation, "validation-wireless-setting", "validation-wireless-property", "validation-wireless-body", "validation-wireless-route", NativeActiveTrackValidationRequest.operation, "validation-wireless-disconnect":
+                    if request.operation == NativeActiveTrackObservationWindowLifecycleRequest.operation {
+                        return try await AppModel.shared.handleActiveTrackObservationWindowLifecycle(request)
+                    }
                     if request.operation == NativeActiveTrackObservationWindowRequest.operation {
                         return try await AppModel.shared.handleActiveTrackObservationWindow(request)
                     }

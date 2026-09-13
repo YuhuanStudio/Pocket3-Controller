@@ -37,4 +37,25 @@ struct BluetoothCameraSettingsReadPlanTests {
         changed.connectionChanged = true
         #expect(!BluetoothCameraSettingsReadPlan.shouldContinue(after: changed))
     }
+
+    @Test func emptyUnpairedPlanIsNotCompleteAndPreflightFailureIsPartial() {
+        let empty = BluetoothCameraSettingsReadSummary(
+            routeAvailable: false, issuePresent: false, results: [], failures: [])
+        #expect(!empty.completed)
+        #expect(!empty.partial)
+        #expect(empty.state == .notStarted)
+        #expect(empty.attemptedPropertyCount == 0)
+
+        let failure = BluetoothCameraSettingsQueryFailure(
+            index: 0, property: .videoParameters,
+            expectedSessionID: UUID(), expectedPeripheralID: UUID(),
+            code: "bluetooth_probe_busy")
+        let partial = BluetoothCameraSettingsReadSummary(
+            routeAvailable: true, issuePresent: true, results: [],
+            failures: [failure])
+        #expect(!partial.completed)
+        #expect(partial.partial)
+        #expect(partial.state == .partial)
+        #expect(partial.attemptedPropertyCount == 1)
+    }
 }

@@ -1,5 +1,67 @@
 import Foundation
 
+/// A bounded failure raised before a property query can submit its one
+/// subscription. The per-property query result remains responsible for
+/// ACK/notification/no-reply evidence; this type covers preflight failures
+/// such as busy, not-ready, MTU and backpressure conditions.
+public struct BluetoothCameraSettingsQueryFailure: Codable, Sendable,
+    Equatable, Identifiable {
+    public let id: String
+    public let index: Int
+    public let property: CameraSettingsProperty
+    public let expectedSessionID: UUID
+    public let expectedPeripheralID: UUID
+    public let code: String
+    public let stage: String
+
+    public init(index: Int, property: CameraSettingsProperty,
+                expectedSessionID: UUID, expectedPeripheralID: UUID,
+                code: String, stage: String = "preflight") {
+        self.id = "\(index):\(property.rawValue)"
+        self.index = index
+        self.property = property
+        self.expectedSessionID = expectedSessionID
+        self.expectedPeripheralID = expectedPeripheralID
+        self.code = code
+        self.stage = stage
+    }
+}
+
+public enum BluetoothCameraSettingsReadbackState: String, Codable, Sendable,
+    Equatable {
+    case notStarted = "not_started"
+    case partial
+    case complete
+}
+
+/// Pure completion projection shared by the App response and offline tests.
+/// An empty result is never complete, even if no error string was produced.
+public struct BluetoothCameraSettingsReadSummary: Codable, Sendable,
+    Equatable {
+    public let completed: Bool
+    public let partial: Bool
+    public let state: BluetoothCameraSettingsReadbackState
+    public let routeAvailable: Bool
+    public let attemptedPropertyCount: Int
+    public let expectedPropertyCount: Int
+
+    public init(
+        routeAvailable: Bool,
+        issuePresent: Bool,
+        results: [BluetoothCameraPropertyQueryResult],
+        failures: [BluetoothCameraSettingsQueryFailure]
+    ) {
+        self.routeAvailable = routeAvailable
+        expectedPropertyCount = BluetoothCameraSettingsReadPlan.orderedProperties.count
+        attemptedPropertyCount = results.count + failures.count
+        completed = routeAvailable && !issuePresent && failures.isEmpty &&
+            results.count == expectedPropertyCount &&
+            results.allSatisfy(BluetoothCameraSettingsReadPlan.hasTypedReadback)
+        partial = attemptedPropertyCount > 0 && !completed
+        state = completed ? .complete : partial ? .partial : .notStarted
+    }
+}
+
 /// The bounded order for the explicit developer read-settings pass.
 ///
 /// `cam_video_param_v2` is first because the pinned Kaze source documents its

@@ -54,4 +54,130 @@ extension AppModel {
             input, route: .available, baseline: baseline, recording: recording)
         return ServiceReply(id: request.id, result: try .encode(result))
     }
+
+    /// Interactive developer-only lifecycle for one passive ActiveTrack
+    /// window. The BLE discovery object remains the sole event-recorder owner;
+    /// these calls only mutate the operator marker coordinator.
+    func handleActiveTrackObservationWindowLifecycle(_ request: ServiceRequest)
+        async throws -> ServiceReply {
+        guard CommandLine.arguments.contains("--hardware-validation") else {
+            throw BridgeFailure("validation_disabled",
+                "ActiveTrack observation requires an explicit development launch")
+        }
+        let input = try NativeActiveTrackObservationWindowLifecycleRequest(
+            arguments: request.arguments)
+        switch input.action {
+        case .start:
+            guard developerActiveTrackObservationWindow == nil else {
+                throw BridgeFailure("active_track_observation_busy",
+                    "Finish or cancel the active ActiveTrack observation window first")
+            }
+            let discovery = wireless.bluetooth.status
+            let route = NativeActiveTrackObservationWindowRoute.evaluate(
+                status: discovery,
+                expectedSessionID: input.expectedSessionID,
+                peripheralID: input.peripheralID)
+            let now = ProcessInfo.processInfo.systemUptime
+            let baseline = NativeActiveTrackObservationBaseline(
+                sessionID: input.expectedSessionID,
+                peripheralID: input.peripheralID,
+                capturedUptime: now,
+                activeTrackObservations: discovery.activeTrackObservations,
+                trackingCandidates: discovery.trackingCandidates,
+                cameraStatus: discovery.cameraStatus)
+            guard route.isAvailable else {
+                let coordinator = try NativeActiveTrackObservationWindowLifecycleCoordinator(
+                    start: input, route: route, baseline: nil, startedUptime: now)
+                return ServiceReply(id: request.id,
+                                    result: try .encode(coordinator.status(action: .start)))
+            }
+            do {
+                try wireless.bluetooth.startCameraEventRecording(
+                    expectedSessionID: input.expectedSessionID,
+                    peripheralID: input.peripheralID)
+            } catch let error as BridgeFailure {
+                guard [
+                    "bluetooth_camera_events_connection_changed",
+                    "bluetooth_camera_events_not_ready"
+                ].contains(error.code) else { throw error }
+                let unavailable = NativeActiveTrackObservationWindowRoute.unavailable(
+                    code: error.code)
+                let coordinator = try NativeActiveTrackObservationWindowLifecycleCoordinator(
+                    start: input, route: unavailable, baseline: nil,
+                    startedUptime: now)
+                return ServiceReply(id: request.id,
+                                    result: try .encode(coordinator.status(action: .start)))
+            }
+            let recorderStartedUptime = wireless.bluetooth.cameraEventRecordingSnapshot?.startedUptime ?? now
+            let coordinator = try NativeActiveTrackObservationWindowLifecycleCoordinator(
+                start: input, route: .available, baseline: baseline,
+                startedUptime: recorderStartedUptime)
+            developerActiveTrackObservationWindow = coordinator
+            let status = coordinator.update(
+                recording: wireless.bluetooth.cameraEventRecordingSnapshot,
+                action: .start)
+            return ServiceReply(id: request.id, result: try .encode(status))
+
+        case .marker:
+            guard let coordinator = developerActiveTrackObservationWindow else {
+                throw BridgeFailure("active_track_observation_not_active",
+                    "Start an ActiveTrack observation window first")
+            }
+            try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
+            try coordinator.mark(input)
+            developerActiveTrackObservationWindow = coordinator
+            let status = coordinator.update(
+                recording: wireless.bluetooth.cameraEventRecordingSnapshot,
+                action: .marker)
+            return ServiceReply(id: request.id, result: try .encode(status))
+
+        case .status:
+            guard var coordinator = developerActiveTrackObservationWindow else {
+                throw BridgeFailure("active_track_observation_not_active",
+                    "Start an ActiveTrack observation window first")
+            }
+            try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
+            developerActiveTrackObservationWindow = coordinator
+            let status = coordinator.update(
+                recording: wireless.bluetooth.cameraEventRecordingSnapshot,
+                action: .status)
+            return ServiceReply(id: request.id, result: try .encode(status))
+
+        case .finish:
+            guard var coordinator = developerActiveTrackObservationWindow else {
+                throw BridgeFailure("active_track_observation_not_active",
+                    "Start an ActiveTrack observation window first")
+            }
+            try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
+            let recording = await wireless.bluetooth.finishCameraEventRecording()
+            let status = coordinator.finish(recording: recording)
+            developerActiveTrackObservationWindow = nil
+            return ServiceReply(id: request.id, result: try .encode(status))
+
+        case .cancel:
+            guard var coordinator = developerActiveTrackObservationWindow else {
+                throw BridgeFailure("active_track_observation_not_active",
+                    "Start an ActiveTrack observation window first")
+            }
+            try ensureActiveTrackLifecycleIdentity(input, coordinator: coordinator)
+            let recording = await wireless.bluetooth.stopCameraEventRecording()
+            let status = coordinator.cancel(recording: recording)
+            developerActiveTrackObservationWindow = nil
+            return ServiceReply(id: request.id, result: try .encode(status))
+        }
+    }
+
+    private func ensureActiveTrackLifecycleIdentity(
+        _ request: NativeActiveTrackObservationWindowLifecycleRequest,
+        coordinator: NativeActiveTrackObservationWindowLifecycleCoordinator
+    ) throws {
+        guard request.expectedSessionID == coordinator.expectedSessionID else {
+            throw BridgeFailure("active_track_observation_stale_session",
+                "The ActiveTrack observation session changed")
+        }
+        guard request.peripheralID == coordinator.peripheralID else {
+            throw BridgeFailure("active_track_observation_stale_peer",
+                "The ActiveTrack observation peer changed")
+        }
+    }
 }

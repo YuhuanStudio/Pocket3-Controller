@@ -76,6 +76,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     private var lensPointTask: Task<BluetoothFocusPointRecording, Never>?
     private var cameraEventOperation: BluetoothCameraEventOperation?
     private var cameraEventTask: Task<BluetoothCameraEventRecording, Never>?
+    private var completedCameraEventRecording: BluetoothCameraEventRecording?
 
     public override init() { super.init() } // Does not create a CBCentralManager.
 
@@ -614,13 +615,25 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             && pairer?.paired == true && registrationAcknowledgmentSession == operation.session
     }
 
-    /// Developer-only passive sampling of camera/gimbal telemetry changes. This
-    /// operation submits no packet, changes no subscription, and never starts
-    /// discovery or pairing; the already active paired session owns all BLE
-    /// transport work. Every callback is fenced to the exact session and peer.
-    public func recordCameraEvents(expectedSessionID: UUID, peripheralID: UUID,
-                                   permit: OperationPermit = OperationPermit()) async throws -> BluetoothCameraEventRecording {
-        try Task.checkCancellation()
+    /// The current bounded passive recorder snapshot. While active its end is
+    /// nil; after automatic expiry or explicit stop/cancel the terminal result
+    /// remains available for a lifecycle caller to finalize its projection.
+    public var cameraEventRecordingSnapshot: BluetoothCameraEventRecording? {
+        cameraEventOperation?.recorder.result ?? completedCameraEventRecording
+    }
+
+    public var cameraEventRecordingActive: Bool {
+        cameraEventOperation != nil || cameraEventTask != nil
+    }
+
+    /// Arms developer-only passive sampling without waiting for the bounded
+    /// window. This is the only BLE event-recorder owner; it submits no packet,
+    /// changes no subscription, and never starts discovery or pairing.
+    public func startCameraEventRecording(
+        expectedSessionID: UUID,
+        peripheralID: UUID,
+        permit: OperationPermit = OperationPermit()
+    ) throws {
         try permit.perform {}
         guard CommandLine.arguments.contains("--hardware-validation") else {
             throw BridgeFailure("validation_disabled", "Camera event recording requires a development launch")
@@ -652,6 +665,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         let operation = try BluetoothCameraEventOperation(session: expectedSessionID,
             central: central, peripheral: peripheral, permit: permit, startedUptime: started)
         cameraEventOperation = operation
+        completedCameraEventRecording = nil
         let work = Task<BluetoothCameraEventRecording, Never>(priority: .userInitiated) { @MainActor [self, operation] in
             var ending: BluetoothCameraEventRecordingEnd?
             var failureCode: String?
@@ -688,6 +702,7 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
             // A stale operation may not clear a newer recorder. No transport
             // cleanup is needed because this feature never submitted a write.
             if cameraEventOperation === operation {
+                completedCameraEventRecording = result
                 cameraEventOperation = nil
                 cameraEventTask = nil
                 publish()
@@ -696,6 +711,19 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
         }
         cameraEventTask = work
         publish()
+    }
+
+    /// Developer-only passive sampling of camera/gimbal telemetry changes. This
+    /// compatibility API keeps the original one-shot behavior while sharing
+    /// the interactive recorder owner above.
+    public func recordCameraEvents(expectedSessionID: UUID, peripheralID: UUID,
+                                   permit: OperationPermit = OperationPermit()) async throws -> BluetoothCameraEventRecording {
+        try Task.checkCancellation()
+        try startCameraEventRecording(expectedSessionID: expectedSessionID,
+                                      peripheralID: peripheralID, permit: permit)
+        guard let work = cameraEventTask else {
+            throw BridgeFailure("bluetooth_camera_events_failed", "The passive camera event recorder did not start")
+        }
         return await withTaskCancellationHandler { await work.value } onCancel: {
             permit.invalidate()
             work.cancel()
@@ -712,7 +740,22 @@ public final class Pocket3BluetoothDiscovery: NSObject, @preconcurrency CBCentra
     public func stopCameraEventRecording() async -> BluetoothCameraEventRecording? {
         let work = cameraEventTask
         cancelCameraEventRecording()
-        guard let work else { return nil }
+        guard let work else { return completedCameraEventRecording }
+        return await work.value
+    }
+
+    /// Gracefully closes an interactive passive window without classifying it
+    /// as cancellation. The recorder task observes its terminal result and
+    /// performs the same bounded, read-only cleanup as the one-shot path.
+    public func finishCameraEventRecording() async -> BluetoothCameraEventRecording? {
+        guard let work = cameraEventTask else { return completedCameraEventRecording }
+        if let operation = cameraEventOperation {
+            let now = ProcessInfo.processInfo.systemUptime
+            let deadline = operation.recorder.result.startedUptime +
+                BluetoothCameraEventRecorder.maximumDuration
+            _ = operation.recorder.finish(
+                at: min(now, deadline), reason: .finishedEarly)
+        }
         return await work.value
     }
 

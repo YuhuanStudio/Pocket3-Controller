@@ -23,6 +23,7 @@ extension AppModel {
             request: input,
             bluetooth: wireless.discovery,
             settingsQueries: wireless.lastCameraSettingsQueryResults,
+            settingsFailures: wireless.lastCameraSettingsQueryFailures,
             pairedTapFocus: wireless.lastPairedTapFocusResult,
             nativeSession: wireless.nativeSessionStatus,
             nativeTapFocus: developerNativeTapFocusValidationResult)

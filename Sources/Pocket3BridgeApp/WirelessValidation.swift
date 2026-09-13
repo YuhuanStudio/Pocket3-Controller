@@ -42,10 +42,23 @@ extension AppModel {
                 throw BridgeFailure("camera_settings_read_timeout", "Timed out waiting for the paired-camera settings reader")
             }
             await wireless.refresh()
+            let results = wireless.lastCameraSettingsQueryResults
+            let failures = wireless.lastCameraSettingsQueryFailures
+            let routeAvailable = BluetoothReadbackRouteSnapshot(
+                status: wireless.discovery).available
+            let summary = BluetoothCameraSettingsReadSummary(
+                routeAvailable: routeAvailable, issuePresent: wireless.issue != nil,
+                results: results, failures: failures)
             return ServiceReply(id: request.id, result: .object([
-                "completed": .bool(wireless.issue == nil), "issue": wireless.issue.map(JSONValue.string) ?? .null,
+                "completed": .bool(summary.completed), "partial": .bool(summary.partial),
+                "readbackState": .string(summary.state.rawValue),
+                "routeAvailable": .bool(routeAvailable),
+                "attemptedPropertyCount": .number(Double(summary.attemptedPropertyCount)),
+                "expectedPropertyCount": .number(Double(summary.expectedPropertyCount)),
+                "issue": wireless.issue.map(JSONValue.string) ?? .null,
                 "observations": try .array(wireless.discovery.cameraSettingsObservations.map(JSONValue.encode)),
-                "queryResults": try .array(wireless.lastCameraSettingsQueryResults.map(JSONValue.encode)),
+                "queryResults": try .array(results.map(JSONValue.encode)),
+                "queryFailures": try .array(failures.map(JSONValue.encode)),
                 "bluetooth": try .encode(wireless.discovery)
             ]))
         case "validation-wireless-probe": return try await performBluetoothGimbalProbe(request)
@@ -66,6 +79,8 @@ extension AppModel {
                 expectedSessionID: arguments.expectedSessionID, peripheralID: arguments.peripheralID)))
         case NativeActiveTrackObservationWindowRequest.operation:
             return try await handleActiveTrackObservationWindow(request)
+        case NativeActiveTrackObservationWindowLifecycleRequest.operation:
+            return try await handleActiveTrackObservationWindowLifecycle(request)
         case "validation-wireless-property":
             guard let name = request.arguments["property"].string,
                   let property = CameraSettingsProperty(rawValue: name) else {
