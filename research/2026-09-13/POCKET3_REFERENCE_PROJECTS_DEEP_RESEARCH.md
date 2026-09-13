@@ -56,6 +56,8 @@ Orange Pi 安裝流程加入 `usbcore.quirks=2ca3:0023:i`；Linux 文件定義 `
 
 macOS 的 libusb FAQ 說明，若 kernel/system driver 已占有裝置，detach 更棘手，而且 macOS capture API 作用於**整台裝置而非單一 interface**。[^9] macOS 27 SDK 的 `IOUSBHostObjectInitOptionsDeviceCapture` header 也明載：需要 root，或 `com.apple.vm.device-access` entitlement 加 `IOServiceAuthorize()`；使用後會終止該 `IOUSBHostDevice` 及相關 interface 的所有其他 clients/drivers。銷毀 capture object 後裝置會 reset 並重新匹配 drivers。這意味著 direct 4K60 可能暫時中斷系統 webcam、audio、UVC control 與其他 App，不能在一般 Connect 中悄悄執行。
 
+libusb Darwin backend也不是無成本捷徑：device open使用seize，kernel-driver detach落到whole-device capture/re-enumeration，restore/reclaim仍有已報告的resource/state問題。macOS正常產品路徑應先維持普通`USBInterfaceOpen` negative/positive gate；長期若需要與系統camera ownership正式協調，研究Apple的DriverKit＋CoreMediaIO UVC override／camera extension，而不是讓主App以root capture整台composite device。[^29][^30][^31]
+
 ## 四個最重要的參考實作
 
 ### `daijertech/obs-dji-uvc`
@@ -219,9 +221,12 @@ OpenPocketCine後續三相機iPhone實測同時取得Pocket 4 Pro、Pocket 3與N
 
 - 先做完全唯讀的 descriptor→mode selection與 34-byte UVC 1.0 stream-control codec。
 - 在不 capture device 的條件下保留 normal-open negative test。
-- 另建明確 opt-in privileged helper prototype，使用 IOUSBHost DeviceCapture 前顯示「會中止所有相機 clients/audio」；capture、configure、interface open、PROBE/COMMIT、bulk read、destroy/reset 每步可取消與清理。
+- 只有普通normal-open持續無法取得ownership時，才另建隔離的privileged research helper；使用IOUSBHost DeviceCapture前必須顯示「會中止所有相機clients/audio」，且不得成為一般Connect的隱藏行為。
+- UVC 1.0候選使用26-byte stream control，下一個獨立gate依序為`GET_MAX PROBE (a1/83/0100/0001/26) → SET_CUR PROBE (21/01/0100/0001/26) → GET_CUR PROBE (a1/81/0100/0001/26) → SET_CUR COMMIT (21/01/0200/0001/26)`；每步精確核對format=2、frame=5、interval，不把ACK當stream ready。
+- bulk reader使用少量有界async buffers、generation/cancel/completion-drain；解析UVC header/FID/EOF/PTS/SCR，再交給既有Annex-B/AU/IDR-gated VideoToolbox pipeline。queue落後時丟到下一個keyframe。
 - 先以 1080p30 direct H.264 驗證 header/AU/decode，再升 4K30、4K50、4K60；每階段保存 scalar/hash，不保存畫面。
 - 若 DeviceCapture 無法在可發布簽署／權限模型下可靠恢復，將 4K50/60標成 macOS system limitation，提供 Linux/Orange Pi companion選項，而非反覆盲試。
+- 長期產品化評估DriverKit＋CoreMediaIO extension override，讓安裝、簽章、system camera ownership與恢復由正式extension生命週期承擔。
 
 ### P1：route-safe native session
 
@@ -284,3 +289,6 @@ OpenPocketCine後續三相機iPhone實測同時取得Pocket 4 Pro、Pocket 3與N
 [^26]: Yjsmall, “[OpenPocketCine macOS operator shell](https://github.com/Yjsmall/OpenPocketCine/tree/2bb7e0f4ae8b3dd9289f6c606f97c6d6b0e52a34),” commit `2bb7e0f`, 2026.
 [^27]: datagutt, “[node-osmo](https://github.com/datagutt/node-osmo/tree/cec92aec9304a5cc3dae7f7de541eef38ebb680e),” commit `cec92ae`, 2026.
 [^28]: dimadesu, “[dji-remote](https://github.com/dimadesu/dji-remote/tree/c2012be6aca67d4882774cf5d9746f420a03e11f),” commit `c2012be`, 2026.
+[^29]: libusb project, “[Darwin backend — claim, capture and restore](https://github.com/libusb/libusb/blob/a45bb163a603ac5ae3499806b151509848b0065c/libusb/os/darwin_usb.c),” commit `a45bb16`, accessed 2026-09-13.
+[^30]: libuvc project, “[stream control and bulk transfer lifecycle](https://github.com/libuvc/libuvc/blob/4e9fc773914377ec0bcf2f31621f56da5a0fa09f/src/stream.c),” commit `4e9fc77`, accessed 2026-09-13.
+[^31]: Apple, “[Overriding the default USB Video Class extension](https://developer.apple.com/documentation/coremediaio/overriding-the-default-usb-video-class-extension),” accessed 2026-09-13.
